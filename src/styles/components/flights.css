@@ -1,0 +1,189 @@
+/* ─── Flight preview (home page) ─── */
+.flight-preview-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .flight-preview-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.flight-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.flight-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.flight-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.flight-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.flight-panel__link {
+  font-size: 0.75rem;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.flight-panel__link:hover {
+  text-decoration: underline;
+}
+
+.flight-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.flight-row:last-child {
+  border-bottom: none;
+}
+
+.flight-row__info {
+  min-width: 0;
+}
+
+.flight-row__number {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+
+.flight-row__route {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.125rem;
+}
+
+.flight-row__right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.flight-row__time {
+  font-size: 0.875rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  text-align: right;
+}
+
+.flight-row__time-old {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-decoration: line-through;
+  text-align: right;
+}
+
+.flight-panel__notice {
+  background: var(--surface-alt);
+  padding: 0.5rem 1.25rem;
+}
+
+.flight-panel__notice p {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ─── Responsive flight board toggle ─── */
+.flight-table-desktop { display: block; }
+.flight-list-mobile { display: none; }
+
+@media (max-width: 767px) {
+  .flight-table-desktop { display: none; }
+  .flight-list-mobile { display: flex; flex-direction: column; gap: 0.75rem; }
+}
+
+.flight-mobile-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem;
+}
+
+.flight-mobile-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.625rem;
+}
+
+.flight-mobile-card__times {
+  display: flex;
+  gap: 1.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.flight-mobile-card__label {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.125rem;
+}
+
+.flight-row__time--delayed {
+  color: var(--warning-fg);
+  font-weight: 600;
+}
+
+/* ─── Full flight board table (arrivals/departures pages) ─── */
+.table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 600;
+}

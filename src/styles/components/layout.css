@@ -1,0 +1,38 @@
+/* ─── Layout ─── */
+.container {
+  width: min(calc(100% - 2rem), var(--max-width));
+  margin-inline: auto;
+}
+
+.site-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.site-main {
+  flex: 1;
+}
+
+/* main no longer has padding-bottom; sections handle spacing */
+main {
+  padding-bottom: 0;
+}
+
+/* ─── Section spacing ─── */
+.section {
+  padding: 3rem 0;
+}
+
+.section-sm {
+  padding: 1.5rem 0;
+}
+
+.section-alt {
+  background: hsl(210, 15%, 95%);
+}
+
+/* ─── Stack utilities ─── */
+.stack-sm > * + * { margin-top: 0.75rem; }
+.stack-md > * + * { margin-top: 1rem; }
+.stack-lg > * + * { margin-top: 1.5rem; }

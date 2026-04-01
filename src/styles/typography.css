@@ -1,0 +1,109 @@
+/* ============================================================
+   ARL Airport — Typography System
+   Shared type utilities and scale built on tokens.css primitives.
+   Import AFTER tokens.css (or via index.css).
+   ============================================================ */
+
+/* ============================================================
+   FONT FACE IMPORTS
+   Loaded once here so individual CSS files don't double-load.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+
+
+/* ============================================================
+   BASE TYPOGRAPHIC STYLES
+   Applied globally — these reset browser defaults and set the
+   Inter-based scale for the whole application.
+   ============================================================ */
+
+body {
+  font-family: var(--arl-font-sans);
+  font-size: var(--arl-type-md);        /* 16px */
+  line-height: var(--arl-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--arl-font-sans);
+  font-weight: var(--arl-weight-semibold);
+  letter-spacing: var(--arl-tracking-tight);
+  line-height: var(--arl-leading-tight);
+}
+
+code, kbd, samp, pre {
+  font-family: var(--arl-font-mono);
+  font-size: 0.9em;
+}
+
+
+/* ============================================================
+   NAMED TYPE ROLES
+   Semantic classes that map to the scale — use these in
+   templates instead of hardcoding px/rem values.
+   ============================================================ */
+
+/* Display — hero headings */
+.type-display-lg  { font-size: var(--arl-type-6xl); font-weight: var(--arl-weight-bold);      letter-spacing: var(--arl-tracking-tightest); line-height: 1.1; }
+.type-display     { font-size: var(--arl-type-5xl); font-weight: var(--arl-weight-bold);      letter-spacing: var(--arl-tracking-tight);    line-height: 1.1; }
+
+/* Headings */
+.type-h1  { font-size: var(--arl-type-4xl); font-weight: var(--arl-weight-bold);      letter-spacing: var(--arl-tracking-tight);  line-height: var(--arl-leading-tight);  }
+.type-h2  { font-size: var(--arl-type-3xl); font-weight: var(--arl-weight-semibold);  letter-spacing: var(--arl-tracking-tight);  line-height: var(--arl-leading-tight);  }
+.type-h3  { font-size: var(--arl-type-2xl); font-weight: var(--arl-weight-semibold);  letter-spacing: var(--arl-tracking-tight);  line-height: var(--arl-leading-snug);   }
+.type-h4  { font-size: var(--arl-type-xl);  font-weight: var(--arl-weight-semibold);  letter-spacing: var(--arl-tracking-normal); line-height: var(--arl-leading-snug);   }
+.type-h5  { font-size: var(--arl-type-lg);  font-weight: var(--arl-weight-medium);    letter-spacing: var(--arl-tracking-normal); line-height: var(--arl-leading-normal); }
+.type-h6  { font-size: var(--arl-type-md);  font-weight: var(--arl-weight-semibold);  letter-spacing: var(--arl-tracking-normal); line-height: var(--arl-leading-normal); }
+
+/* Body */
+.type-lead   { font-size: var(--arl-type-lg);   line-height: var(--arl-leading-loose);  font-weight: var(--arl-weight-normal); }
+.type-body   { font-size: var(--arl-type-md);   line-height: var(--arl-leading-normal); font-weight: var(--arl-weight-normal); }
+.type-sm     { font-size: var(--arl-type-sm);   line-height: var(--arl-leading-normal); font-weight: var(--arl-weight-normal); }
+.type-xs     { font-size: var(--arl-type-xs);   line-height: var(--arl-leading-normal); font-weight: var(--arl-weight-normal); }
+
+/* Utility */
+.type-label  { font-size: var(--arl-type-sm);   font-weight: var(--arl-weight-medium);   letter-spacing: var(--arl-tracking-normal); }
+.type-eyebrow {
+  font-size:      var(--arl-type-xs);
+  font-weight:    var(--arl-weight-semibold);
+  letter-spacing: var(--arl-tracking-widest);
+  text-transform: uppercase;
+}
+.type-mono   { font-family: var(--arl-font-mono); font-size: 0.9em; }
+.type-caption { font-size: var(--arl-type-xs); line-height: var(--arl-leading-normal); }
+
+
+/* ============================================================
+   WEIGHT UTILITIES
+   ============================================================ */
+
+.font-normal    { font-weight: var(--arl-weight-normal);    }
+.font-medium    { font-weight: var(--arl-weight-medium);    }
+.font-semibold  { font-weight: var(--arl-weight-semibold);  }
+.font-bold      { font-weight: var(--arl-weight-bold);      }
+.font-extrabold { font-weight: var(--arl-weight-extrabold); }
+
+
+/* ============================================================
+   TRACKING (LETTER-SPACING) UTILITIES
+   ============================================================ */
+
+.tracking-tightest { letter-spacing: var(--arl-tracking-tightest); }
+.tracking-tight    { letter-spacing: var(--arl-tracking-tight);    }
+.tracking-normal   { letter-spacing: var(--arl-tracking-normal);   }
+.tracking-wide     { letter-spacing: var(--arl-tracking-wide);     }
+.tracking-wider    { letter-spacing: var(--arl-tracking-wider);    }
+.tracking-widest   { letter-spacing: var(--arl-tracking-widest);   }
+
+
+/* ============================================================
+   LEADING (LINE-HEIGHT) UTILITIES
+   ============================================================ */
+
+.leading-tight  { line-height: var(--arl-leading-tight);  }
+.leading-snug   { line-height: var(--arl-leading-snug);   }
+.leading-normal { line-height: var(--arl-leading-normal); }
+.leading-loose  { line-height: var(--arl-leading-loose);  }

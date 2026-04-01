@@ -1,0 +1,247 @@
+/* ─── Generic page hero (non-home inner pages) ─── */
+.inner-page-hero {
+  padding: 2.5rem 0 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.inner-page-hero h1 {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.15;
+}
+
+/* ─── Responsive utilities ─── */
+@media (max-width: 767px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 639px) {
+  .hide-on-mobile {
+    display: none;
+  }
+}
+
+/* ─── Sticky footer: site-wrapper flex stretches main to fill viewport ─── */
+.site-wrapper > main {
+  flex: 1;
+}
+
+/* ─── Content list (used in section-list, notices, airport-map) ─── */
+.content-list {
+  list-style: disc;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.content-list li {
+  color: var(--text);
+}
+
+/* ─── FAQ details/summary ─── */
+details.card summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.25rem 0;
+}
+
+details.card summary::-webkit-details-marker {
+  display: none;
+}
+
+details.card[open] summary {
+  margin-bottom: 0.75rem;
+}
+
+details.card > p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ─── Legacy classes kept for page compatibility ─── */
+.page-section {
+  padding: 2.5rem 0;
+}
+
+.callout-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .callout-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.site-main-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .site-main-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.hero-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .hero-grid {
+    grid-template-columns: 1.5fr 1fr;
+    align-items: start;
+  }
+}
+
+.hero-panel {
+  background: linear-gradient(180deg, #ffffff, #eef5fb);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.emergency-banner {
+  background: var(--danger-bg);
+  border-block: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+.emergency-banner .container {
+  padding: 0.9rem 0;
+}
+
+.card--media {
+  display: block;
+  overflow: hidden;
+  padding: 0;
+}
+
+.card__content {
+  padding: 1.25rem;
+}
+
+.site-media {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.protected-image-frame {
+  position: relative;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.protected-image-frame img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.protected-image-frame__shield {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: auto;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, hsl(var(--arl-white) / 0.06), hsl(var(--arl-navy-900) / 0.06)),
+    repeating-linear-gradient(
+      -32deg,
+      transparent 0,
+      transparent 84px,
+      hsl(var(--arl-white) / 0.035) 84px,
+      hsl(var(--arl-white) / 0.035) 116px
+    );
+}
+
+.protected-image-frame__watermark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  transform: translate(-50%, -50%) rotate(-16deg);
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--arl-white) / 0.28);
+  background: hsl(var(--arl-navy-900) / 0.18);
+  color: hsl(var(--arl-white) / 0.78);
+  font-size: clamp(0.68rem, 0.55rem + 0.4vw, 0.95rem);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 2px hsl(var(--arl-navy-950) / 0.5);
+  box-shadow:
+    0 1px 0 hsl(var(--arl-white) / 0.18) inset,
+    0 14px 24px -20px hsl(var(--arl-navy-950) / 0.55);
+}
+
+.protected-image-frame:focus-visible {
+  outline: 2px solid hsl(var(--arl-teal-500));
+  outline-offset: 2px;
+}
+
+.site-media__frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+
+.site-media--hero .site-media__frame {
+  aspect-ratio: 16 / 9;
+}
+
+.site-media--card .site-media__frame {
+  aspect-ratio: 16 / 10;
+}
+
+.card--media .site-media__frame {
+  border: none;
+  border-radius: 0;
+}
+
+.site-media__image {
+  object-fit: cover;
+}
+
+.site-media__caption {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.news-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.news-card__media {
+  margin: 0;
+}
+
+.media-gallery {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.media-gallery__item {
+  margin: 0;
+}

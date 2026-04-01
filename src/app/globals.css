@@ -1,0 +1,96 @@
+/* ─────────────────────────────────────────────────────
+   ARL AIRPORT DESIGN SYSTEM
+   Aviation-inspired institutional theme
+
+   Tokens are imported from src/styles/tokens.css.
+   This file maps the --arl-* primitives to the local
+   variable names used throughout the frontend.
+   ───────────────────────────────────────────────────── */
+
+@import '../styles/index.css';
+
+:root {
+  /* ── Core palette ── */
+  --primary:        hsl(var(--arl-navy-700));
+  --primary-strong: hsl(var(--arl-navy-850));
+  --primary-fg:     hsl(var(--arl-white));
+
+  --secondary:      hsl(var(--arl-teal-550));
+  --secondary-fg:   hsl(var(--arl-white));
+
+  /* ── Surfaces ── */
+  --bg:             hsl(var(--arl-neutral-050));
+  --surface:        hsl(var(--arl-white));
+  --surface-alt:    hsl(var(--arl-neutral-150));
+
+  /* ── Text ── */
+  --text:           hsl(var(--arl-neutral-950));
+  --muted:          hsl(var(--arl-neutral-600));
+
+  /* ── Border ── */
+  --border:         hsl(var(--arl-neutral-280));
+
+  /* ── Semantic — Danger ── */
+  --danger:         hsl(var(--arl-danger));
+  --danger-fg:      hsl(var(--arl-white));
+  --danger-bg:      hsl(0 72% 97%);
+  --danger-border:  hsl(0 72% 85%);
+
+  /* ── Semantic — Warning ── */
+  --warning:        hsl(var(--arl-warning));
+  --warning-fg:     hsl(38 92% 15%);
+  --warning-bg:     hsl(38 92% 95%);
+
+  /* ── Semantic — Success ── */
+  --success:        hsl(var(--arl-success-fe));
+  --success-fg:     hsl(var(--arl-white));
+  --success-bg:     hsl(152 60% 94%);
+
+  /* ── Semantic — Info ── */
+  --info:           hsl(var(--arl-info-fe));
+  --info-fg:        hsl(var(--arl-white));
+  --info-bg:        hsl(210 80% 95%);
+  --info-border:    hsl(210 80% 80%);
+
+  /* ── Radii ── */
+  --radius:         var(--arl-radius-md);     /* 8px  = 0.5rem  */
+  --radius-lg:      var(--arl-radius-lg);     /* 12px = 0.75rem */
+
+  /* ── Shadows (rich multi-layer) ── */
+  --shadow-sm:      var(--arl-shadow-sm-rich);
+  --shadow-md:      var(--arl-shadow-md-rich);
+
+  /* ── Layout ── */
+  --max-width:      var(--arl-max-width);
+  --focus:          0 0 0 2px hsl(var(--arl-navy-700));
+
+  /* ── Hero gradient ── */
+  --hero-gradient:  linear-gradient(
+    135deg,
+    hsl(var(--arl-navy-800)),
+    hsl(var(--arl-navy-600)),
+    hsl(var(--arl-teal-500))
+  );
+}
+
+@import '../styles/components/base.css';
+@import '../styles/components/layout.css';
+@import '../styles/components/utilities.css';
+@import '../styles/components/header.css';
+@import '../styles/components/hero.css';
+@import '../styles/components/quick-actions.css';
+@import '../styles/components/cards.css';
+@import '../styles/components/flights.css';
+@import '../styles/components/notices.css';
+@import '../styles/components/services.css';
+@import '../styles/components/map-emergency.css';
+@import '../styles/components/leaflet-maps.css';
+@import '../styles/components/buttons.css';
+@import '../styles/components/footer.css';
+@import '../styles/components/pages.css';
+@import '../styles/components/polish.css';
+@import '../styles/components/news-feed.css';
+@import '../styles/components/pull-to-refresh.css';
+@import '../styles/components/content-slider.css';
+@import '../styles/components/duty-free.css';
+@import '../styles/components/pwa.css';

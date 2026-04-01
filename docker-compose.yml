@@ -1,0 +1,78 @@
+# =============================================================================
+# ARL Airport Platform — Docker Compose
+# Local development / staging environment
+#
+# DATABASE OPTIONS (choose one in your .env):
+#   A) Supabase Cloud  → set DATABASE_URL and DATABASE_DIRECT_URL to Supabase
+#   B) Local Postgres  → uncomment the 'postgres' service below and use
+#                        DATABASE_URL=postgres://postgres:postgres@postgres:5432/arl_airport
+#
+# STORAGE:
+#   Always uses Supabase Storage (S3-compatible). No local MinIO needed.
+#   Supabase Storage credentials come from .env.
+#
+# =============================================================================
+
+version: "3.9"
+
+services:
+  # ── Application (Next.js + Payload CMS) ────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Use 'builder' stage locally for faster rebuilds with volume mounts.
+      # Switch to default (runner) for staging/production builds.
+      target: builder
+    container_name: arl-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+    # Volume mounts for hot-reload in dev (builder stage only)
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: pnpm run dev
+    networks:
+      - arl-network
+
+  # ── Local Postgres (OPTION B — local dev without Supabase cloud) ────────────
+  # To use: set DATABASE_URL=postgres://postgres:postgres@postgres:5432/arl_airport
+  #         set DATABASE_DIRECT_URL=postgres://postgres:postgres@postgres:5432/arl_airport
+  # Remove the `profiles` line to always start this service.
+  postgres:
+    image: postgres:16-alpine
+    container_name: arl-airport-postgres
+    restart: unless-stopped
+    profiles:
+      - local-db   # only starts with: docker compose --profile local-db up
+    environment:
+      POSTGRES_DB: arl_airport
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - arl_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d arl_airport"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - arl-network
+
+volumes:
+  arl_postgres_data:
+    name: arl_postgres_data
+
+networks:
+  arl-network:
+    name: arl-network
+    driver: bridge

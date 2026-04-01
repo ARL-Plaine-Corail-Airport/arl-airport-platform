@@ -1,0 +1,53 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+.next-dev/
+out/
+
+# production build
+build/
+dist/
+
+# environment variables (real secrets)
+.env
+.env.local
+.env.*.local
+
+# debug logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Payload
+media/
+
+# misc
+*.pem
+certificates/
+
+# test output
+playwright-report/
+test-results/
+tmp-start.*
+
+# root CA (local dev only — never commit)
+public/rootCA.pem

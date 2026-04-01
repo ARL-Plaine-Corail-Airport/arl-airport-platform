@@ -1,0 +1,187 @@
+/* ============================================================
+   ARL Airport — Design System Tokens
+   Single source of truth for every color, radius, shadow,
+   spacing, and z-index value used across the platform.
+
+   USAGE PATTERN — HSL triplets, space-separated:
+     Define:  --arl-navy: 210 80% 25%;
+     Apply:   color: hsl(var(--arl-navy));
+     Alpha:   background: hsl(var(--arl-navy) / 0.15);
+
+   CONSUMING FILES:
+     src/app/globals.css                           (frontend)
+     src/app/(dashboard)/dashboard/dashboard.css   (custom admin UI)
+     src/payload-admin-shell.css                   (Payload CMS admin)
+
+   Each consuming file maps these primitives to its own local
+   variable names so existing selectors need no changes.
+   ============================================================ */
+
+
+/* ============================================================
+   PRIMITIVE PALETTE
+   Raw HSL triplets — no context or purpose baked in.
+   Change a value here; every context updates automatically.
+   ============================================================ */
+
+:root {
+
+  /* ── Brand — Navy ── */
+  --arl-navy-900:       210 80% 15%;   /* #071f33  deepest                 */
+  --arl-navy-850:       210 80% 18%;   /* #082a42  near-black navy (strong)*/
+  --arl-navy-800:       210 80% 20%;   /* #0a3352  hero gradient start     */
+  --arl-navy-700:       210 80% 25%;   /* #0d3a5c  PRIMARY — main brand    */
+  --arl-navy-600:       210 70% 30%;   /* #163d5c  mid-tone (hero grad)    */
+
+  /* ── Brand — Teal ── */
+  --arl-teal-600:       185 60% 35%;   /* #238f97  ACCENT — admin/dash     */
+  --arl-teal-550:       185 55% 35%;   /* #247d83  softer teal (frontend)  */
+  --arl-teal-500:       185 55% 30%;   /* #1e6b70  hero gradient end       */
+
+  /* ── Neutral scale (light mode) ── */
+  --arl-neutral-950:    210 50% 10%;   /* #0a1929  text — frontend         */
+  --arl-neutral-900:    210 15% 12%;   /* #1a2332  text — admin            */
+  --arl-neutral-600:    210 10% 45%;   /* #6b7a8d  muted — frontend        */
+  --arl-neutral-500:    210 10% 55%;   /* #7d8fa3  muted — admin           */
+  --arl-neutral-300:    210 12% 88%;   /* #d6dde6  border — admin          */
+  --arl-neutral-280:    210 20% 88%;   /* #cdd7e4  border — frontend       */
+  --arl-neutral-150:    210 15% 93%;   /* #e8ecf1  surface-alt             */
+  --arl-neutral-100:    210 15% 95%;   /* #eef1f5  muted-bg                */
+  --arl-neutral-050:    210 20% 98%;   /* #f6f9fc  page background         */
+  --arl-white:          0   0%  100%;  /* #ffffff                          */
+
+  /* ── Semantic — State colors ── */
+  --arl-success:        145 60% 36%;   /* #247a4b  admin/dash              */
+  --arl-success-fe:     152 60% 36%;   /* #237a4e  frontend variant        */
+  --arl-warning:        38  92% 50%;   /* #f59e0b                          */
+  --arl-danger:         0   72% 51%;   /* #e53535                          */
+  --arl-info:           210 80% 52%;   /* #3b82f6  admin/dash              */
+  --arl-info-fe:        210 80% 50%;   /* #2563eb  frontend variant        */
+
+
+  /* ============================================================
+     TYPOGRAPHY
+     ============================================================ */
+
+  --arl-font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --arl-font-mono:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* Type scale */
+  --arl-type-xs:    0.75rem;    /* 12px */
+  --arl-type-sm:    0.8125rem;  /* 13px */
+  --arl-type-base:  0.875rem;   /* 14px  (admin base) */
+  --arl-type-md:    1rem;       /* 16px  (frontend base) */
+  --arl-type-lg:    1.125rem;   /* 18px */
+  --arl-type-xl:    1.25rem;    /* 20px */
+  --arl-type-2xl:   1.375rem;   /* 22px */
+  --arl-type-3xl:   1.5rem;     /* 24px */
+  --arl-type-4xl:   1.875rem;   /* 30px */
+  --arl-type-5xl:   2.25rem;    /* 36px */
+  --arl-type-6xl:   3rem;       /* 48px */
+
+  /* Line heights */
+  --arl-leading-tight:  1.2;
+  --arl-leading-snug:   1.35;
+  --arl-leading-normal: 1.5;
+  --arl-leading-loose:  1.75;
+
+  /* Font weights */
+  --arl-weight-normal:    400;
+  --arl-weight-medium:    500;
+  --arl-weight-semibold:  600;
+  --arl-weight-bold:      700;
+  --arl-weight-extrabold: 800;
+
+  /* Letter spacing */
+  --arl-tracking-tightest: -0.04em;
+  --arl-tracking-tight:    -0.025em;
+  --arl-tracking-normal:    0em;
+  --arl-tracking-wide:      0.025em;
+  --arl-tracking-wider:     0.05em;
+  --arl-tracking-widest:    0.1em;
+
+
+  /* ============================================================
+     LAYOUT & SPACING
+     ============================================================ */
+
+  --arl-sidebar-w:    260px;
+  --arl-header-h:     56px;
+  --arl-max-width:    80rem;    /* 1280px */
+
+  /* Spacing scale (multiples of 4px) */
+  --arl-space-1:   4px;
+  --arl-space-2:   8px;
+  --arl-space-3:   12px;
+  --arl-space-4:   16px;
+  --arl-space-5:   20px;
+  --arl-space-6:   24px;
+  --arl-space-8:   32px;
+  --arl-space-10:  40px;
+  --arl-space-12:  48px;
+  --arl-space-16:  64px;
+
+
+  /* ============================================================
+     BORDER RADIUS
+     ============================================================ */
+
+  --arl-radius-xs:   4px;
+  --arl-radius-sm:   6px;
+  --arl-radius-md:   8px;    /* = 0.5rem  */
+  --arl-radius-lg:   12px;   /* = 0.75rem */
+  --arl-radius-xl:   16px;
+  --arl-radius-2xl:  24px;
+  --arl-radius-pill: 9999px;
+
+
+  /* ============================================================
+     ELEVATION / SHADOWS
+     ============================================================ */
+
+  /* Simple shadows — used in admin contexts */
+  --arl-shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.06);
+  --arl-shadow-md:   0 4px 12px rgba(0, 0, 0, 0.08);
+  --arl-shadow-lg:   0 8px 24px rgba(0, 0, 0, 0.12);
+  --arl-shadow-xl:   0 16px 40px rgba(0, 0, 0, 0.15);
+
+  /* Rich multi-layer shadows — used in frontend contexts */
+  --arl-shadow-sm-rich: 0 1px 3px 0 hsl(210 20% 10% / 0.06),
+                        0 1px 2px -1px hsl(210 20% 10% / 0.06);
+  --arl-shadow-md-rich: 0 4px 12px 0 hsl(210 20% 10% / 0.10),
+                        0 2px 4px -2px hsl(210 20% 10% / 0.06);
+  --arl-shadow-lg-rich: 0 10px 30px 0 hsl(210 20% 10% / 0.12),
+                        0 4px 8px -4px hsl(210 20% 10% / 0.08);
+
+
+  /* ============================================================
+     Z-INDEX SCALE
+     ============================================================ */
+
+  --arl-z-base:     0;
+  --arl-z-raised:   10;
+  --arl-z-dropdown: 50;
+  --arl-z-sticky:   80;
+  --arl-z-header:   100;
+  --arl-z-nav:      200;
+  --arl-z-toggle:   400;
+  --arl-z-modal:    500;
+  --arl-z-toast:    600;
+  --arl-z-tooltip:  700;
+
+
+  /* ============================================================
+     MOTION
+     ============================================================ */
+
+  --arl-ease-default:   cubic-bezier(0.4, 0, 0.2, 1);
+  --arl-ease-in:        cubic-bezier(0.4, 0, 1, 1);
+  --arl-ease-out:       cubic-bezier(0, 0, 0.2, 1);
+  --arl-ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --arl-duration-fast:    0.10s;
+  --arl-duration-base:    0.15s;
+  --arl-duration-slow:    0.25s;
+  --arl-duration-slower:  0.35s;
+
+}

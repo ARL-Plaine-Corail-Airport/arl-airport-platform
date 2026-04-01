@@ -1,0 +1,39 @@
+# Dependencies — reinstalled inside container
+node_modules
+.pnpm-store
+
+# Next.js build artefacts — rebuilt inside container
+.next
+
+# Local media uploads (storage is Supabase, not local disk in production)
+media/
+
+# Environment files — injected at runtime, never baked into image
+.env
+.env.local
+.env.*.local
+
+# Source control
+.git
+.gitignore
+
+# Editor / OS
+.DS_Store
+*.log
+*.swp
+.vscode
+.idea
+
+# Dev tooling not needed in image
+README.md
+docs/
+*.md
+
+# Test / CI artefacts
+coverage/
+.nyc_output
+
+# Docker files themselves
+Dockerfile
+docker-compose*.yml
+.dockerignore

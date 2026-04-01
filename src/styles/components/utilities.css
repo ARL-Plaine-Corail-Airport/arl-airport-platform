@@ -1,0 +1,49 @@
+/* ─── Typography utilities ─── */
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+}
+
+.lead {
+  font-size: 1rem;
+  color: hsl(210, 10%, 75%);
+  max-width: 40rem;
+  line-height: 1.6;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.text-link {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.text-danger {
+  color: var(--danger);
+}
+
+.line-through {
+  text-decoration: line-through;
+}

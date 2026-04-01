@@ -1,0 +1,85 @@
+/* ─── Card base ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+/* ─── Status Badges ─── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-on-time {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge-delayed {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+
+.badge-cancelled {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.badge-landed {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge-departed {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.badge-scheduled {
+  background: var(--surface-alt);
+  color: var(--muted);
+}
+
+/* Tag / category pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--surface-alt);
+  color: var(--muted);
+}
+
+.pill--danger {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+}
+
+.pill--primary {
+  background: hsl(210, 80%, 95%);
+  color: var(--primary);
+}

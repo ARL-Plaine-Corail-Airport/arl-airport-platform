@@ -1,0 +1,14 @@
+/* ============================================================
+   ARL Airport — Design System Barrel
+   Import this single file to get tokens + typography together.
+
+   Usage in a CSS file:
+     @import '../styles/index.css';   (adjust path as needed)
+
+   Direct imports (if you only need part of the system):
+     @import '../styles/tokens.css';
+     @import '../styles/typography.css';
+   ============================================================ */
+
+@import './tokens.css';
+@import './typography.css';

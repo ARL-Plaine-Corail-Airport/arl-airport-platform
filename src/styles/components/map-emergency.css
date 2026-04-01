@@ -1,0 +1,73 @@
+/* ─── Map + Emergency section ─── */
+.map-emergency-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .map-emergency-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.map-placeholder {
+  background: var(--surface-alt);
+  border-radius: var(--radius);
+  height: 12rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.map-card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  transition: box-shadow 0.2s;
+}
+
+.map-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.emergency-card {
+  background: var(--surface);
+  border: 1px solid hsl(0, 72%, 85%);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+}
+
+/* Alert info box */
+.alert-info {
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--info);
+  margin-bottom: 1rem;
+}
+
+.emergency-contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.emergency-contact-row:last-child {
+  border-bottom: none;
+}

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background circle -->
+  <rect width="512" height="512" rx="96" fill="#114c7a"/>
+
+  <!-- Airplane silhouette -->
+  <g transform="translate(256,256)">
+    <!-- Fuselage -->
+    <path d="M0-180 C12-180 18-160 18-120 L18 140 C18 160 12 180 0 190 C-12 180 -18 160 -18 140 L-18-120 C-18-160 -12-180 0-180Z" fill="white"/>
+
+    <!-- Wings -->
+    <path d="M18-20 L160 30 C170 33 170 47 160 50 L18 20Z" fill="white"/>
+    <path d="M-18-20 L-160 30 C-170 33 -170 47 -160 50 L-18 20Z" fill="white"/>
+
+    <!-- Tail wings -->
+    <path d="M18 120 L80 155 C88 158 88 168 80 170 L18 150Z" fill="white"/>
+    <path d="M-18 120 L-80 155 C-88 158 -88 168 -80 170 L-18 150Z" fill="white"/>
+
+    <!-- Nose highlight -->
+    <ellipse cx="0" cy="-155" rx="8" ry="20" fill="rgba(255,255,255,0.3)"/>
+
+    <!-- Window line -->
+    <line x1="0" y1="-120" x2="0" y2="80" stroke="#114c7a" stroke-width="4" stroke-dasharray="6 8" opacity="0.3"/>
+  </g>
+</svg>

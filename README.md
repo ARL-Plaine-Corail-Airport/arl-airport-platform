@@ -1,136 +1,169 @@
 # ARL Airport Platform
 
-Production-oriented scaffold for an official Rodrigues Airport / Plaine Corail Airport passenger information platform.
+Progressive Web App for **Sir Gaetan Duval Airport (RRG)**, Rodrigues Island, Mauritius.
 
-## Stack
+Built with Next.js 15, Payload CMS 3, Supabase (Postgres + Storage), and Docker.
 
-- Next.js public web application
-- Payload CMS embedded in the same codebase
-- PostgreSQL
-- Object storage ready media collection for PDFs and images
-- PWA manifest + service worker + offline fallback
-- Official-feed adapters for flights and weather
+## Features
 
-## What is included
-
-- Public pages for:
-  - Home
-  - Arrivals
-  - Departures
-  - Flight Status
-  - Notices / Communiqués
-  - Passenger Guide
-  - Transport & Parking
-  - Accessibility
-  - Airport Map
-  - FAQ
-  - Contact / Help Desk
-  - Generic institutional content pages through the `pages` collection
-- Payload collections / globals for governed content
-- Role-based admin collection
+- Real-time flight board (arrivals & departures) via AirLabs API + manual CMS entries
+- Live weather data from Open-Meteo (Plaine Corail Airport coordinates)
+- Multilingual support (English / French)
+- PWA with offline support and push-ready service worker
+- Admin dashboard with role-based access control
+- Nginx load balancer with horizontal scaling (multiple app replicas)
+- Health check endpoint at `/api/health` (deep check with `?deep=true`)
 - Approval-ready content model with draft / published status
-- Operational integration placeholders for flight and weather providers
 - Revalidation endpoint for CMS publish hooks
-- Seed script with production-style starter content
-- Security-conscious defaults and deployment notes
 
-## Local setup
+## Public Pages
 
-1. Copy environment values.
+- Home, Arrivals, Departures, Flight Status
+- Notices / Communiques, News & Events
+- Passenger Guide, Transport & Parking, Airport Map
+- VIP Lounge, Amenities, Accessibility
+- FAQ, Contact / Help Desk
+- Emergency Services, Useful Links
+- Generic institutional content pages via the `pages` collection
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- [Node.js](https://nodejs.org/) >= 20.9.0 and [pnpm](https://pnpm.io/) (for seeding and local tasks)
+- A [Supabase](https://supabase.com/) project (Postgres database + S3 storage)
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/ITintern901/arl-airport-platform.git
+cd arl-airport-platform
+```
+
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-2. Start PostgreSQL.
+Edit `.env` and fill in your credentials:
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Supabase pooled connection string (port 6543) |
+| `PAYLOAD_SECRET` | Random secret, min 32 chars (`openssl rand -base64 48`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `SUPABASE_S3_*` | S3-compatible storage credentials from Supabase |
+| `FLIGHT_PROVIDER_API_KEY` | AirLabs API key (optional, for live flight data) |
+| `REVALIDATE_SECRET` | Secret for on-demand ISR revalidation |
+
+See [.env.example](.env.example) for the full list.
+
+### 3. Set up SSL certificates (for local Nginx)
 
 ```bash
-docker compose up -d
+mkdir -p nginx/ssl
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout nginx/ssl/selfsigned.key \
+  -out nginx/ssl/selfsigned.crt \
+  -subj "/CN=localhost"
 ```
 
-3. Install dependencies.
+### 4. Build and run
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+This starts:
+- **Nginx** reverse proxy on ports 80/443
+- **4 app replicas** (Next.js + Payload CMS)
+- **Redis** for rate limiting and API caching
+
+### 5. Seed the database (first run only)
 
 ```bash
 pnpm install
-```
-
-4. Generate Payload types after the first install.
-
-```bash
-pnpm generate:types
-```
-
-5. Seed starter content.
-
-```bash
 pnpm seed
 ```
 
-6. Run the platform.
+### 6. Access the platform
 
-```bash
-pnpm dev
+- Public site: `https://localhost`
+- Admin dashboard: `https://localhost/admin`
+
+## Architecture
+
+```
+                    Nginx (port 80/443)
+                         |
+            +-----------+-----------+
+            |           |           |
+         App :3000   App :3000   App :3000  ...  (replicas)
+            |           |           |
+            +-----+-----+-----+----+
+                  |           |
+           Supabase DB    Supabase Storage
+           (Postgres)     (S3-compatible)
 ```
 
-Public site:
-- `http://localhost:3000`
+## Useful Commands
 
-Payload admin:
-- `http://localhost:3000/admin`
+```bash
+# Rebuild and restart
+docker compose -f docker-compose.prod.yml up --build -d
 
-## Production notes
+# View logs
+docker compose -f docker-compose.prod.yml logs -f app
+
+# Stop everything
+docker compose -f docker-compose.prod.yml down
+
+# Run database seed
+pnpm seed
+
+# Run linter
+pnpm lint
+
+# Run tests
+pnpm test
+```
+
+## Health Checks
+
+- **Liveness**: `GET /api/health` — returns `200` if the app is running
+- **Deep check**: `GET /api/health?deep=true` — also verifies database connectivity
+
+Docker automatically restarts unhealthy containers using the liveness endpoint.
+
+## Branch Protection
+
+The `main` branch is protected:
+- Direct pushes are blocked
+- Pull requests require 1 approving review
+- Stale reviews are dismissed on new pushes
+- Force pushes and branch deletion are blocked
+
+## Production Notes
 
 ### Flight data
-This scaffold intentionally does **not** fake live flight data. The UI is ready, but the adapter currently returns a safe unconfigured state until you connect:
-- an official airport FIDS / AODB feed
-- an airline operational feed
-- or an approved manual override path
+The flight board uses AirLabs API (free tier: 1,000 requests/month). Cache TTL is set to ~87 minutes across all layers to stay within budget. Airlines filtered: MK (Air Mauritius), UU (Air Austral). Manual flight entries can be added via the CMS admin.
 
 ### Weather data
-The weather adapter now uses Open-Meteo by default for live passenger-facing conditions with Plaine Corail Airport coordinates. For operational aviation weather, continue to rely on official METAR and TAF sources such as the Mauritius Meteorological Services.
+Uses Open-Meteo with Plaine Corail Airport coordinates. For operational aviation weather, rely on official METAR/TAF sources from the Mauritius Meteorological Services.
 
 ### Publish workflow
-Recommended editorial flow:
-- editor drafts content
-- approver reviews
-- approver publishes
-- revalidation webhook purges stale public pages
+1. Editor drafts content
+2. Approver reviews
+3. Approver publishes
+4. Revalidation webhook purges stale public pages
 
-### Admin hardening
-Before going live:
-- enforce MFA for all admin users
-- place the app behind a CDN / WAF
-- connect S3 / R2 storage for media
-- add centralized logging and uptime monitoring
-- run an accessibility audit and legal review
-- configure automated database backups and restore drills
+### CMS page slugs
 
-## Suggested CMS slugs for institutional pages
+Create pages in Payload using these slugs: `about-us`, `airlines`, `airport-amenities`, `airport-news-events`, `airport-location-information`, `airport-vip-lounge`, `airport-regulations`, `airport-usage-fees-information`, `emergency-services`, `management-staffs`, `parking-facility`, `useful-links`, `weather-condition`, `working-hours-direction`, `privacy`, `terms`, `disclaimer`.
 
-Create pages in Payload using these slugs:
-- `about-us`
-- `airlines`
-- `airport-amenities`
-- `airport-news-events`
-- `airport-location-information`
-- `airport-vip-lounge`
-- `airport-regulations`
-- `airport-usage-fees-information`
-- `emergency-services`
-- `management-staffs`
-- `parking-facility`
-- `useful-links`
-- `weather-condition`
-- `working-hours-direction`
-- `privacy`
-- `terms`
-- `disclaimer`
+## License
 
-## Deployment target
-
-Recommended real deployment:
-- Cloudflare in front of the origin
-- Node host for Next.js + Payload
-- managed Postgres
-- object storage for PDFs / media
-- scheduled worker for feed synchronization
+Private — All rights reserved.

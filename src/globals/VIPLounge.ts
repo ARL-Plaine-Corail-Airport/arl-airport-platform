@@ -4,12 +4,12 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isEditor, publishedOrAdmin } from '@/access'
+import { isEditor } from '@/access'
 
 export const VIPLounge: GlobalConfig = {
   slug: 'vip-lounge',
   access: {
-    read:   publishedOrAdmin,
+    read:   () => true,
     update: isEditor,
   },
   admin: {

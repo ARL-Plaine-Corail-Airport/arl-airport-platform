@@ -11,12 +11,12 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isApprover, publishedOrAdmin } from '@/access'
+import { isApprover } from '@/access'
 
 export const LegalPages: GlobalConfig = {
   slug: 'legal-pages',
   access: {
-    read:   publishedOrAdmin,
+    read:   () => true,
     update: isApprover, // Legal content requires elevated access
   },
   admin: {

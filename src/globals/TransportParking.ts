@@ -2,6 +2,7 @@ import type { GlobalConfig, Field } from 'payload'
 
 import { isEditor } from '@/access'
 import { sectionFields } from '@/fields/sectionFields'
+import { validateMapEmbedURL } from '@/fields/validators'
 
 export const TransportParking: GlobalConfig = {
   slug: 'transport-parking',
@@ -33,15 +34,7 @@ export const TransportParking: GlobalConfig = {
     {
       name: 'mapEmbedURL',
       type: 'text',
-      validate: (value: string | null | undefined) => {
-        if (!value) return true
-        try {
-          new URL(value)
-          return true
-        } catch {
-          return 'Please enter a valid URL.'
-        }
-      },
+      validate: validateMapEmbedURL,
       admin: { placeholder: 'https://www.google.com/maps/embed?...' },
     },
   ] satisfies Field[],

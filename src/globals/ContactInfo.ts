@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
+import { validateURL } from '@/fields/validators'
 
 export const ContactInfo: GlobalConfig = {
   slug: 'contact-info',
@@ -37,16 +38,11 @@ export const ContactInfo: GlobalConfig = {
         {
           name: 'link',
           type: 'text',
-          validate: (value: string | null | undefined) => {
-            if (!value) return true
-            if (/^(tel:|mailto:)/.test(value)) return true
-            try {
-              new URL(value)
-              return true
-            } catch {
-              return 'Enter a tel:, mailto:, or https:// link.'
-            }
-          },
+          validate: (value: string | null | undefined) =>
+            validateURL(value, {
+              allowedProtocols: ['tel:', 'mailto:', 'http:', 'https:'],
+              invalidMessage: 'Enter a tel:, mailto:, or https:// link.',
+            }),
           admin: { placeholder: 'tel:+23083278888 or mailto:info@arl.aero' },
         },
       ],

@@ -677,6 +677,10 @@ export interface PageView {
    * Referrer domain (e.g. google.com)
    */
   referrer?: string | null;
+  /**
+   * Locale inferred from the tracked URL path.
+   */
+  locale?: ('en' | 'fr' | 'mfe') | null;
   device?: ('desktop' | 'mobile' | 'tablet') | null;
   /**
    * Browser accept-language (first tag, e.g. en)
@@ -1098,6 +1102,7 @@ export interface AirportProjectSelect<T extends boolean = true> {
 export interface PageViewsSelect<T extends boolean = true> {
   path?: T;
   referrer?: T;
+  locale?: T;
   device?: T;
   language?: T;
   visitorHash?: T;

@@ -3,6 +3,7 @@ import type { CollectionConfig, Field } from 'payload'
 import { isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { sectionFields } from '@/fields/sectionFields'
 import { autoSlug } from '@/hooks/autoSlug'
+import { syncWorkflowStatus } from './workflowStatus'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -57,6 +58,7 @@ export const Pages: CollectionConfig = {
       name: 'status',
       type: 'select',
       defaultValue: 'draft',
+      index: true,
       options: [
         { label: 'Draft', value: 'draft' },
         { label: 'Published', value: 'published' },
@@ -88,17 +90,12 @@ export const Pages: CollectionConfig = {
   hooks: {
     beforeValidate: [autoSlug('title')],
     beforeChange: [
-      ({ data, operation }) => {
-        if (operation === 'create' || operation === 'update') {
-          if (data._status === 'published' && data.status !== 'published') {
-            throw new Error('Set status to Published before using Publish.')
-          }
-          if (data._status === 'draft' && data.status === 'published') {
-            data.status = 'draft'
-          }
-        }
-        return data
-      },
+      syncWorkflowStatus({
+        collection: 'pages',
+        requiredStatusForPublish: 'published',
+        publishedStatus: 'published',
+        publishError: 'Set status to Published before using Publish.',
+      }),
     ],
   },
 }

@@ -9,6 +9,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
+import { syncWorkflowStatus } from './workflowStatus'
 
 export const NewsEvents: CollectionConfig = {
   slug: 'news-events',
@@ -208,20 +209,13 @@ export const NewsEvents: CollectionConfig = {
   hooks: {
     beforeValidate: [autoSlug('title')],
     beforeChange: [
-      ({ data, operation }) => {
-        if (operation === 'create' || operation === 'update') {
-          if (data._status === 'published' && data.status !== 'published') {
-            throw new Error('Set status to Published before using Publish.')
-          }
-          if (data._status === 'draft' && data.status === 'published') {
-            data.status = 'draft'
-          }
-          if (data.status === 'published' && !data.publishedAt) {
-            data.publishedAt = new Date().toISOString()
-          }
-        }
-        return data
-      },
+      syncWorkflowStatus({
+        collection: 'news-events',
+        requiredStatusForPublish: 'published',
+        publishedStatus: 'published',
+        publishError: 'Set status to Published before using Publish.',
+        setPublishedAt: true,
+      }),
     ],
   },
 }

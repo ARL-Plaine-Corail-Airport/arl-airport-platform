@@ -17,14 +17,22 @@
 
 import type { CollectionConfig } from 'payload'
 
-import { isAdmin, isEditor } from '@/access'
+import { isAdmin, isDocumentReader, isEditor } from '@/access'
+
+type DocumentExpirySiblingData = {
+  effectiveDate?: string | Date | null
+}
+
+function hasDocumentEffectiveDate(siblingData: unknown): siblingData is DocumentExpirySiblingData {
+  return typeof siblingData === 'object' && siblingData !== null && 'effectiveDate' in siblingData
+}
 
 export const Documents: CollectionConfig = {
   slug: 'documents',
   access: {
     // Documents are NOT publicly readable through the API.
     // Signed URLs are generated server-side in Server Components.
-    read:   isEditor,
+    read:   isDocumentReader,
     create: isEditor,
     update: isEditor,
     delete: isAdmin,
@@ -85,6 +93,22 @@ export const Documents: CollectionConfig = {
       name: 'expiryDate',
       label: 'Expiry / Superseded Date',
       type: 'date',
+      validate: (value, { siblingData }) => {
+        if (value && hasDocumentEffectiveDate(siblingData) && siblingData.effectiveDate) {
+          const expiryDate = new Date(value)
+          const effectiveDate = new Date(siblingData.effectiveDate)
+
+          if (
+            !Number.isNaN(expiryDate.getTime()) &&
+            !Number.isNaN(effectiveDate.getTime()) &&
+            expiryDate <= effectiveDate
+          ) {
+            return 'Expiry date must be after the effective date'
+          }
+        }
+
+        return true
+      },
       admin: {
         description: 'Leave blank if this document does not expire.',
         date: { pickerAppearance: 'dayOnly' },
@@ -137,6 +161,8 @@ export const Documents: CollectionConfig = {
           data.uploadedAt = new Date().toISOString()
           if (req.user?.id) {
             data.uploadedBy = req.user.id
+          } else if (process.env.NODE_ENV === 'production') {
+            console.warn('[Documents] Document created without authenticated user - uploadedBy not set')
           }
         }
         return data

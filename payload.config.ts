@@ -106,6 +106,8 @@ function buildPoolConfig(connectionString: string) {
       password: decodeURIComponent(url.password),
       ssl:      { rejectUnauthorized: false, servername: url.hostname },
       max:      5,
+      connectionTimeoutMillis: 10_000,
+      idle_in_transaction_session_timeout: 30_000,
     }
   } catch {
     // Fallback if URL parsing fails (e.g. local postgres without protocol)
@@ -113,6 +115,7 @@ function buildPoolConfig(connectionString: string) {
       connectionString,
       ssl:  true,
       max:  5,
+      connectionTimeoutMillis: 10_000,
     }
   }
 }

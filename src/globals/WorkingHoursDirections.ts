@@ -4,12 +4,13 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isEditor, publishedOrAdmin } from '@/access'
+import { isEditor } from '@/access'
+import { validateMapEmbedURL, validateURL } from '@/fields/validators'
 
 export const WorkingHoursDirections: GlobalConfig = {
   slug: 'working-hours-directions',
   access: {
-    read:   publishedOrAdmin,
+    read:   () => true,
     update: isEditor,
   },
   admin: {
@@ -112,15 +113,8 @@ export const WorkingHoursDirections: GlobalConfig = {
           name: 'googleMapsURL',
           label: 'Google Maps Link',
           type: 'text',
-          validate: (value: string | null | undefined) => {
-            if (!value) return true
-            try {
-              new URL(value)
-              return true
-            } catch {
-              return 'Please enter a valid URL.'
-            }
-          },
+          validate: (value: string | string[] | null | undefined) =>
+            validateURL(Array.isArray(value) ? value[0] : value),
           admin: {
             description: 'Full Google Maps URL for the airport location.',
             placeholder: 'https://maps.google.com/...',
@@ -130,15 +124,7 @@ export const WorkingHoursDirections: GlobalConfig = {
           name: 'mapEmbedURL',
           label: 'Map Embed URL',
           type: 'text',
-          validate: (value: string | null | undefined) => {
-            if (!value) return true
-            try {
-              new URL(value)
-              return true
-            } catch {
-              return 'Please enter a valid URL.'
-            }
-          },
+          validate: validateMapEmbedURL,
           admin: {
             description: 'Google Maps or OpenStreetMap embed src URL for the iframe.',
             placeholder: 'https://www.google.com/maps/embed?...',

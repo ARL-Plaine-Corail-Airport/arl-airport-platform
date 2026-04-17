@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
+import { validateMapEmbedURL } from '@/fields/validators'
 
 export const AirportMap: GlobalConfig = {
   slug: 'airport-map',
@@ -31,15 +32,7 @@ export const AirportMap: GlobalConfig = {
     {
       name: 'mapEmbedURL',
       type: 'text',
-      validate: (value: string | null | undefined) => {
-        if (!value) return true
-        try {
-          new URL(value)
-          return true
-        } catch {
-          return 'Please enter a valid URL.'
-        }
-      },
+      validate: validateMapEmbedURL,
       admin: { placeholder: 'https://www.google.com/maps/embed?...' },
     },
     {
@@ -47,7 +40,7 @@ export const AirportMap: GlobalConfig = {
       type: 'array',
       labels: { singular: 'Point of Interest', plural: 'Points of Interest' },
       fields: [
-        { name: 'name', type: 'text', required: true },
+        { name: 'name', type: 'text', required: true, localized: true },
         {
           name: 'category',
           type: 'select',
@@ -61,7 +54,7 @@ export const AirportMap: GlobalConfig = {
             { label: 'Services', value: 'services' },
           ],
         },
-        { name: 'description', type: 'textarea', required: true },
+        { name: 'description', type: 'textarea', required: true, localized: true },
         {
           name: 'lat',
           type: 'number',

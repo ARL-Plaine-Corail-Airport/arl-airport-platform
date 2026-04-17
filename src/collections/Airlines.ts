@@ -104,6 +104,7 @@ export const Airlines: CollectionConfig = {
       label: 'Currently Operating',
       type: 'checkbox',
       defaultValue: true,
+      index: true,
       admin: {
         position: 'sidebar',
         description: 'Uncheck if this airline has suspended operations.',
@@ -143,6 +144,7 @@ export const Airlines: CollectionConfig = {
                   type: 'text',
                   required: true,
                   maxLength: 2,
+                  index: true,
                   validate: validateAirlineIataCode,
                   admin: {
                     width: '50%',

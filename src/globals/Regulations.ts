@@ -7,12 +7,12 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isEditor, publishedOrAdmin } from '@/access'
+import { isEditor } from '@/access'
 
 export const Regulations: GlobalConfig = {
   slug: 'regulations',
   access: {
-    read:   publishedOrAdmin,
+    read:   () => true,
     update: isEditor,
   },
   admin: {

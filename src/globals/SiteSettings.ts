@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
+import { validateURL } from '@/fields/validators'
 
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
@@ -62,15 +63,11 @@ export const SiteSettings: GlobalConfig = {
           name: 'url',
           type: 'text',
           required: true,
-          validate: (value: string | null | undefined) => {
-            if (!value) return 'URL is required.'
-            try {
-              new URL(value)
-              return true
-            } catch {
-              return 'Please enter a valid URL (e.g. https://example.com).'
-            }
-          },
+          validate: (value: string | null | undefined) =>
+            validateURL(value, {
+              requiredMessage: 'URL is required.',
+              invalidMessage: 'Please enter a valid URL (e.g. https://example.com).',
+            }),
           admin: { placeholder: 'https://facebook.com/...' },
         },
       ],
@@ -84,15 +81,11 @@ export const SiteSettings: GlobalConfig = {
           name: 'url',
           type: 'text',
           required: true,
-          validate: (value: string | null | undefined) => {
-            if (!value) return 'URL is required.'
-            try {
-              new URL(value)
-              return true
-            } catch {
-              return 'Please enter a valid URL (e.g. https://example.com).'
-            }
-          },
+          validate: (value: string | null | undefined) =>
+            validateURL(value, {
+              requiredMessage: 'URL is required.',
+              invalidMessage: 'Please enter a valid URL (e.g. https://example.com).',
+            }),
           admin: { placeholder: 'https://example.com' },
         },
       ],

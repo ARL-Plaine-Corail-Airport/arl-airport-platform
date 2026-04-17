@@ -1,7 +1,8 @@
-import type { CollectionBeforeChangeHook, CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
 
 import { isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
+import { syncWorkflowStatus } from './workflowStatus'
 
 type NoticeExpirySiblingData = {
   publishedAt?: string | Date | null
@@ -11,28 +12,15 @@ function hasNoticePublishedAt(siblingData: unknown): siblingData is NoticeExpiry
   return typeof siblingData === 'object' && siblingData !== null && 'publishedAt' in siblingData
 }
 
-const syncNoticeStatus = (({ data, req }) => {
-  if (data?._status === 'published') {
-    if (data?.status !== 'approved' && data?.status !== 'published') {
-      throw new Error('Set status to Approved before publishing this notice.')
-    }
-    if (data.status === 'approved') {
-      data.status = 'published'
-    }
-  } else if (data?._status === 'draft' && data?.status === 'published') {
-    data.status = 'draft'
-  }
-
-  if (data?.status === 'published' && !data?.publishedAt) {
-    data.publishedAt = new Date().toISOString()
-  }
-
-  if (data?.status === 'approved' && req.user?.id) {
-    data.lastApprovedBy = req.user.id
-  }
-
-  return data
-}) satisfies CollectionBeforeChangeHook
+const syncNoticeStatus = syncWorkflowStatus({
+  collection: 'notices',
+  requiredStatusForPublish: 'approved',
+  publishedStatus: 'published',
+  approvalStatus: 'approved',
+  publishError: 'Set status to Approved before publishing this notice.',
+  setPublishedAt: true,
+  setLastApprovedBy: true,
+})
 
 export const Notices: CollectionConfig = {
   slug: 'notices',
@@ -113,6 +101,7 @@ export const Notices: CollectionConfig = {
                   type: 'select',
                   required: true,
                   defaultValue: 'operational',
+                  index: true,
                   admin: { width: '50%' },
                   options: [
                     { label: 'Operational', value: 'operational' },
@@ -128,6 +117,7 @@ export const Notices: CollectionConfig = {
                   type: 'select',
                   required: true,
                   defaultValue: 'draft',
+                  index: true,
                   admin: { width: '50%' },
                   options: [
                     { label: 'Draft', value: 'draft' },
@@ -254,7 +244,7 @@ export const Notices: CollectionConfig = {
               relationTo: 'media',
               hasMany: true,
               admin: {
-                description: 'Optional images or documents attached to this notice.',
+                description: 'Optional images attached to this notice.',
               },
             },
             {

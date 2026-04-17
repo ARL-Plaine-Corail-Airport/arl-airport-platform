@@ -14,12 +14,12 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isEditor, publishedOrAdmin } from '@/access'
+import { isEditor } from '@/access'
 
 export const UsageFees: GlobalConfig = {
   slug: 'usage-fees',
   access: {
-    read:   publishedOrAdmin,
+    read:   () => true,
     update: isEditor,
   },
   admin: {

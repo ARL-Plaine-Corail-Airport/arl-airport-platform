@@ -15,8 +15,8 @@ export const PageViews: CollectionConfig = {
   },
   admin: {
     group: 'System',
-    description: 'Anonymized page view events for internal analytics.',
-    defaultColumns: ['path', 'referrer', 'device', 'createdAt'],
+    description: 'Anonymized page view events for internal analytics. Events are retained for 90 days.',
+    defaultColumns: ['path', 'locale', 'referrer', 'device', 'createdAt'],
   },
   fields: [
     {
@@ -32,6 +32,16 @@ export const PageViews: CollectionConfig = {
       type: 'text',
       maxLength: 2048,
       admin: { description: 'Referrer domain (e.g. google.com)' },
+    },
+    {
+      name: 'locale',
+      type: 'select',
+      options: [
+        { label: 'English', value: 'en' },
+        { label: 'French', value: 'fr' },
+        { label: 'Kreol Morisien', value: 'mfe' },
+      ],
+      admin: { description: 'Locale inferred from the tracked URL path.' },
     },
     {
       name: 'device',

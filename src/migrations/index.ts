@@ -8,6 +8,7 @@ import * as migration_20260330_101549 from './20260330_101549';
 import * as migration_20260330_112900_sync_pages_notices_seo from './20260330_112900_sync_pages_notices_seo';
 import * as migration_20260331_113831 from './20260331_113831';
 import * as migration_20260409_120000_news_events_documents from './20260409_120000_news_events_documents';
+import * as migration_20260417_090000_page_views_lifecycle from './20260417_090000_page_views_lifecycle';
 
 export const migrations = [
   {
@@ -59,5 +60,10 @@ export const migrations = [
     up: migration_20260409_120000_news_events_documents.up,
     down: migration_20260409_120000_news_events_documents.down,
     name: '20260409_120000_news_events_documents'
+  },
+  {
+    up: migration_20260417_090000_page_views_lifecycle.up,
+    down: migration_20260417_090000_page_views_lifecycle.down,
+    name: '20260417_090000_page_views_lifecycle'
   },
 ];

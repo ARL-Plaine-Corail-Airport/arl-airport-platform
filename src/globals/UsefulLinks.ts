@@ -4,12 +4,12 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isEditor, publishedOrAdmin } from '@/access'
+import { isEditor } from '@/access'
 
 export const UsefulLinks: GlobalConfig = {
   slug: 'useful-links',
   access: {
-    read:   publishedOrAdmin,
+    read:   () => true,
     update: isEditor,
   },
   admin: {

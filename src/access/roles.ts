@@ -11,6 +11,7 @@ type Role =
 const ADMIN_ROLES: Role[] = ['super_admin', 'content_admin']
 const APPROVER_ROLES: Role[] = [...ADMIN_ROLES, 'approver']
 const EDITOR_ROLES: Role[] = [...APPROVER_ROLES, 'operations_editor', 'translator']
+const DOCUMENT_READER_ROLES: Role[] = [...APPROVER_ROLES, 'operations_editor']
 const ALL_ROLES: Role[] = [...EDITOR_ROLES, 'viewer_auditor']
 
 function getRoles(user: unknown): Role[] {
@@ -34,6 +35,9 @@ export const isAdmin = ({ req }: AccessArgs) => hasAnyRole(req.user, ADMIN_ROLES
 export const isApprover = ({ req }: AccessArgs) => hasAnyRole(req.user, APPROVER_ROLES)
 
 export const isEditor = ({ req }: AccessArgs) => hasAnyRole(req.user, EDITOR_ROLES)
+
+export const isDocumentReader = ({ req }: AccessArgs) =>
+  hasAnyRole(req.user, DOCUMENT_READER_ROLES)
 
 function publishedFieldOrAdmin(field: 'status' | '_status') {
   return ({ req }: AccessArgs) => {

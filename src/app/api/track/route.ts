@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { isValidLocale, type Locale } from '@/i18n/config'
 import { serverEnv } from '@/lib/env.server'
 import { getMiddlewarePathInfo, matchesPathPrefix } from '@/lib/middleware-routing'
 import { logger } from '@/lib/logger'
@@ -65,6 +66,11 @@ function isBlockedPath(path: string): boolean {
   return BLOCKED_PATH_PREFIXES.some((prefix) => matchesPathPrefix(normalizedPathname, prefix))
 }
 
+function extractLocaleFromPath(path: string): Locale | null {
+  const firstSegment = path.split('/').filter(Boolean)[0] ?? ''
+  return isValidLocale(firstSegment) ? firstSegment : null
+}
+
 function getClientIp(request: NextRequest): string {
   const forwardedIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
   const realIp = request.headers.get('x-real-ip')?.trim()
@@ -78,11 +84,27 @@ function getClientIp(request: NextRequest): string {
   return 'unknown'
 }
 
-function isAllowedOrigin(origin: string | null, siteUrl: string): boolean {
-  if (!origin) return true
+function isAllowedOrigin(request: NextRequest, siteUrl: string): boolean {
+  const origin = request.headers.get('origin')
 
   try {
-    return new URL(origin).host === new URL(siteUrl).host
+    const site = new URL(siteUrl)
+
+    if (origin) {
+      return new URL(origin).origin === site.origin
+    }
+
+    const fetchSite = request.headers.get('sec-fetch-site')?.toLowerCase()
+    if (fetchSite === 'same-origin' || fetchSite === 'same-site' || fetchSite === 'none') {
+      return true
+    }
+
+    const referer = request.headers.get('referer')
+    if (referer) {
+      return new URL(referer).host === site.host
+    }
+
+    return false
   } catch {
     return false
   }
@@ -90,7 +112,7 @@ function isAllowedOrigin(origin: string | null, siteUrl: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isAllowedOrigin(request.headers.get('origin'), serverEnv.siteUrl)) {
+    if (!isAllowedOrigin(request, serverEnv.siteUrl)) {
       return new Response(null, { status: 403 })
     }
 
@@ -102,6 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { path, referrer } = result.data
+    const locale = extractLocaleFromPath(path)
 
     if (isBlockedPath(path)) {
       return new Response(null, { status: 204 })
@@ -119,6 +142,7 @@ export async function POST(request: NextRequest) {
       data: {
         path,
         referrer: extractReferrerDomain(referrer ?? null, siteHost),
+        locale,
         device: detectDevice(ua),
         language: extractLanguage(acceptLang),
         visitorHash,

@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { Buffer } from 'node:buffer'
 import { timingSafeEqual } from 'crypto'
 
 import { revalidatePath } from 'next/cache'
@@ -9,13 +10,14 @@ import { serverEnv } from '@/lib/env.server'
 import { revalidateSchema } from '@/lib/validation'
 
 function safeCompare(a: string, b: string): boolean {
-  const maxLen = Math.max(a.length, b.length)
-  const bufA = Buffer.alloc(maxLen)
-  const bufB = Buffer.alloc(maxLen)
-  bufA.write(a)
-  bufB.write(b)
-  const equal = timingSafeEqual(bufA, bufB)
-  return a.length === b.length && equal
+  const left = Buffer.from(a, 'utf8')
+  const right = Buffer.from(b, 'utf8')
+
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return timingSafeEqual(left, right)
 }
 
 export async function POST(request: NextRequest) {

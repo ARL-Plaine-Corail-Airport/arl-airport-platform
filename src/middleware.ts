@@ -110,6 +110,24 @@ function buildRequestHeaders(
   return requestHeaders
 }
 
+function decodeBase64Url(value: string): string {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+
+  return atob(padded)
+}
+
+function decodeBase64UrlBytes(value: string): Uint8Array<ArrayBuffer> {
+  const decoded = decodeBase64Url(value)
+  const bytes = new Uint8Array(decoded.length)
+
+  for (let index = 0; index < decoded.length; index++) {
+    bytes[index] = decoded.charCodeAt(index)
+  }
+
+  return bytes
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const [, payload] = token.split('.')
 
@@ -118,14 +136,40 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 
   try {
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-    const decoded = atob(padded)
+    const decoded = decodeBase64Url(payload)
     const parsed = JSON.parse(decoded)
 
     return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null
   } catch {
     return null
+  }
+}
+
+async function isValidJwt(token: string): Promise<boolean> {
+  const parts = token.split('.')
+  if (parts.length !== 3) return false
+
+  const [headerB64, payloadB64, signatureB64] = parts
+  if (!headerB64 || !payloadB64 || !signatureB64) return false
+
+  const secret = process.env.PAYLOAD_SECRET
+  if (!secret) return false
+
+  try {
+    const encoder = new TextEncoder()
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    )
+    const data = encoder.encode(`${headerB64}.${payloadB64}`)
+    const signature = decodeBase64UrlBytes(signatureB64)
+
+    return await crypto.subtle.verify('HMAC', key, signature, data)
+  } catch {
+    return false
   }
 }
 
@@ -148,20 +192,15 @@ function getRateLimitKey(request: NextRequest, normalizedPathname: string): stri
 
   const fingerprintParts = [
     request.method,
+    normalizedPathname,
     request.headers.get('user-agent')?.trim() ?? '',
     request.headers.get('accept-language')?.trim() ?? '',
     request.headers.get('accept')?.trim() ?? '',
     request.headers.get('sec-ch-ua')?.trim() ?? '',
-    request.headers.get('sec-ch-ua-mobile')?.trim() ?? '',
-    request.headers.get('sec-ch-ua-platform')?.trim() ?? '',
     request.headers.get('sec-fetch-site')?.trim() ?? '',
   ].filter((part): part is string => Boolean(part))
 
-  const fingerprintSource = fingerprintParts.length > 0
-    ? fingerprintParts.join('|')
-    : `${request.nextUrl.host}|${normalizedPathname}`
-
-  return `anon:${Buffer.from(fingerprintSource).toString('base64url')}`
+  return `anon:${fingerprintParts.join(':')}`
 }
 
 function applyCspHeaders(
@@ -306,8 +345,8 @@ export async function middleware(request: NextRequest) {
     // proxy such as Vercel or Cloudflare sits in front of the app and strips
     // spoofed values. On direct/self-hosted deployments, treat these headers as
     // advisory rather than authoritative. When no trusted IP is available, use
-    // a per-request fingerprint so all anonymous traffic does not share one
-    // limiter bucket.
+    // a stable fingerprint so repeated anonymous requests from the same
+    // client share a limiter bucket without relying on trusted IP headers.
     const rateLimitKey = getRateLimitKey(request, normalizedPathname)
 
     let limited = false
@@ -353,13 +392,13 @@ export async function middleware(request: NextRequest) {
 
   // ── Dashboard auth handoff ────────────────────────────────────────────
   // Payload stores auth in a JWT cookie named `payload-token`. Middleware
-  // checks whether that cookie exists and, when possible, whether it is
-  // already expired. Section and role access are enforced server-side in the
-  // dashboard auth helpers after payload.auth().
+  // verifies the signature before using the expiry shortcut. Section and role
+  // access are still enforced server-side in the dashboard auth helpers after
+  // payload.auth().
   if (matchesPathPrefix(normalizedPathname, '/dashboard')) {
     const payloadToken = request.cookies.get('payload-token')?.value
 
-    if (!payloadToken || isExpiredJwt(payloadToken)) {
+    if (!payloadToken || !(await isValidJwt(payloadToken)) || isExpiredJwt(payloadToken)) {
       const loginUrl = new URL('/admin/login', request.url)
       loginUrl.searchParams.set('redirect', normalizedPathname)
       const redirectResponse = applyCspHeaders(
@@ -403,7 +442,12 @@ export async function middleware(request: NextRequest) {
     // CDN-friendly cache header — allows edge servers to cache public pages
     response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
     // Also persist locale choice in cookie for future visits
-    response.cookies.set('locale', locale, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' })
+    response.cookies.set('locale', locale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    })
     return applyCspHeaders(response, 'app', nonce)
   }
 

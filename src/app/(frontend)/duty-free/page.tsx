@@ -8,6 +8,8 @@ import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
+export const revalidate = 300
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)

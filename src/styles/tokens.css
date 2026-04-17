@@ -27,6 +27,8 @@
 :root {
 
   /* ── Brand — Navy ── */
+  --arl-navy:           var(--arl-navy-700);
+  --arl-navy-950:       210 85% 10%;   /* #04131f  deep overlay / text shadow */
   --arl-navy-900:       210 80% 15%;   /* #071f33  deepest                 */
   --arl-navy-850:       210 80% 18%;   /* #082a42  near-black navy (strong)*/
   --arl-navy-800:       210 80% 20%;   /* #0a3352  hero gradient start     */
@@ -34,17 +36,27 @@
   --arl-navy-600:       210 70% 30%;   /* #163d5c  mid-tone (hero grad)    */
 
   /* ── Brand — Teal ── */
+  --arl-teal-650:       185 62% 28%;   /* #1d6f76  deep teal               */
   --arl-teal-600:       185 60% 35%;   /* #238f97  ACCENT — admin/dash     */
   --arl-teal-550:       185 55% 35%;   /* #247d83  softer teal (frontend)  */
   --arl-teal-500:       185 55% 30%;   /* #1e6b70  hero gradient end       */
+  --arl-teal-450:       185 54% 44%;   /* #36a0aa  hover / ring accent     */
+  --arl-teal-300:       185 46% 78%;   /* #b1dde0  light border            */
+  --arl-teal-280:       185 43% 82%;   /* #c0e4e6  soft border             */
+  --arl-teal-200:       185 58% 88%;   /* #d4f0f1  soft glow               */
+  --arl-teal-150:       185 62% 93%;   /* #e6f8f8  card wash               */
+  --arl-teal-120:       185 64% 96%;   /* #f1fbfb  subtle highlight        */
 
   /* ── Neutral scale (light mode) ── */
   --arl-neutral-950:    210 50% 10%;   /* #0a1929  text — frontend         */
   --arl-neutral-900:    210 15% 12%;   /* #1a2332  text — admin            */
+  --arl-neutral-750:    210 18% 28%;   /* #38455b  strong muted            */
+  --arl-neutral-650:    210 14% 38%;   /* #56667d  body-muted              */
   --arl-neutral-600:    210 10% 45%;   /* #6b7a8d  muted — frontend        */
   --arl-neutral-500:    210 10% 55%;   /* #7d8fa3  muted — admin           */
   --arl-neutral-300:    210 12% 88%;   /* #d6dde6  border — admin          */
   --arl-neutral-280:    210 20% 88%;   /* #cdd7e4  border — frontend       */
+  --arl-neutral-220:    210 18% 90%;   /* #d9e3ec  subtle border           */
   --arl-neutral-150:    210 15% 93%;   /* #e8ecf1  surface-alt             */
   --arl-neutral-100:    210 15% 95%;   /* #eef1f5  muted-bg                */
   --arl-neutral-050:    210 20% 98%;   /* #f6f9fc  page background         */
@@ -63,8 +75,9 @@
      TYPOGRAPHY
      ============================================================ */
 
-  --arl-font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --arl-font-mono:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --arl-font-sans:    var(--font-body, 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  --arl-font-display: var(--font-display, 'Libre Bodoni', 'Times New Roman', serif);
+  --arl-font-mono:    var(--font-mono, 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace);
 
   /* Type scale */
   --arl-type-xs:    0.75rem;    /* 12px */

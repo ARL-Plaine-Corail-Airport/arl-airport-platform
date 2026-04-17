@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const THRESHOLD = 80
 const MAX_PULL = 130
@@ -10,48 +10,56 @@ export function PullToRefresh() {
   const [refreshing, setRefreshing] = useState(false)
   const startY = useRef(0)
   const pulling = useRef(false)
+  const pullDistanceRef = useRef(pullDistance)
+  const refreshingRef = useRef(refreshing)
 
-  const isAtTop = useCallback(() => window.scrollY <= 0, [])
+  useEffect(() => {
+    pullDistanceRef.current = pullDistance
+  }, [pullDistance])
 
-  const onTouchStart = useCallback(
-    (e: TouchEvent) => {
-      if (!isAtTop() || refreshing) return
+  useEffect(() => {
+    refreshingRef.current = refreshing
+  }, [refreshing])
+
+  useEffect(() => {
+    const onTouchStart = (e: TouchEvent) => {
+      if (window.scrollY > 0 || refreshingRef.current) return
       startY.current = e.touches[0].clientY
       pulling.current = true
-    },
-    [isAtTop, refreshing],
-  )
+    }
 
-  const onTouchMove = useCallback(
-    (e: TouchEvent) => {
-      if (!pulling.current || refreshing) return
+    const onTouchMove = (e: TouchEvent) => {
+      if (!pulling.current || refreshingRef.current) return
       const delta = e.touches[0].clientY - startY.current
       if (delta <= 0) {
+        pullDistanceRef.current = 0
         setPullDistance(0)
         return
       }
+
       // Dampen the pull so it feels elastic
       const distance = Math.min(delta * 0.5, MAX_PULL)
+      pullDistanceRef.current = distance
       setPullDistance(distance)
       if (distance > 10) e.preventDefault()
-    },
-    [refreshing],
-  )
-
-  const onTouchEnd = useCallback(() => {
-    if (!pulling.current) return
-    pulling.current = false
-
-    if (pullDistance >= THRESHOLD && !refreshing) {
-      setRefreshing(true)
-      setPullDistance(THRESHOLD)
-      window.location.reload()
-    } else {
-      setPullDistance(0)
     }
-  }, [pullDistance, refreshing])
 
-  useEffect(() => {
+    const onTouchEnd = () => {
+      if (!pulling.current) return
+      pulling.current = false
+
+      if (pullDistanceRef.current >= THRESHOLD && !refreshingRef.current) {
+        refreshingRef.current = true
+        setRefreshing(true)
+        pullDistanceRef.current = THRESHOLD
+        setPullDistance(THRESHOLD)
+        window.location.reload()
+      } else {
+        pullDistanceRef.current = 0
+        setPullDistance(0)
+      }
+    }
+
     document.addEventListener('touchstart', onTouchStart, { passive: true })
     document.addEventListener('touchmove', onTouchMove, { passive: false })
     document.addEventListener('touchend', onTouchEnd)
@@ -61,17 +69,20 @@ export function PullToRefresh() {
       document.removeEventListener('touchmove', onTouchMove)
       document.removeEventListener('touchend', onTouchEnd)
     }
-  }, [onTouchStart, onTouchMove, onTouchEnd])
+  }, [])
 
-  if (pullDistance === 0 && !refreshing) return null
-
+  const active = pullDistance > 0 || refreshing
   const progress = Math.min(pullDistance / THRESHOLD, 1)
   const pastThreshold = pullDistance >= THRESHOLD
 
   return (
     <div
       className="ptr-indicator"
-      style={{ transform: `translateY(${pullDistance - 50}px)`, opacity: progress }}
+      style={{
+        transform: `translateY(${active ? pullDistance - 50 : -50}px)`,
+        opacity: active ? progress : 0,
+        pointerEvents: active ? 'auto' : 'none',
+      }}
     >
       <svg
         className={`ptr-spinner${refreshing ? ' ptr-spinning' : ''}`}

@@ -6,6 +6,8 @@ import { getLocale } from '@/i18n/get-locale'
 import { getPageBySlug } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
+export const revalidate = 300
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)

@@ -2,10 +2,11 @@
 .site-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--arl-z-header);
   background: hsl(0, 0%, 100% / 0.95);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .site-header__inner {
@@ -17,14 +18,22 @@
 
 /* Logo box */
 .logo-box {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.5rem;
-  background: var(--primary);
+  height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.logo-box--rect {
+  width: auto;
+}
+
+.logo-img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
 .logo-link {
@@ -79,6 +88,11 @@
   color: var(--text);
 }
 
+.nav-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* Dropdown */
 .dropdown {
   position: relative;
@@ -96,7 +110,7 @@
   border: 1px solid var(--border);
   box-shadow: 0 10px 30px -5px hsl(210 20% 10% / 0.12);
   padding: 0.375rem 0;
-  z-index: 50;
+  z-index: var(--arl-z-nav);
 }
 
 /* Show on hover (mouse) or when aria-expanded (keyboard/click) */
@@ -115,6 +129,11 @@
 
 .dropdown-item:hover {
   background: var(--surface-alt);
+}
+
+.dropdown-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
 }
 
 /* ─── Language Switcher ─── */
@@ -175,7 +194,7 @@
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--arl-z-nav);
 }
 
 .mobile-menu.is-open {
@@ -186,6 +205,7 @@
   position: absolute;
   inset: 0;
   background: hsl(210 50% 10% / 0.3);
+  transition: background 0.2s ease;
 }
 
 .mobile-menu__panel {
@@ -220,7 +240,7 @@
 .mobile-nav-quick {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-xs);
+  gap: var(--arl-space-2);
   margin-bottom: 1.5rem;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border);
@@ -274,6 +294,48 @@
 
 .mobile-nav-link:hover {
   background: var(--surface-alt);
+}
+
+.mobile-nav-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.mobile-nav-quick__link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Nav dropdown trigger (reset button styles) */
+.nav-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Chevron rotation */
+.nav-chevron {
+  transition: transform 0.2s var(--arl-ease-default, ease);
+}
+
+.nav-chevron--open {
+  transform: rotate(180deg);
+}
+
+/* Header actions row (lang switcher + mobile toggle) */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Block-level logo text */
+.logo-text-block {
+  display: block;
 }
 
 /* Responsive logo text */

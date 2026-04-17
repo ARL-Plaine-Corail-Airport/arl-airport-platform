@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { isValidLocale, localeLabels, locales, type Locale } from '@/i18n/config'
@@ -9,7 +9,6 @@ import { useI18n } from '@/i18n/provider'
 
 export function LanguageSwitcher() {
   const { locale: contextLocale } = useI18n()
-  const router = useRouter()
   const pathname = usePathname()
 
   // Middleware rewrites locale-prefixed URLs (e.g. /fr/arrivals → /arrivals),
@@ -25,14 +24,19 @@ export function LanguageSwitcher() {
 
   const handleChange = (newLocale: Locale) => {
     if (newLocale === activeLocale) return
-    setActiveLocale(newLocale)
-    router.push(localePath(stripLocalePrefix(window.location.pathname), newLocale))
+    // Use hard navigation (not router.push) because locale changes require
+    // the server layout to re-render with a new dictionary. Soft navigation
+    // reuses the cached RSC payload since middleware rewrites all locales
+    // to the same underlying route.
+    const dest = localePath(stripLocalePrefix(window.location.pathname), newLocale)
+    window.location.href = dest + window.location.search + window.location.hash
   }
 
   return (
     <div className="lang-switcher" role="group" aria-label="Language">
       {locales.map((loc) => (
         <button
+          type="button"
           key={loc}
           className={`lang-btn${loc === activeLocale ? ' lang-btn--active' : ''}`}
           onClick={() => handleChange(loc)}

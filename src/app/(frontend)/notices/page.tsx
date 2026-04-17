@@ -8,7 +8,11 @@ import { getLocale } from '@/i18n/get-locale'
 import { getLatestNotices } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
+
+function FilterChipsSkeleton() {
+  return <div className="filter-chips-skeleton" aria-hidden />
+}
 
 export async function generateMetadata() {
   const locale = await getLocale()
@@ -33,7 +37,7 @@ export default async function NoticesPage({
     getLatestNotices(30, locale),
   ])
 
-  const noticeCategories = (dict as any).notice_categories ?? {}
+  const noticeCategories = dict.notice_categories
 
   // Extract unique categories from notices
   const categories = Array.from(
@@ -42,7 +46,7 @@ export default async function NoticesPage({
 
   const categoryOptions = categories.map((cat) => ({
     value: cat,
-    label: noticeCategories[cat] ?? cat,
+    label: noticeCategories[cat as keyof typeof noticeCategories] ?? cat,
   }))
 
   // Filter if category param is set
@@ -61,7 +65,7 @@ export default async function NoticesPage({
       <section className="page-section">
         <div className="container">
           {categoryOptions.length > 1 && (
-            <Suspense>
+            <Suspense fallback={<FilterChipsSkeleton />}>
               <FilterChips
                 paramName="category"
                 basePath="/notices"

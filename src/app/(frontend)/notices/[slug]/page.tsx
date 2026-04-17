@@ -16,6 +16,8 @@ import {
   JsonLd,
 } from '@/lib/structured-data'
 
+export const revalidate = 60
+
 type Props = {
   params: Promise<{ slug: string }>
 }
@@ -104,7 +106,7 @@ export default async function NoticeDetailPage({ params }: Props) {
                 <h2>{dict.labels.attachments}</h2>
                 <ul className="content-list">
                   {notice.attachments.map((attachment: any, index: number) => (
-                    <li key={attachment?.id || index}>
+                    <li key={attachment?.id ?? `att-${index}`}>
                       {attachment?.filename ||
                         attachment?.alt ||
                         dict.labels.attached_document}

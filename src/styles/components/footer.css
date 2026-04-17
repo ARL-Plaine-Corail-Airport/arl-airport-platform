@@ -72,9 +72,27 @@
 
 .footer-brand {
   display: flex;
-  align-items: center;
-  gap: 0.625rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.footer-logo-box {
+  width: min(100%, 16rem);
+}
+
+.footer-logo-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0.75rem;
+}
+
+.footer-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .footer-brand__name {
@@ -85,6 +103,11 @@
 .footer-brand__sub {
   font-size: 0.65rem;
   opacity: 0.75;
+}
+
+.footer-brand__sub--location {
+  font-size: 0.78rem;
+  opacity: 0.88;
 }
 
 .footer-contact-item {
@@ -111,11 +134,36 @@
   border-radius: 0.5rem;
   background: rgba(255, 255, 255, 0.12);
   color: white;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.2s;
 }
 
 .footer-social-link:hover {
   background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.footer-social-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+.footer-link:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.footer-link--inline {
+  display: inline;
+  padding: 0;
+}
+
+/* Mobile dividers between footer sections */
+@media (max-width: 767px) {
+  .footer-grid > div + div {
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 .footer-heading {

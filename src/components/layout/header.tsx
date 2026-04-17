@@ -1,10 +1,12 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { useI18n } from '@/i18n/provider'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
+import { useI18n } from '@/i18n/provider'
 
 const PlaneIcon = ({ size = 20, color = 'white' }: { size?: number; color?: string }) => (
   <svg
@@ -29,22 +31,45 @@ const ChevronIcon = ({ open }: { open?: boolean }) => (
     strokeWidth="2"
     viewBox="0 0 24 24"
     aria-hidden="true"
-    style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : undefined }}
+    className={`nav-chevron${open ? ' nav-chevron--open' : ''}`}
   >
     <path d="m6 9 6 6 6-6" />
   </svg>
 )
 
-// ── Accessible dropdown ─────────────────────────────────────────────────────
-// Supports: Enter/Space to toggle, Escape to close, arrow keys to navigate
-// items, Tab to move focus out (auto-closes), click-outside to close.
+const UtilityIcon = ({ path }: { path: 'dot' | 'map' | 'flight' | 'phone' }) => {
+  if (path === 'dot') return <span className="site-header__status-dot" aria-hidden="true" />
+
+  const icons = {
+    flight: <path d="M2 22h20M6.36 17.4 4 17l-2-4 1.1-.55a2 2 0 0 1 1.8 0l.17.1a2 2 0 0 0 1.8 0L8 12 5 6l1.05-.53a2 2 0 0 1 2.15.18l6.3 4.73 4.45-2.22a2 2 0 0 1 2.55.88l.52.97a1 1 0 0 1-.58 1.4L7.3 17.12a2 2 0 0 1-.94.28z" />,
+    map: (
+      <>
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0" />
+        <circle cx="12" cy="10" r="3" />
+      </>
+    ),
+    phone: <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+  }
+
+  return (
+    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      {icons[path]}
+    </svg>
+  )
+}
+
+function isPathActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
 
 function NavDropdown({
-  label,
+  active,
   items,
+  label,
 }: {
-  label: string
+  active?: boolean
   items: { href: string; label: string }[]
+  label: string
 }) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -56,55 +81,54 @@ function NavDropdown({
     triggerRef.current?.focus()
   }, [])
 
-  // Close on click outside
   useEffect(() => {
     if (!open) return
-    function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+
+    function handleClick(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setOpen(false)
       }
     }
+
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') close()
+
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') close()
     }
+
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [open, close])
+  }, [close, open])
 
-  function handleTriggerKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
+  function handleTriggerKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
       setOpen(true)
-      // Focus first item after render
       requestAnimationFrame(() => itemRefs.current[0]?.focus())
     }
   }
 
-  function handleItemKeyDown(e: React.KeyboardEvent, index: number) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
+  function handleItemKeyDown(event: React.KeyboardEvent, index: number) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
       const next = index + 1
-      if (next < items.length) {
-        itemRefs.current[next]?.focus()
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
+      if (next < items.length) itemRefs.current[next]?.focus()
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
       if (index === 0) {
         close()
       } else {
         itemRefs.current[index - 1]?.focus()
       }
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
       close()
-    } else if (e.key === 'Tab') {
+    } else if (event.key === 'Tab') {
       setOpen(false)
     }
   }
@@ -114,13 +138,13 @@ function NavDropdown({
   return (
     <div className="dropdown" ref={containerRef}>
       <button
+        type="button"
         ref={triggerRef}
-        className="nav-link"
-        style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+        className={`nav-link nav-dropdown-btn${active ? ' nav-link--active' : ''}`}
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={menuId}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((value) => !value)}
         onKeyDown={handleTriggerKeyDown}
       >
         {label} <ChevronIcon open={open} />
@@ -132,15 +156,17 @@ function NavDropdown({
         aria-label={label}
         style={{ display: open ? 'block' : undefined }}
       >
-        {items.map((item, i) => (
+        {items.map((item, index) => (
           <Link
             key={item.href}
             href={item.href}
             className="dropdown-item"
             role="menuitem"
             tabIndex={open ? 0 : -1}
-            ref={(el) => { itemRefs.current[i] = el }}
-            onKeyDown={(e) => handleItemKeyDown(e, i)}
+            ref={(element) => {
+              itemRefs.current[index] = element
+            }}
+            onKeyDown={(event) => handleItemKeyDown(event, index)}
             onClick={() => setOpen(false)}
           >
             {item.label}
@@ -151,97 +177,170 @@ function NavDropdown({
   )
 }
 
-export function SiteHeader() {
+export function SiteHeader({ phone }: { phone?: string }) {
+  const pathname = usePathname() ?? '/'
   const [menuOpen, setMenuOpen] = useState(false)
   const { t, localePath: lp } = useI18n()
 
-  // Lock body scroll when mobile menu is open
+  const flightLinks = [
+    { href: lp('/arrivals'), label: t('nav.arrivals') },
+    { href: lp('/departures'), label: t('nav.departures') },
+    { href: lp('/flight-status'), label: t('nav.flight_status') },
+  ]
+
+  const passengerLinks = [
+    { href: lp('/passenger-guide'), label: t('nav.passenger_guide') },
+    { href: lp('/airport-map'), label: t('nav.airport_map') },
+    { href: lp('/duty-free'), label: t('nav.duty_free') },
+    { href: lp('/amenities'), label: t('nav.amenities') },
+    { href: lp('/vip-lounge'), label: t('nav.vip_lounge') },
+    { href: lp('/accessibility'), label: t('nav.accessibility') },
+    { href: lp('/faq'), label: t('nav.faq') },
+  ]
+
   useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => {
       document.body.style.overflow = ''
     }
-    return () => { document.body.style.overflow = '' }
   }, [menuOpen])
 
-  // Close mobile menu on Escape
   useEffect(() => {
     if (!menuOpen) return
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setMenuOpen(false)
+
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMenuOpen(false)
     }
+
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [menuOpen])
 
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [pathname])
+
+  const flightsActive = ['/arrivals', '/departures', '/flight-status'].some((href) =>
+    isPathActive(pathname, href),
+  )
+
+  const passengerActive = [
+    '/passenger-guide',
+    '/airport-map',
+    '/duty-free',
+    '/amenities',
+    '/vip-lounge',
+    '/accessibility',
+    '/faq',
+  ].some((href) => isPathActive(pathname, href))
+
   return (
     <>
       <header className="site-header">
+        <div className="site-header__meta">
+          <div className="container site-header__meta-inner">
+            <p className="site-header__status">
+              <UtilityIcon path="dot" />
+              {t('flights.live_data')}
+            </p>
+            <div className="site-header__meta-links">
+              <Link href={lp('/flight-status')} className="site-header__meta-link">
+                <UtilityIcon path="flight" />
+                {t('nav.flight_status')}
+              </Link>
+              <Link href={lp('/airport-map')} className="site-header__meta-link">
+                <UtilityIcon path="map" />
+                {t('nav.airport_map')}
+              </Link>
+              {phone ? (
+                <a
+                  href={`tel:${phone.replace(/\s/g, '')}`}
+                  className="site-header__meta-link site-header__meta-link--accent"
+                >
+                  <UtilityIcon path="phone" />
+                  {phone}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
         <div className="container site-header__inner">
-          {/* Logo */}
           <Link href={lp('/')} className="logo-link" onClick={() => setMenuOpen(false)}>
-            <div className="logo-box">
-              <PlaneIcon size={18} color="white" />
+            <div className="logo-box logo-box--rect">
+              <Image
+                src="/images/ARL airport logo with airplane graphic.png"
+                alt={t('common.airport_name')}
+                width={120}
+                height={40}
+                className="logo-img"
+              />
             </div>
             <div className="hide-mobile">
-              <span className="logo-name" style={{ display: 'block' }}>{t('common.airport_name')}</span>
-              <span className="logo-sub" style={{ display: 'block' }}>{t('common.airport_full')}</span>
+              <span className="logo-name logo-text-block">{t('common.airport_name')}</span>
+              <span className="logo-sub logo-text-block">{t('common.airport_full')}</span>
             </div>
             <span className="show-mobile-only logo-abbr">{t('common.airport_abbr')}</span>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="nav-desktop" aria-label="Primary navigation">
+            <NavDropdown active={flightsActive} label={t('nav.flights')} items={flightLinks} />
             <NavDropdown
-              label={t('nav.flights')}
-              items={[
-                { href: lp('/arrivals'), label: t('nav.arrivals') },
-                { href: lp('/departures'), label: t('nav.departures') },
-                { href: lp('/flight-status'), label: t('nav.flight_status') },
-              ]}
-            />
-
-            <NavDropdown
+              active={passengerActive}
               label={t('nav.passenger_info')}
-              items={[
-                { href: lp('/passenger-guide'), label: t('nav.passenger_guide') },
-                { href: lp('/airport-map'), label: t('nav.airport_map') },
-                { href: lp('/duty-free'), label: t('nav.duty_free') },
-                { href: lp('/amenities'), label: t('nav.amenities') },
-                { href: lp('/vip-lounge'), label: t('nav.vip_lounge') },
-                { href: lp('/accessibility'), label: t('nav.accessibility') },
-                { href: lp('/faq'), label: t('nav.faq') },
-              ]}
+              items={passengerLinks}
             />
-
-            <Link href={lp('/transport-parking')} className="nav-link">{t('nav.transport')}</Link>
-            <Link href={lp('/notices')} className="nav-link">{t('nav.notices')}</Link>
-            <Link href={lp('/news-events')} className="nav-link">{t('nav.news_events')}</Link>
-            <Link href={lp('/airport-project')} className="nav-link">{t('nav.airport_project')}</Link>
-            <Link href={lp('/contact')} className="nav-link">{t('nav.contact')}</Link>
+            <Link
+              href={lp('/transport-parking')}
+              className={`nav-link${isPathActive(pathname, '/transport-parking') ? ' nav-link--active' : ''}`}
+            >
+              {t('nav.transport')}
+            </Link>
+            <Link
+              href={lp('/notices')}
+              className={`nav-link${isPathActive(pathname, '/notices') ? ' nav-link--active' : ''}`}
+            >
+              {t('nav.notices')}
+            </Link>
+            <Link
+              href={lp('/news-events')}
+              className={`nav-link${isPathActive(pathname, '/news-events') ? ' nav-link--active' : ''}`}
+            >
+              {t('nav.news_events')}
+            </Link>
+            <Link
+              href={lp('/airport-project')}
+              className={`nav-link${isPathActive(pathname, '/airport-project') ? ' nav-link--active' : ''}`}
+            >
+              {t('nav.airport_project')}
+            </Link>
+            <Link
+              href={lp('/contact')}
+              className={`nav-link${isPathActive(pathname, '/contact') ? ' nav-link--active' : ''}`}
+            >
+              {t('nav.contact')}
+            </Link>
           </nav>
 
-          {/* Language switcher + Mobile toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="header-actions">
             <LanguageSwitcher />
 
             <button
+              type="button"
               className="mobile-toggle"
               aria-label={menuOpen ? t('nav.close_menu') : t('nav.open_menu')}
               aria-expanded={menuOpen}
               aria-controls="mobile-nav-menu"
-              onClick={() => setMenuOpen(true)}
+              onClick={() => setMenuOpen((value) => !value)}
             >
               <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 12h18M3 6h18M3 18h18" />
+                <path d={menuOpen ? 'M18 6 6 18M6 6l12 12' : 'M3 12h18M3 6h18M3 18h18'} />
               </svg>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile menu */}
       <div
         id="mobile-nav-menu"
         className={`mobile-menu${menuOpen ? ' is-open' : ''}`}
@@ -249,50 +348,61 @@ export function SiteHeader() {
         role="dialog"
         aria-label="Navigation menu"
       >
-        <div className="mobile-menu__backdrop" onClick={() => setMenuOpen(false)} />
+        <div
+          className="mobile-menu__backdrop"
+          role="button"
+          tabIndex={0}
+          aria-label={t('nav.close_menu')}
+          onClick={() => setMenuOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setMenuOpen(false)
+            }
+          }}
+        />
         <nav className="mobile-menu__panel" aria-label="Mobile navigation">
           <div className="mobile-menu__close">
-            <button aria-label={t('nav.close_menu')} onClick={() => setMenuOpen(false)}>
+            <button type="button" aria-label={t('nav.close_menu')} onClick={() => setMenuOpen(false)}>
               <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          {/* Quick links — top-priority actions for mobile users */}
           <div className="mobile-nav-quick" role="group" aria-labelledby="mobile-quick-label">
             <p className="mobile-nav-group__label" id="mobile-quick-label">{t('nav.quick_links')}</p>
-            <Link href={lp('/arrivals')} className="mobile-nav-quick__link" onClick={() => setMenuOpen(false)}>{t('nav.arrivals')}</Link>
-            <Link href={lp('/departures')} className="mobile-nav-quick__link" onClick={() => setMenuOpen(false)}>{t('nav.departures')}</Link>
-            <Link href={lp('/passenger-guide')} className="mobile-nav-quick__link" onClick={() => setMenuOpen(false)}>{t('nav.passenger_guide')}</Link>
-            <Link href={lp('/contact')} className="mobile-nav-quick__link" onClick={() => setMenuOpen(false)}>{t('nav.contact')}</Link>
+            <Link href={lp('/arrivals')} className="mobile-nav-quick__link">{t('nav.arrivals')}</Link>
+            <Link href={lp('/departures')} className="mobile-nav-quick__link">{t('nav.departures')}</Link>
+            <Link href={lp('/passenger-guide')} className="mobile-nav-quick__link">{t('nav.passenger_guide')}</Link>
+            <Link href={lp('/contact')} className="mobile-nav-quick__link">{t('nav.contact')}</Link>
           </div>
 
           <div className="mobile-nav-group" role="group" aria-labelledby="mobile-flights-label">
             <p className="mobile-nav-group__label" id="mobile-flights-label">{t('nav.flights')}</p>
-            <Link href={lp('/arrivals')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.arrivals')}</Link>
-            <Link href={lp('/departures')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.departures')}</Link>
-            <Link href={lp('/flight-status')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.flight_status')}</Link>
+            {flightLinks.map((item) => (
+              <Link key={item.href} href={item.href} className="mobile-nav-link">
+                {item.label}
+              </Link>
+            ))}
           </div>
 
           <div className="mobile-nav-group" role="group" aria-labelledby="mobile-passenger-label">
             <p className="mobile-nav-group__label" id="mobile-passenger-label">{t('nav.passenger_info')}</p>
-            <Link href={lp('/passenger-guide')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.passenger_guide')}</Link>
-            <Link href={lp('/airport-map')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.airport_map')}</Link>
-            <Link href={lp('/duty-free')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.duty_free')}</Link>
-            <Link href={lp('/amenities')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.amenities')}</Link>
-            <Link href={lp('/vip-lounge')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.vip_lounge')}</Link>
-            <Link href={lp('/accessibility')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.accessibility')}</Link>
-            <Link href={lp('/faq')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.faq')}</Link>
+            {passengerLinks.map((item) => (
+              <Link key={item.href} href={item.href} className="mobile-nav-link">
+                {item.label}
+              </Link>
+            ))}
           </div>
 
           <div className="mobile-nav-group" role="group" aria-labelledby="mobile-airport-label">
             <p className="mobile-nav-group__label" id="mobile-airport-label">{t('nav.airport')}</p>
-            <Link href={lp('/transport-parking')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.transport_parking')}</Link>
-            <Link href={lp('/notices')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.notices')}</Link>
-            <Link href={lp('/news-events')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.news_events')}</Link>
-            <Link href={lp('/airport-project')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.airport_project')}</Link>
-            <Link href={lp('/contact')} className="mobile-nav-link" onClick={() => setMenuOpen(false)}>{t('nav.contact')}</Link>
+            <Link href={lp('/transport-parking')} className="mobile-nav-link">{t('nav.transport_parking')}</Link>
+            <Link href={lp('/notices')} className="mobile-nav-link">{t('nav.notices')}</Link>
+            <Link href={lp('/news-events')} className="mobile-nav-link">{t('nav.news_events')}</Link>
+            <Link href={lp('/airport-project')} className="mobile-nav-link">{t('nav.airport_project')}</Link>
+            <Link href={lp('/contact')} className="mobile-nav-link">{t('nav.contact')}</Link>
           </div>
         </nav>
       </div>

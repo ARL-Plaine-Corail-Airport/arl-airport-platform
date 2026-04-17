@@ -27,9 +27,10 @@ export function InstallPrompt() {
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
-  if (!deferredPrompt || dismissed) return null
+  const visible = !!deferredPrompt && !dismissed
 
   const handleInstall = async () => {
+    if (!deferredPrompt) return
     await deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
     if (outcome === 'accepted') {
@@ -39,19 +40,36 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="install-prompt" role="banner">
-      <p className="install-prompt__text">{t('pwa.install_prompt')}</p>
-      <button className="install-prompt__install" onClick={handleInstall} type="button">
-        {t('pwa.install_button')}
-      </button>
-      <button
-        className="install-prompt__dismiss"
-        onClick={() => setDismissed(true)}
-        type="button"
-        aria-label={t('pwa.dismiss')}
-      >
-        ✕
-      </button>
+    <div
+      className={`install-prompt${visible ? '' : ' install-prompt--dismissed'}`}
+      role="banner"
+      style={{ display: visible ? undefined : 'none' }}
+    >
+      <div className="install-prompt__icon" aria-hidden="true">
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path d="M12 3v12" />
+          <path d="m7 10 5 5 5-5" />
+          <path d="M5 21h14" />
+        </svg>
+      </div>
+      <div className="install-prompt__copy">
+        <p className="install-prompt__text">{t('pwa.install_prompt')}</p>
+      </div>
+      <div className="install-prompt__actions">
+        <button className="install-prompt__install" onClick={handleInstall} type="button">
+          {t('pwa.install_button')}
+        </button>
+        <button
+          className="install-prompt__dismiss"
+          onClick={() => setDismissed(true)}
+          type="button"
+          aria-label={t('pwa.dismiss')}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }

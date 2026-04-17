@@ -5,27 +5,40 @@ import Link from 'next/link'
 import { formatDateTime } from '@/lib/date'
 import { useI18n } from '@/i18n/provider'
 
-export function NoticeCard({ notice }: { notice: any }) {
+type NoticeProps = {
+  notice: {
+    id: string
+    slug: string
+    title: string
+    summary?: string | null
+    category?: string | null
+    urgent?: boolean | null
+    pinned?: boolean | null
+    publishedAt?: string | null
+  }
+}
+
+export function NoticeCard({ notice }: NoticeProps) {
   const { t, localePath: lp, locale } = useI18n()
 
   return (
-    <Link href={lp(`/notices/${notice.slug}`)} className="card" style={{ display: 'block' }}>
+    <Link href={lp(`/notices/${notice.slug}`)} className="card notice-card">
       <div className="notice-card__meta">
         {notice.category && (
           <span className="pill">{t('notice_categories.' + notice.category) !== 'notice_categories.' + notice.category ? t('notice_categories.' + notice.category) : notice.category}</span>
         )}
         {notice.urgent && <span className="pill pill--danger">{t('labels.urgent')}</span>}
         {notice.pinned && (
-          <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>{t('labels.pinned')}</span>
+          <span className="notice-card__pinned">{t('labels.pinned')}</span>
         )}
       </div>
 
-      <h3 style={{ fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.4, marginBottom: '0.5rem' }}>
+      <h3 className="notice-card__title">
         {notice.title}
       </h3>
 
       {notice.summary && (
-        <p style={{ fontSize: '0.75rem', color: 'var(--muted)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <p className="notice-card__summary">
           {notice.summary}
         </p>
       )}

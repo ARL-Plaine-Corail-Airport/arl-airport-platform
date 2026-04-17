@@ -5,6 +5,8 @@ import { getLocale } from '@/i18n/get-locale'
 import { getAirportMap } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
+export const revalidate = 300
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)
@@ -48,17 +50,17 @@ export default async function AirportMapPage() {
               locate_me: dict.pages.locate_me,
               locating: dict.pages.locating,
               location_error: dict.pages.location_error,
-              airport_name: (dict as any).map.airport_name,
-              airport_full_name: (dict as any).map.airport_full_name,
-              your_location: (dict as any).map.your_location,
-              open_google_maps: (dict as any).map.open_google_maps,
+              airport_name: dict.map.airport_name,
+              airport_full_name: dict.map.airport_full_name,
+              your_location: dict.map.your_location,
+              open_google_maps: dict.map.open_google_maps,
               category_labels: {
-                terminal: (dict as any).map.category_terminal,
-                parking: (dict as any).map.category_parking,
-                transport: (dict as any).map.category_transport,
-                accessibility: (dict as any).map.category_accessibility,
-                security: (dict as any).map.category_security,
-                services: (dict as any).map.category_services,
+                terminal: dict.map.category_terminal,
+                parking: dict.map.category_parking,
+                transport: dict.map.category_transport,
+                accessibility: dict.map.category_accessibility,
+                security: dict.map.category_security,
+                services: dict.map.category_services,
               },
             }}
           />

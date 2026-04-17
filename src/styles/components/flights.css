@@ -70,6 +70,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.05em;
   color: var(--text);
 }
 
@@ -123,6 +124,7 @@
 .flight-mobile-card {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
   border-radius: var(--radius);
   padding: 0.875rem 1rem;
 }
@@ -186,4 +188,8 @@ th {
   font-size: 0.875rem;
   color: var(--muted);
   font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
 }

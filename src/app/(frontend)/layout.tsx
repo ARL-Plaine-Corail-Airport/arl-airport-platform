@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
+import { JetBrains_Mono, Libre_Bodoni, Public_Sans } from 'next/font/google'
 
 import '../globals.css'
 
@@ -8,6 +9,7 @@ import { SiteFooter } from '@/components/layout/footer'
 import { SiteHeader } from '@/components/layout/header'
 import { InstallPrompt } from '@/components/pwa/install-prompt'
 import { OnlineStatus } from '@/components/pwa/online-status'
+import { PwaResumeRefresh } from '@/components/pwa/pwa-resume-refresh'
 import { PullToRefresh } from '@/components/pwa/pull-to-refresh'
 import { SplashScreen } from '@/components/pwa/splash-screen'
 import { ServiceWorkerRegister } from '@/components/pwa/sw-register'
@@ -19,6 +21,45 @@ import { getSiteSettings } from '@/lib/content'
 import { defaultSiteSettings } from '@/lib/defaults'
 import { env } from '@/lib/env'
 import { buildOrganizationSchema, JsonLd } from '@/lib/structured-data'
+
+const pwaSplashBootstrap = `(() => {
+  try {
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true
+
+    if (!standalone) return
+
+    const root = document.documentElement
+    root.dataset.pwaDisplay = 'standalone'
+    root.dataset.pwaSplash = 'active'
+
+    if (!root.dataset.pwaSplashStartedAt) {
+      root.dataset.pwaSplashStartedAt = String(Date.now())
+    }
+  } catch {}
+})()`
+
+const bodyFont = Public_Sans({
+  display: 'swap',
+  subsets: ['latin'],
+  variable: '--font-body',
+  weight: ['400', '500', '600', '700'],
+})
+
+const displayFont = Libre_Bodoni({
+  display: 'swap',
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['500', '600', '700'],
+})
+
+const monoFont = JetBrains_Mono({
+  display: 'swap',
+  subsets: ['latin'],
+  variable: '--font-mono',
+  weight: ['500', '700'],
+})
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale()
@@ -50,6 +91,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = {
   themeColor: '#114c7a',
+  viewportFit: 'cover',
 }
 
 export default async function FrontendLayout({
@@ -63,6 +105,7 @@ export default async function FrontendLayout({
     getSiteSettings(locale),
     getDictionary(locale),
   ])
+  const currentYear = new Date().getFullYear()
   const localizedHomeUrl = new URL(localePath('/', locale), env.siteURL).toString()
 
   const orgSchema = buildOrganizationSchema({
@@ -76,10 +119,18 @@ export default async function FrontendLayout({
   })
 
   return (
-    <html lang={locale}>
-      <body>
+    <html lang={locale} suppressHydrationWarning>
+      <body
+        className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}
+        suppressHydrationWarning
+      >
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: pwaSplashBootstrap }}
+        />
         <JsonLd data={orgSchema} nonce={nonce} />
         <I18nProvider locale={locale} dictionary={dictionary}>
+          <PwaResumeRefresh />
           <ServiceWorkerRegister />
           <AnalyticsTracker />
           <SplashScreen />
@@ -87,9 +138,10 @@ export default async function FrontendLayout({
           <OnlineStatus />
           <InstallPrompt />
           <div className="site-wrapper">
-            <SiteHeader />
+            <SiteHeader phone={site.primaryPhone ?? undefined} />
             {children}
             <SiteFooter
+              currentYear={currentYear}
               phone={site.primaryPhone ?? undefined}
               email={site.primaryEmail ?? undefined}
               address={site.physicalAddress ?? undefined}

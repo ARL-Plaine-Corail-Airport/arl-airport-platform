@@ -1,7 +1,7 @@
 {
   "common": {
     "airport_name": "Airport of Rodrigues",
-    "airport_full": "Plaine Corail · Sir Gaëtan Duval",
+    "airport_full": "Plaine Corail Airport",
     "airport_abbr": "ARL",
     "airport_company": "Airport of Rodrigues Ltd",
     "airport_location": "Plaine Corail Airport",
@@ -175,7 +175,7 @@
   },
   "map": {
     "airport_name": "Plaine Corail Airport",
-    "airport_full_name": "Sir Gaëtan Duval Airport",
+    "airport_full_name": "Plaine Corail Airport",
     "your_location": "Your location",
     "open_google_maps": "Open in Google Maps",
     "category_terminal": "Terminal",

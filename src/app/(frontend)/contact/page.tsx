@@ -5,6 +5,23 @@ import { getLocale } from '@/i18n/get-locale'
 import { getContactInfo, getSiteSettings } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
+export const revalidate = 300
+
+function normalizePhone(value?: string | null) {
+  if (!value) return null
+
+  const cleaned = value.trim().replace(/[^\d+]/g, '')
+  if (!cleaned) return null
+  if (!cleaned.startsWith('+')) return cleaned.replace(/\+/g, '')
+
+  return `+${cleaned.slice(1).replace(/\+/g, '')}`
+}
+
+function normalizeEmail(value?: string | null) {
+  const cleaned = value?.trim().toLowerCase()
+  return cleaned || null
+}
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)
@@ -23,26 +40,52 @@ export default async function ContactPage() {
     getContactInfo(locale),
     getSiteSettings(locale),
   ])
+  const contactCards = contact.cards || []
+  const primaryPhone = normalizePhone(site.primaryPhone)
+  const primaryEmail = normalizeEmail(site.primaryEmail)
+  const physicalAddress = site.physicalAddress?.trim()
+
+  const hasPrimaryPhoneCard = primaryPhone
+    ? contactCards.some((card) => {
+        const linkPhone = card.link?.startsWith('tel:') ? normalizePhone(card.link.slice(4)) : null
+        return normalizePhone(card.value) === primaryPhone || linkPhone === primaryPhone
+      })
+    : false
+
+  const hasPrimaryEmailCard = primaryEmail
+    ? contactCards.some((card) => {
+        const linkEmail = card.link?.startsWith('mailto:') ? normalizeEmail(card.link.slice(7)) : null
+        return normalizeEmail(card.value) === primaryEmail || linkEmail === primaryEmail
+      })
+    : false
+
+  const hasAddressCard = physicalAddress
+    ? contactCards.some((card) => card.value?.trim().toLowerCase() === physicalAddress.toLowerCase())
+    : false
 
   const cards = [
-    ...(contact.cards || []),
-    {
-      title: dict.pages.primary_phone,
-      value: site.primaryPhone,
-      link: site.primaryPhone ? `tel:${site.primaryPhone.replace(/\s/g, '')}` : undefined,
-    },
-    {
-      title: dict.pages.primary_email,
-      value: site.primaryEmail,
-      link: site.primaryEmail ? `mailto:${site.primaryEmail}` : undefined,
-    },
-    {
-      title: dict.pages.address,
-      value: site.physicalAddress,
-      link: site.physicalAddress
-        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.physicalAddress)}`
-        : undefined,
-    },
+    ...contactCards,
+    ...(!hasPrimaryPhoneCard && site.primaryPhone
+      ? [{
+          title: dict.pages.primary_phone,
+          value: site.primaryPhone,
+          link: `tel:${site.primaryPhone.replace(/\s/g, '')}`,
+        }]
+      : []),
+    ...(!hasPrimaryEmailCard && site.primaryEmail
+      ? [{
+          title: dict.pages.primary_email,
+          value: site.primaryEmail,
+          link: `mailto:${site.primaryEmail}`,
+        }]
+      : []),
+    ...(!hasAddressCard && site.physicalAddress
+      ? [{
+          title: dict.pages.address,
+          value: site.physicalAddress,
+          link: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.physicalAddress)}`,
+        }]
+      : []),
   ]
 
   return (

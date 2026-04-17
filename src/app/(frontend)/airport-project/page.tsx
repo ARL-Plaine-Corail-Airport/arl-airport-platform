@@ -10,7 +10,7 @@ import { localePath } from '@/i18n/path'
 import { getAirportProjectItems } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export async function generateMetadata() {
   const locale = await getLocale()
@@ -57,11 +57,11 @@ export default async function AirportProjectPage({
     searchParams,
   ])
   const lp = (path: string) => localePath(path, locale)
-  const projectCategories = (dict as any).project_categories ?? {}
+  const projectCategories = dict.project_categories
 
   const activeCat = params.category ?? ''
   const uniqueCats = Array.from(new Set(items.map((i: any) => i.category).filter(Boolean))) as string[]
-  const catOptions = uniqueCats.map((c) => ({ value: c, label: projectCategories[c] ?? c }))
+  const catOptions = uniqueCats.map((c) => ({ value: c, label: projectCategories[c as keyof typeof projectCategories] ?? c }))
   const filtered = activeCat ? items.filter((i: any) => i.category === activeCat) : items
 
   return (
@@ -94,7 +94,7 @@ export default async function AirportProjectPage({
                   <div className="news-item__body">
                     <div className="news-item__meta">
                       <span className={`pill ${getCategoryClass(item.category)}`}>
-                        {projectCategories[item.category] ?? item.category}
+                        {projectCategories[item.category as keyof typeof projectCategories] ?? item.category}
                       </span>
                       {item.isPinned && (
                         <span className="pill pill--danger">{dict.labels.featured}</span>
@@ -113,9 +113,13 @@ export default async function AirportProjectPage({
                         {item.attachments.map((att: any, i: number) => {
                           const fileUrl = typeof att.file === 'object' ? att.file?.url : null
                           if (!fileUrl) return null
+                          const attachmentKey =
+                            att.id ??
+                            (typeof att.file === 'object' ? att.file?.id : undefined) ??
+                            `att-${att.label ?? 'attachment'}-${i}`
                           return (
                             <a
-                              key={i}
+                              key={attachmentKey}
                               href={fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -135,7 +139,7 @@ export default async function AirportProjectPage({
 
                     {/* Read more */}
                     <Link href={lp(`/airport-project/${item.slug}`)} className="news-item__read-more">
-                      {(dict.labels as any).read_more ?? 'Read more →'}
+                      {dict.labels.read_more}
                     </Link>
                   </div>
 

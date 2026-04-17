@@ -4,6 +4,8 @@ import { getLocale } from '@/i18n/get-locale'
 import { getUsefulLinks } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
+export const revalidate = 300
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)
@@ -32,15 +34,15 @@ export default async function UsefulLinksPage() {
       <section className="page-section">
         <div className="container stack-lg">
           {groups.length > 0 ? (
-            groups.map((group: any, gi: number) => (
-              <div key={gi}>
+            groups.map((group: any) => (
+              <div key={group.id || group.groupName}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>
                   {group.groupName}
                 </h2>
                 <div className="stack-sm">
-                  {(group.links ?? []).map((link: any, li: number) => (
+                  {(group.links ?? []).map((link: any) => (
                     <a
-                      key={li}
+                      key={link.id || link.url}
                       href={link.url}
                       target={link.openInNewTab ? '_blank' : undefined}
                       rel={link.openInNewTab ? 'noopener noreferrer' : undefined}

@@ -6,7 +6,7 @@
 }
 
 html {
-  color-scheme: light;
+  color-scheme: light dark;
 }
 
 body {
@@ -39,4 +39,91 @@ button:focus-visible {
 img {
   max-width: 100%;
   height: auto;
+}
+
+/* ─── Page entrance animation ─── */
+@media (prefers-reduced-motion: no-preference) {
+  .site-main {
+    animation: page-fade-in 0.35s var(--arl-ease-out, ease) both;
+  }
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Loading skeleton ─── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-alt) 25%,
+    var(--border) 50%,
+    var(--surface-alt) 75%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+  height: 0.875rem;
+  margin-bottom: 0.5rem;
+  width: 80%;
+}
+
+.skeleton-text--short { width: 50%; }
+.skeleton-text--full  { width: 100%; }
+
+.filter-chips-skeleton {
+  display: block;
+  width: 50%;
+  height: 0.875rem;
+  margin-bottom: 0.5rem;
+  border-radius: var(--radius);
+  background: linear-gradient(
+    90deg,
+    var(--surface-alt) 25%,
+    var(--border) 50%,
+    var(--surface-alt) 75%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .filter-chips-skeleton {
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+}
+
+/* ─── Reduced motion — disable transforms and animations ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .card:hover,
+  .flight-panel:hover,
+  .service-card:hover,
+  .map-card:hover,
+  .quick-action-card:hover,
+  .btn-primary:hover,
+  .btn-outline:hover,
+  .footer-social-link:hover {
+    transform: none !important;
+  }
 }

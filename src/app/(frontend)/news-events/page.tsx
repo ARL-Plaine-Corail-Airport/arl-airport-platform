@@ -7,10 +7,10 @@ import { PageHero } from '@/components/ui/page-hero'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
-import { getNewsEvents } from '@/lib/content'
+import { getNewsEventsWithSignedAttachments } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export async function generateMetadata() {
   const locale = await getLocale()
@@ -44,6 +44,10 @@ function getTypeClass(type: string) {
   return classes[type] ?? ''
 }
 
+function FilterChipsSkeleton() {
+  return <div className="filter-chips-skeleton" aria-hidden />
+}
+
 export default async function NewsEventsPage({
   searchParams,
 }: {
@@ -52,15 +56,15 @@ export default async function NewsEventsPage({
   const locale = await getLocale()
   const [dict, items, params] = await Promise.all([
     getDictionary(locale),
-    getNewsEvents(24, locale),
+    getNewsEventsWithSignedAttachments(24, locale),
     searchParams,
   ])
   const lp = (path: string) => localePath(path, locale)
-  const newsTypes = (dict as any).news_types ?? {}
+  const newsTypes = dict.news_types
 
   const activeType = params.type ?? ''
   const uniqueTypes = Array.from(new Set(items.map((i: any) => i.type).filter(Boolean))) as string[]
-  const typeOptions = uniqueTypes.map((t) => ({ value: t, label: newsTypes[t] ?? t }))
+  const typeOptions = uniqueTypes.map((t) => ({ value: t, label: newsTypes[t as keyof typeof newsTypes] ?? t }))
   const filtered = activeType ? items.filter((i: any) => i.type === activeType) : items
 
   return (
@@ -73,7 +77,7 @@ export default async function NewsEventsPage({
       <section className="page-section">
         <div className="container">
           {typeOptions.length > 1 && (
-            <Suspense fallback={null}>
+            <Suspense fallback={<FilterChipsSkeleton />}>
               <FilterChips paramName="type" basePath="/news-events" options={typeOptions} />
             </Suspense>
           )}
@@ -93,7 +97,7 @@ export default async function NewsEventsPage({
                   <div className="news-item__body">
                     <div className="news-item__meta">
                       <span className={`pill ${getTypeClass(item.type)}`}>
-                        {newsTypes[item.type] ?? item.type}
+                        {newsTypes[item.type as keyof typeof newsTypes] ?? item.type}
                       </span>
                       {item.isPinned && (
                         <span className="pill pill--danger">{dict.labels.featured}</span>
@@ -109,12 +113,13 @@ export default async function NewsEventsPage({
                     {/* Attachment links */}
                     {item.attachments?.length > 0 && (
                       <div className="news-item__links">
-                        {item.attachments.map((att: any, i: number) => {
+                        {item.attachments.map((att: any) => {
                           const fileUrl = typeof att.file === 'object' ? att.file?.url : null
                           if (!fileUrl) return null
+                          const attachmentKey = `${item.id ?? item.slug}-${att.label ?? 'attachment'}-${fileUrl}`
                           return (
                             <a
-                              key={i}
+                              key={attachmentKey}
                               href={fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -134,7 +139,7 @@ export default async function NewsEventsPage({
 
                     {/* Read more */}
                     <Link href={lp(`/news-events/${item.slug}`)} className="news-item__read-more">
-                      {(dict.labels as any).read_more ?? 'Read more →'}
+                      {dict.labels.read_more}
                     </Link>
                   </div>
 

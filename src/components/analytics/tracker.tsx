@@ -8,8 +8,9 @@ function sendPageView(path: string) {
   if (path.startsWith('/admin') || path.startsWith('/dashboard')) return
 
   const data = JSON.stringify({
+    type: 'pageview',
     path,
-    referrer: document.referrer || null,
+    ...(document.referrer ? { referrer: document.referrer } : {}),
   })
 
   if (navigator.sendBeacon) {
@@ -29,11 +30,13 @@ export function AnalyticsTracker() {
   const lastPath = useRef('')
 
   useEffect(() => {
-    // Avoid double-tracking same page (React strict mode)
-    if (pathname === lastPath.current) return
-    lastPath.current = pathname
+    const visiblePath = window.location.pathname
 
-    sendPageView(pathname)
+    // Avoid double-tracking same page (React strict mode)
+    if (visiblePath === lastPath.current) return
+    lastPath.current = visiblePath
+
+    sendPageView(visiblePath)
   }, [pathname])
 
   return null

@@ -11,7 +11,9 @@
 }
 
 .map-placeholder {
-  background: var(--surface-alt);
+  background:
+    radial-gradient(circle at 70% 40%, hsl(210 60% 92% / 0.6), transparent 60%),
+    var(--surface-alt);
   border-radius: var(--radius);
   height: 12rem;
   display: flex;
@@ -21,6 +23,37 @@
   gap: 0.5rem;
   color: var(--muted);
   font-size: 0.875rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 1.5rem, hsl(210 30% 80% / 0.15) 1.5rem, hsl(210 30% 80% / 0.15) calc(1.5rem + 1px)),
+    repeating-linear-gradient(90deg, transparent, transparent 1.5rem, hsl(210 30% 80% / 0.15) 1.5rem, hsl(210 30% 80% / 0.15) calc(1.5rem + 1px));
+  pointer-events: none;
+}
+
+.map-placeholder__icon {
+  opacity: 0.35;
+  color: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  .map-placeholder {
+    background:
+      radial-gradient(circle at 70% 40%, hsl(210 40% 18% / 0.5), transparent 60%),
+      var(--surface-alt);
+  }
+
+  .map-placeholder::before {
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 1.5rem, hsl(210 20% 30% / 0.15) 1.5rem, hsl(210 20% 30% / 0.15) calc(1.5rem + 1px)),
+      repeating-linear-gradient(90deg, transparent, transparent 1.5rem, hsl(210 20% 30% / 0.15) 1.5rem, hsl(210 20% 30% / 0.15) calc(1.5rem + 1px));
+  }
 }
 
 .map-card {
@@ -37,12 +70,37 @@
   box-shadow: var(--shadow-md);
 }
 
+.map-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .emergency-card {
   background: var(--surface);
   border: 1px solid hsl(0, 72%, 85%);
+  border-left: 4px solid var(--danger);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   padding: 1.5rem;
+  position: relative;
+}
+
+/* Pulsing dot next to emergency header */
+.card-section-header--emergency h2::after {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--danger);
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  animation: emergency-pulse 2s ease-in-out infinite;
+}
+
+@keyframes emergency-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 hsl(0 72% 51% / 0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 6px hsl(0 72% 51% / 0); }
 }
 
 /* Alert info box */
@@ -70,4 +128,52 @@
 
 .emergency-contact-row:last-child {
   border-bottom: none;
+}
+
+/* Card section header — icon + heading inline */
+.card-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.card-section-header--emergency {
+  margin-bottom: 1rem;
+}
+
+.card-section-header h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Emergency contact label + value */
+.emergency-contact-row__label {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.emergency-contact-row__value {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Map link text */
+.map-card__link {
+  font-size: 0.75rem;
+  color: var(--primary);
+  font-weight: 500;
+  margin-top: 0.75rem;
+}
+
+.map-placeholder__sub {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Emergency view-all link */
+.emergency-card__link {
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.75rem;
 }

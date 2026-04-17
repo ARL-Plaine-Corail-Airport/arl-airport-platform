@@ -7,6 +7,7 @@ import { RichText } from '@/components/ui/rich-text'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
+import { shouldSkipDbDuringBuild } from '@/lib/build-db'
 import {
   getAirportProjectBySlug,
   getAirportProjectItems,
@@ -20,11 +21,17 @@ import {
   JsonLd,
 } from '@/lib/structured-data'
 
+export const revalidate = 60
+
 type Props = {
   params: Promise<{ slug: string }>
 }
 
 export async function generateStaticParams() {
+  if (shouldSkipDbDuringBuild()) {
+    return []
+  }
+
   const items = await getAirportProjectItems(100)
   return items.map((item: any) => ({ slug: item.slug }))
 }
@@ -138,8 +145,12 @@ export default async function AirportProjectDetailPage({ params }: Props) {
                   {item.attachments.map((att: any, i: number) => {
                     const fileUrl = typeof att.file === 'object' ? att.file?.url : null
                     if (!fileUrl) return null
+                    const attachmentKey =
+                      att.id ??
+                      (typeof att.file === 'object' ? att.file?.id : undefined) ??
+                      `att-${att.label ?? 'attachment'}-${i}`
                     return (
-                      <li key={i}>
+                      <li key={attachmentKey}>
                         <a
                           href={fileUrl}
                           target="_blank"

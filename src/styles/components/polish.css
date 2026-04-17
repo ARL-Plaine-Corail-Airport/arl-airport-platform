@@ -13,8 +13,8 @@ body {
 }
 
 .logo-box {
-  background: linear-gradient(135deg, hsl(var(--arl-navy-700)), hsl(var(--arl-teal-550)));
-  box-shadow: 0 16px 26px -18px hsl(210 70% 18% / 0.55);
+  background: none;
+  box-shadow: none;
 }
 
 .logo-link {
@@ -90,32 +90,17 @@ body {
 }
 
 .page-hero {
-  padding: clamp(3rem, 5vw, 4.6rem) 0;
-  background:
-    radial-gradient(circle at 84% 18%, hsl(183 84% 74% / 0.14), transparent 18rem),
-    radial-gradient(circle at 12% 14%, hsl(203 100% 88% / 0.1), transparent 16rem),
-    linear-gradient(135deg, hsl(var(--arl-navy-900)), hsl(var(--arl-navy-800)) 48%, hsl(var(--arl-teal-600)));
+  padding: 0;
+  background: none;
+  isolation: isolate;
 }
 
 .page-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(hsl(0 0% 100% / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(0 0% 100% / 0.03) 1px, transparent 1px);
-  background-size: 100% 42px, 42px 100%;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.42), transparent 78%);
-  pointer-events: none;
+  content: none;
 }
 
 .page-hero::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 8rem;
-  background: linear-gradient(180deg, transparent, hsl(210 42% 98% / 0.18));
-  pointer-events: none;
+  content: none;
 }
 
 .page-hero .container,
@@ -124,10 +109,14 @@ body {
   z-index: 1;
 }
 
+.page-hero .container {
+  z-index: 2;
+}
+
 .page-hero h1 {
-  max-width: 44rem;
+  max-width: 28ch;
   text-wrap: balance;
-  text-shadow: 0 10px 26px hsl(210 72% 8% / 0.28);
+  text-shadow: 0 6px 18px hsl(210 72% 8% / 0.18);
 }
 
 .hero-eyebrow {
@@ -141,15 +130,15 @@ body {
 }
 
 .page-hero__content {
-  max-width: 46rem;
-  padding: clamp(1.35rem, 2vw, 1.8rem);
-  border: 1px solid hsl(0 0% 100% / 0.12);
-  border-radius: 1.25rem;
-  background: linear-gradient(135deg, hsl(210 72% 16% / 0.68), hsl(210 66% 12% / 0.4));
+  max-width: none;
+  border: 1px solid hsl(0 0% 100% / 0.26);
+  border-radius: 0.95rem;
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.16), hsl(210 40% 18% / 0.12));
   box-shadow:
-    0 28px 44px -34px hsl(210 78% 8% / 0.58),
-    inset 0 1px 0 hsl(0 0% 100% / 0.08);
-  backdrop-filter: blur(10px);
+    0 18px 34px -26px hsl(210 72% 10% / 0.72),
+    inset 0 1px 0 hsl(0 0% 100% / 0.22);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 
 .hero-summary {
@@ -159,9 +148,9 @@ body {
 }
 
 .hero-meta {
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: hsl(0 0% 100% / 0.7);
+  color: hsl(0 0% 100% / 0.88);
 }
 
 .inner-page-hero {
@@ -225,10 +214,14 @@ body {
 .flight-panel,
 .service-card,
 .map-card,
-.weather-card,
 .emergency-card,
 .table-card {
   background: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 40% 98.5%));
+  border-color: hsl(210 28% 86%);
+  box-shadow: 0 24px 38px -30px hsl(210 55% 18% / 0.34);
+}
+
+.weather-card {
   border-color: hsl(210 28% 86%);
   box-shadow: 0 24px 38px -30px hsl(210 55% 18% / 0.34);
 }
@@ -259,7 +252,6 @@ body {
 .card::before,
 .flight-panel::before,
 .map-card::before,
-.weather-card::before,
 .emergency-card::before,
 .table-card::before,
 .quick-action-card::before {
@@ -275,7 +267,6 @@ body {
 .card,
 .flight-panel,
 .map-card,
-.weather-card,
 .emergency-card,
 .table-card,
 .quick-action-card {
@@ -349,6 +340,11 @@ body {
 
 .weather-card__temp {
   letter-spacing: -0.05em;
+  font-size: 2.25rem;
+}
+
+.weather-card__body {
+  padding: 1rem 1.25rem 1.25rem;
 }
 
 .weather-card__footer,
@@ -451,13 +447,228 @@ body {
   }
 }
 
+/* ── Dark mode polish overrides ── */
+@media (prefers-color-scheme: dark) {
+  body {
+    background:
+      radial-gradient(circle at top left, hsl(200 40% 12% / 0.6), transparent 24rem),
+      radial-gradient(circle at top right, hsl(210 30% 10% / 0.6), transparent 30rem),
+      hsl(210 25% 8%);
+  }
+
+  .site-header {
+    background: hsl(210 20% 10% / 0.88);
+    border-bottom-color: hsl(210 15% 18%);
+    box-shadow: 0 8px 24px -16px hsl(210 40% 4% / 0.5);
+  }
+
+  .dropdown-menu {
+    background: hsl(210 20% 14% / 0.98);
+    border-color: hsl(210 15% 22%);
+    box-shadow: 0 16px 40px -20px hsl(210 40% 4% / 0.6);
+  }
+
+  .dropdown-item:hover {
+    background: hsl(210 20% 18%);
+  }
+
+  .mobile-menu__panel {
+    background:
+      radial-gradient(circle at top right, hsl(200 30% 14% / 0.6), transparent 14rem),
+      linear-gradient(180deg, hsl(210 20% 12%), hsl(210 22% 10%));
+  }
+
+  .mobile-menu__backdrop {
+    background: hsl(210 40% 4% / 0.6);
+  }
+
+  .card,
+  .flight-panel,
+  .service-card,
+  .map-card,
+  .emergency-card,
+  .table-card {
+    background: linear-gradient(180deg, hsl(210 20% 13%), hsl(210 18% 11%));
+    border-color: hsl(210 15% 20%);
+    box-shadow: 0 12px 24px -16px hsl(210 40% 4% / 0.4);
+  }
+
+  .weather-card {
+    background: hsl(210 20% 12%);
+    border-color: hsl(210 15% 20%);
+    box-shadow: 0 12px 24px -16px hsl(210 40% 4% / 0.4);
+  }
+
+  .quick-action-card {
+    background: linear-gradient(180deg, hsl(210 18% 14%), hsl(210 20% 11%));
+    border-color: hsl(210 15% 20%);
+    box-shadow: 0 12px 24px -16px hsl(210 40% 4% / 0.4);
+  }
+
+  .quick-action-card:hover {
+    border-color: hsl(200 40% 35%);
+    box-shadow: 0 16px 32px -18px hsl(210 40% 4% / 0.5);
+  }
+
+  .quick-action-card__icon {
+    background: linear-gradient(135deg, hsl(210 30% 18%), hsl(184 25% 18%));
+    border-color: hsl(200 20% 28%);
+  }
+
+  .card:hover,
+  .flight-panel:hover,
+  .service-card:hover,
+  .map-card:hover {
+    border-color: hsl(200 30% 30%);
+  }
+
+  .card::before,
+  .flight-panel::before,
+  .map-card::before,
+  .emergency-card::before,
+  .table-card::before,
+  .quick-action-card::before {
+    opacity: 0.5;
+  }
+
+  .section-alt {
+    background: linear-gradient(180deg, hsl(210 20% 10%), hsl(210 18% 9%));
+  }
+
+  .flight-row:hover {
+    background: hsl(210 20% 16%);
+  }
+
+  .contact-strip {
+    background:
+      radial-gradient(circle at right top, hsl(200 25% 14% / 0.6), transparent 14rem),
+      linear-gradient(180deg, hsl(210 20% 13%), hsl(210 18% 11%));
+    border-color: hsl(210 15% 20%);
+    box-shadow: 0 16px 32px -20px hsl(210 40% 4% / 0.4);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, hsl(210 60% 40%), hsl(185 45% 35%));
+    box-shadow: 0 12px 24px -14px hsl(210 40% 4% / 0.5);
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, hsl(210 60% 35%), hsl(185 45% 30%));
+    box-shadow: 0 16px 28px -14px hsl(210 40% 4% / 0.6);
+  }
+
+  .btn-outline {
+    border-color: hsl(210 15% 28%);
+    background: hsl(210 20% 14% / 0.7);
+  }
+
+  .btn-outline:hover {
+    background: hsl(210 18% 18%);
+    border-color: hsl(210 18% 35%);
+  }
+
+  .logo-sub {
+    color: hsl(210 15% 55%);
+  }
+
+  .nav-link {
+    color: hsl(210 15% 60%);
+  }
+
+  .nav-link:hover {
+    color: hsl(210 15% 88%);
+    background: hsl(210 20% 16%);
+  }
+
+  .icon-box {
+    background: linear-gradient(135deg, hsl(210 25% 18%), hsl(184 20% 18%));
+    border-color: hsl(200 18% 26%);
+  }
+
+  .map-placeholder {
+    background: hsl(210 18% 14%);
+    border-color: hsl(210 15% 22%);
+  }
+
+  .inner-page-hero {
+    background:
+      radial-gradient(circle at right top, hsl(200 25% 14%), transparent 15rem),
+      linear-gradient(180deg, hsl(210 20% 12%), hsl(210 18% 10%));
+    border-bottom-color: hsl(210 15% 18%);
+  }
+
+  .inner-page-hero .lead {
+    color: hsl(210 12% 58%);
+  }
+
+  .alert-info {
+    background: hsl(210 40% 14%);
+    border-color: hsl(210 30% 25%);
+  }
+
+  .pill {
+    background: hsl(210 18% 18%);
+    color: hsl(210 12% 65%);
+  }
+
+  .pill--primary {
+    background: hsl(210 40% 20%);
+    color: hsl(210 70% 65%);
+  }
+
+  .filter-chip {
+    border-color: hsl(210 15% 25%);
+    background: hsl(210 20% 14%);
+  }
+
+  .filter-chip:hover {
+    border-color: hsl(210 50% 45%);
+  }
+
+  .mobile-nav-quick__link {
+    background-color: hsl(210 30% 16%);
+    color: hsl(210 60% 65%);
+  }
+
+  .mobile-nav-quick__link:hover {
+    background-color: hsl(210 30% 20%);
+  }
+
+  .lang-switcher {
+    background: hsl(210 18% 16%);
+  }
+
+  .lang-btn {
+    color: hsl(210 12% 55%);
+  }
+
+  .lang-btn:hover {
+    color: hsl(210 15% 80%);
+  }
+
+  .lang-btn--active {
+    background: hsl(210 20% 20%);
+    color: hsl(210 60% 65%);
+  }
+
+  .footer-contact-item a:hover {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 767px) {
   .site-header {
     background: hsl(0 0% 100% / 0.92);
   }
+}
+
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
+  .site-header {
+    background: hsl(210 20% 10% / 0.94);
+  }
 
   .page-hero {
-    padding: 2.85rem 0 3.25rem;
+    padding: 0;
   }
 
   .hero-eyebrow {
@@ -465,8 +676,7 @@ body {
   }
 
   .page-hero__content {
-    padding: 1.1rem 1rem 1.2rem;
-    border-radius: 1rem;
+    border-radius: 0.95rem;
   }
 
   .contact-strip {

@@ -41,6 +41,15 @@
   color: white;
 }
 
+.filter-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.notice-card {
+  display: block;
+}
+
 /* ─── Notices ─── */
 .notices-grid {
   display: grid;
@@ -71,6 +80,29 @@
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   flex-wrap: wrap;
+}
+
+.notice-card__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.notice-card__summary {
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notice-card__pinned {
+  font-size: 0.75rem;
+  color: var(--primary);
+  font-weight: 500;
 }
 
 .notice-card__date {

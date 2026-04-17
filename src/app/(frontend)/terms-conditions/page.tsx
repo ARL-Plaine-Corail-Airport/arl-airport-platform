@@ -6,6 +6,8 @@ import { formatDateTime } from '@/lib/date'
 import { getLegalPages } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
+export const revalidate = 300
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)
@@ -35,7 +37,7 @@ export default async function TermsConditionsPage() {
             {(page.lastUpdated || page.effectiveDate) && (
               <p className="meta">
                 {page.lastUpdated ? `${dict.labels.updated}: ${formatDateTime(page.lastUpdated, locale)}` : ''}
-                {page.lastUpdated && page.effectiveDate ? ' Â· ' : ''}
+                {page.lastUpdated && page.effectiveDate ? ' \u00B7 ' : ''}
                 {page.effectiveDate ? `${dict.labels.effective}: ${formatDateTime(page.effectiveDate, locale)}` : ''}
               </p>
             )}

@@ -11,6 +11,12 @@
   color: var(--primary);
 }
 
+.services-section__heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
 /* ─── Services grid ─── */
 .services-layout {
   display: grid;
@@ -51,6 +57,11 @@
   box-shadow: var(--shadow-md);
 }
 
+.service-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .service-card__title {
   font-size: 0.875rem;
   font-weight: 600;
@@ -62,32 +73,121 @@
   color: var(--muted);
 }
 
+/* Varied icon box colors per service card */
+.service-card:nth-child(1) .icon-box {
+  background: linear-gradient(135deg, hsl(210 82% 95%), hsl(210 70% 88%));
+  color: hsl(210 80% 40%);
+  border-color: hsl(210 50% 82%);
+}
+
+.service-card:nth-child(2) .icon-box {
+  background: linear-gradient(135deg, hsl(185 60% 93%), hsl(185 50% 86%));
+  color: hsl(185 60% 32%);
+  border-color: hsl(185 40% 78%);
+}
+
+.service-card:nth-child(3) .icon-box {
+  background: linear-gradient(135deg, hsl(152 55% 93%), hsl(152 45% 86%));
+  color: hsl(152 60% 30%);
+  border-color: hsl(152 35% 78%);
+}
+
+.service-card:nth-child(4) .icon-box {
+  background: linear-gradient(135deg, hsl(38 80% 93%), hsl(38 70% 86%));
+  color: hsl(38 80% 35%);
+  border-color: hsl(38 50% 78%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .service-card:nth-child(1) .icon-box {
+    background: linear-gradient(135deg, hsl(210 30% 18%), hsl(210 25% 15%));
+    color: hsl(210 60% 60%);
+    border-color: hsl(210 20% 26%);
+  }
+
+  .service-card:nth-child(2) .icon-box {
+    background: linear-gradient(135deg, hsl(185 25% 17%), hsl(185 20% 14%));
+    color: hsl(185 50% 55%);
+    border-color: hsl(185 18% 25%);
+  }
+
+  .service-card:nth-child(3) .icon-box {
+    background: linear-gradient(135deg, hsl(152 25% 16%), hsl(152 20% 13%));
+    color: hsl(152 45% 50%);
+    border-color: hsl(152 18% 24%);
+  }
+
+  .service-card:nth-child(4) .icon-box {
+    background: linear-gradient(135deg, hsl(38 30% 17%), hsl(38 25% 14%));
+    color: hsl(38 60% 55%);
+    border-color: hsl(38 20% 25%);
+  }
+}
+
 /* ─── Weather ─── */
 .weather-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: 1.25rem;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.weather-card__header {
+  background: linear-gradient(135deg, hsl(210 70% 52%), hsl(195 65% 48%), hsl(185 55% 45%));
+  padding: 1.25rem 1.25rem 1rem;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.weather-card__header::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -10%;
+  width: 8rem;
+  height: 8rem;
+  border-radius: 50%;
+  background: hsl(0 0% 100% / 0.1);
+  pointer-events: none;
+}
+
+.weather-card__header::after {
+  content: '';
+  position: absolute;
+  bottom: -40%;
+  left: 10%;
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  background: hsl(0 0% 100% / 0.06);
+  pointer-events: none;
+}
+
+.weather-card__body {
+  padding: 1rem 1.25rem 1.25rem;
 }
 
 .weather-card__top {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .weather-card__temp {
-  font-size: 1.875rem;
+  font-size: 2.25rem;
   font-weight: 700;
-  color: var(--text);
+  color: white;
   line-height: 1;
 }
 
 .weather-card__condition {
   font-size: 0.875rem;
-  color: var(--muted);
+  color: hsl(0 0% 100% / 0.85);
   margin-top: 0.125rem;
 }
 
@@ -110,4 +210,18 @@
   border-top: 1px solid var(--border);
   margin-top: 1rem;
   padding-top: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .weather-card__header {
+    background: linear-gradient(135deg, hsl(210 50% 22%), hsl(195 40% 20%), hsl(185 35% 18%));
+  }
+
+  .weather-card__header::before {
+    background: hsl(0 0% 100% / 0.04);
+  }
+
+  .weather-card__header::after {
+    background: hsl(0 0% 100% / 0.02);
+  }
 }

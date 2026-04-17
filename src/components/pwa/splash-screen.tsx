@@ -2,62 +2,93 @@
 
 import { useEffect, useState } from 'react'
 
+const MIN_SPLASH_MS = 700
+const FADE_OUT_MS = 500
+const MAX_SPLASH_WAIT_MS = 2500
+const PWA_DISPLAY_QUERY = '(display-mode: standalone)'
+
 export function SplashScreen() {
-  const [visible, setVisible] = useState(true)
   const [fadeOut, setFadeOut] = useState(false)
+  const [isMounted, setIsMounted] = useState(true)
 
   useEffect(() => {
-    // Only show splash in standalone (installed PWA) mode
+    const root = document.documentElement
+    let fadeTimer: ReturnType<typeof setTimeout> | null = null
+    let removeTimer: ReturnType<typeof setTimeout> | null = null
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+    let dismissalScheduled = false
+
     const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as any).standalone === true
+      window.matchMedia(PWA_DISPLAY_QUERY).matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true
 
     if (!isStandalone) {
-      setVisible(false)
+      setIsMounted(false)
       return
     }
 
-    // Begin fade-out after content has loaded
-    const timer = setTimeout(() => {
-      setFadeOut(true)
-    }, 1200)
+    root.dataset.pwaSplash = 'active'
+    const startedAt = Date.now()
 
-    // Remove from DOM after animation
-    const removeTimer = setTimeout(() => {
-      setVisible(false)
-    }, 1700)
+    const dismiss = () => {
+      if (dismissalScheduled) return
+      dismissalScheduled = true
+
+      const remaining = Math.max(MIN_SPLASH_MS - (Date.now() - startedAt), 0)
+
+      fadeTimer = setTimeout(() => {
+        setFadeOut(true)
+        removeTimer = setTimeout(() => {
+          delete root.dataset.pwaSplash
+          setIsMounted(false)
+        }, FADE_OUT_MS)
+      }, remaining)
+    }
+
+    const handleReady = () => {
+      window.removeEventListener('load', handleReady)
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer)
+        fallbackTimer = null
+      }
+      dismiss()
+    }
+
+    if (document.readyState === 'complete') {
+      dismiss()
+    } else {
+      window.addEventListener('load', handleReady, { once: true })
+      fallbackTimer = setTimeout(handleReady, MAX_SPLASH_WAIT_MS)
+    }
 
     return () => {
-      clearTimeout(timer)
-      clearTimeout(removeTimer)
+      window.removeEventListener('load', handleReady)
+      if (fadeTimer) clearTimeout(fadeTimer)
+      if (removeTimer) clearTimeout(removeTimer)
+      if (fallbackTimer) clearTimeout(fallbackTimer)
     }
   }, [])
 
-  if (!visible) return null
+  if (!isMounted) return null
 
   return (
     <div
       className={`splash-screen${fadeOut ? ' splash-screen--fade-out' : ''}`}
       aria-hidden="true"
     >
+      <div className="splash-screen__halo" />
+      <div className="splash-screen__signal" />
       <div className="splash-screen__content">
-        <div className="splash-screen__icon">
-          <svg width="80" height="80" viewBox="0 0 512 512" aria-hidden="true">
-            <rect width="512" height="512" rx="96" fill="#fff" />
-            <g transform="translate(256,256)">
-              <path
-                d="M0-180 C12-180 18-160 18-120 L18 140 C18 160 12 180 0 190 C-12 180 -18 160 -18 140 L-18-120 C-18-160 -12-180 0-180Z"
-                fill="#114c7a"
-              />
-              <path d="M18-20 L160 30 C170 33 170 47 160 50 L18 20Z" fill="#114c7a" />
-              <path d="M-18-20 L-160 30 C-170 33 -170 47 -160 50 L-18 20Z" fill="#114c7a" />
-              <path d="M18 120 L80 155 C88 158 88 168 80 170 L18 150Z" fill="#114c7a" />
-              <path d="M-18 120 L-80 155 C-88 158 -88 168 -80 170 L-18 150Z" fill="#114c7a" />
-            </g>
-          </svg>
+        <div className="splash-screen__logo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/arl-splash-logo.png"
+            alt=""
+            width={240}
+            height={139}
+          />
         </div>
-        <h1 className="splash-screen__title">Rodrigues Airport</h1>
-        <p className="splash-screen__subtitle">Plaine Corail</p>
+        <p className="splash-screen__subtitle">Airport of Rodrigues Ltd</p>
         <div className="splash-screen__loader">
           <div className="splash-screen__loader-bar" />
         </div>

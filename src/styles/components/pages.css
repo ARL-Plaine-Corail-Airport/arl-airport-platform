@@ -78,29 +78,6 @@ details.card > p {
   }
 }
 
-.site-main-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-@media (min-width: 768px) {
-  .site-main-grid {
-    grid-template-columns: 2fr 1fr;
-  }
-}
-
-.hero-grid {
-  display: grid;
-  gap: 1.25rem;
-}
-
-@media (min-width: 768px) {
-  .hero-grid {
-    grid-template-columns: 1.5fr 1fr;
-    align-items: start;
-  }
-}
-
 .hero-panel {
   background: linear-gradient(180deg, #ffffff, #eef5fb);
   border: 1px solid var(--border);

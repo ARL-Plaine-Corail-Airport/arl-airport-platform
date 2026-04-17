@@ -1,10 +1,12 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 
 import { useI18n } from '@/i18n/provider'
 
 type FooterProps = {
+  currentYear: number
   phone?: string
   email?: string
   address?: string
@@ -12,33 +14,72 @@ type FooterProps = {
   socialLinks?: Array<{ label?: string; url?: string }>
 }
 
-export function SiteFooter({ phone, email, address, workingHours, socialLinks }: FooterProps) {
+export function SiteFooter({
+  currentYear,
+  phone,
+  email,
+  address,
+  workingHours,
+  socialLinks,
+}: FooterProps) {
   const { t, localePath: lp } = useI18n()
+  const filteredSocialLinks = (socialLinks ?? []).filter(
+    (social) => typeof social.url === 'string' && social.url.trim().length > 0,
+  )
 
-  const hasSocialLinks = socialLinks && socialLinks.length > 0 && socialLinks.some((s) => s.url)
+  const hasSocialLinks = filteredSocialLinks.length > 0
 
   return (
     <footer className="site-footer">
       <div className="container">
+        <div className="footer-callout">
+          <div className="footer-callout__inner">
+            <div>
+              <p className="footer-callout__eyebrow">{t('nav.quick_links')}</p>
+              <h2 className="footer-callout__title">{t('common.airport_name')}</h2>
+              <p className="footer-callout__copy">{t('pages.contact_summary')}</p>
+            </div>
+            <div className="footer-callout__actions">
+              <Link href={lp('/flight-status')} className="footer-callout__action">
+                <span>{t('nav.flight_status')}</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </Link>
+              <Link href={lp('/airport-map')} className="footer-callout__action">
+                <span>{t('nav.airport_map')}</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </Link>
+              <Link href={lp('/contact')} className="footer-callout__action">
+                <span>{t('nav.contact')}</span>
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </Link>
+            </div>
+          </div>
+        </div>
+
         <div className="footer-grid">
           {/* Brand + contact */}
           <div>
             <div className="footer-brand">
-              <div
-                className="logo-box"
-                style={{ width: '2rem', height: '2rem', borderRadius: '0.375rem', background: 'rgba(255,255,255,0.15)' }}
-              >
-                <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1L11 12l-2 3H6l-1 1 3 2 2 3 1-1v-3l3-2 3.5 7.3c.3.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z" />
-                </svg>
+              <div className="footer-logo-box">
+                <Image
+                  src="/images/arl-footer-logo.jpg"
+                  alt={t('common.airport_company')}
+                  width={823}
+                  height={209}
+                  className="footer-logo-image"
+                  sizes="(max-width: 767px) 220px, 260px"
+                />
               </div>
-              <div>
-                <p className="footer-brand__name">{t('common.airport_company')}</p>
-                <p className="footer-brand__sub">{t('common.airport_location')}</p>
-              </div>
+              <p className="footer-brand__sub footer-brand__sub--location">{t('common.airport_location')}</p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div className="footer-contact-list">
               {phone && (
                 <a href={`tel:${phone.replace(/\s/g, '')}`} className="footer-contact-item">
                   <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -78,11 +119,12 @@ export function SiteFooter({ phone, email, address, workingHours, socialLinks }:
 
             {hasSocialLinks && (
               <div className="footer-socials">
-                {socialLinks!.map((social, i) => {
-                  if (!social.url) return null
+                {filteredSocialLinks.map((social) => {
+                  const url = social.url?.trim()
+                  if (!url) return null
                   const label = (social.label ?? '').toLowerCase()
                   return (
-                    <a key={i} href={social.url} target="_blank" rel="noopener noreferrer" className="footer-social-link" aria-label={social.label ?? 'Social'}>
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="footer-social-link" aria-label={social.label ?? 'Social'}>
                       {label.includes('facebook') ? (
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -148,11 +190,11 @@ export function SiteFooter({ phone, email, address, workingHours, socialLinks }:
         </div>
 
         <div className="footer-bottom">
-          <p>{t('footer.copyright').replace('{year}', String(new Date().getFullYear()))}</p>
+          <p>{t('footer.copyright').replace('{year}', String(currentYear))}</p>
           <div className="footer-legal">
-            <Link href={lp('/terms-conditions')} className="footer-link" style={{ padding: 0 }}>{t('footer.terms')}</Link>
-            <Link href={lp('/privacy')} className="footer-link" style={{ padding: 0 }}>{t('footer.privacy')}</Link>
-            <Link href={lp('/disclaimer')} className="footer-link" style={{ padding: 0 }}>{t('footer.disclaimer')}</Link>
+            <Link href={lp('/terms-conditions')} className="footer-link footer-link--inline">{t('footer.terms')}</Link>
+            <Link href={lp('/privacy')} className="footer-link footer-link--inline">{t('footer.privacy')}</Link>
+            <Link href={lp('/disclaimer')} className="footer-link footer-link--inline">{t('footer.disclaimer')}</Link>
           </div>
         </div>
       </div>

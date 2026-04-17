@@ -5,6 +5,8 @@ import { getLocale } from '@/i18n/get-locale'
 import { getVIPLounge } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
+export const revalidate = 300
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)
@@ -60,8 +62,8 @@ export default async function VIPLoungePage() {
               <div className="stack-sm">
                 <h2>{dict.pages.lounge_amenities}</h2>
                 <ul className="content-list">
-                  {data.amenities.map((entry: { item: string }, index: number) => (
-                    <li key={index}>{entry.item}</li>
+                  {data.amenities.map((entry: { item: string }) => (
+                    <li key={`amenity-${entry.item}`}>{entry.item}</li>
                   ))}
                 </ul>
               </div>

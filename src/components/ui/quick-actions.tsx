@@ -63,8 +63,15 @@ export function QuickActions() {
           {items.map((item, i) => (
             <Link href={lp(item.href)} key={item.href} className={`quick-action-card${i < 2 ? ' quick-action-card--primary' : ''}`}>
               <div className="quick-action-card__icon">{item.icon}</div>
-              <p className="quick-action-card__title">{t(`quick_actions.${item.key}`)}</p>
-              <p className="quick-action-card__text hide-on-mobile">{t(`quick_actions.${item.key}_desc`)}</p>
+              <div className="quick-action-card__body">
+                <p className="quick-action-card__title">{t(`quick_actions.${item.key}`)}</p>
+                <p className="quick-action-card__text hide-on-mobile">{t(`quick_actions.${item.key}_desc`)}</p>
+              </div>
+              <span className="quick-action-card__chevron" aria-hidden="true">
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </span>
             </Link>
           ))}
         </div>

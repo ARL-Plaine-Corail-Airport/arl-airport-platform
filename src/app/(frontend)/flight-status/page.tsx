@@ -1,9 +1,11 @@
-import { FlightBoard } from '@/components/ui/flight-board'
+import { FlightBoardLive } from '@/components/ui/flight-board-live'
 import { PageHero } from '@/components/ui/page-hero'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { getFlightBoard } from '@/lib/integrations/flights'
 import { buildFrontendMetadata } from '@/lib/metadata'
+
+export const revalidate = 2600
 
 export async function generateMetadata() {
   const locale = await getLocale()
@@ -33,8 +35,8 @@ export default async function FlightStatusPage() {
       />
       <section className="page-section">
         <div className="container stack-lg">
-          <FlightBoard data={arrivals} />
-          <FlightBoard data={departures} />
+          <FlightBoardLive boardType="arrivals" initialData={arrivals} />
+          <FlightBoardLive boardType="departures" initialData={departures} />
         </div>
       </section>
     </main>

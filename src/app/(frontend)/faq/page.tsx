@@ -7,6 +7,8 @@ import { getFAQs } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 import { buildFAQPageSchema, JsonLd } from '@/lib/structured-data'
 
+export const revalidate = 60
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)
@@ -21,7 +23,7 @@ export async function generateMetadata() {
 export default async function FAQPage() {
   const locale = await getLocale()
   const nonce = (await headers()).get('x-nonce') ?? undefined
-  const [dict, faqs] = await Promise.all([getDictionary(locale), getFAQs(locale)])
+  const [dict, faqs] = await Promise.all([getDictionary(locale), getFAQs(100, locale)])
 
   const faqSchema = faqs.length
     ? buildFAQPageSchema(

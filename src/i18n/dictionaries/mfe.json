@@ -1,7 +1,7 @@
 {
   "common": {
     "airport_name": "Ayropor Rodrig",
-    "airport_full": "Plaine Corail · Sir Gaëtan Duval",
+    "airport_full": "Plaine Corail Airport",
     "airport_abbr": "ARL",
     "airport_company": "Airport of Rodrigues Ltd",
     "airport_location": "Ayropor Plaine Corail",
@@ -175,7 +175,7 @@
   },
   "map": {
     "airport_name": "Ayropor Plaine Corail",
-    "airport_full_name": "Ayropor Sir Gaëtan Duval",
+    "airport_full_name": "Ayropor Plaine Corail",
     "your_location": "Ou pozisyon",
     "open_google_maps": "Ouver dan Google Maps",
     "category_terminal": "Terminal",

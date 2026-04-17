@@ -2,10 +2,10 @@ import Link from 'next/link'
 
 import { ContentSlider } from '@/components/ui/content-slider'
 import { EmergencyBanner } from '@/components/ui/emergency-banner'
-import { FlightBoardPreview } from '@/components/ui/flight-board-preview'
+import { FlightBoardPreviewLive } from '@/components/ui/flight-board-preview-live'
 import { PageHero } from '@/components/ui/page-hero'
 import { QuickActions } from '@/components/ui/quick-actions'
-import { WeatherPreview } from '@/components/ui/weather-preview'
+import { WeatherPreviewLive } from '@/components/ui/weather-preview-live'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
@@ -20,6 +20,8 @@ import {
 import { getFlightBoard } from '@/lib/integrations/flights'
 import { getWeatherSnapshot } from '@/lib/integrations/weather'
 import { buildFrontendMetadata } from '@/lib/metadata'
+
+export const revalidate = 60
 
 export async function generateMetadata() {
   const locale = await getLocale()
@@ -51,6 +53,48 @@ export default async function HomePage() {
   const alertTitle = emergencyNotice?.title ?? home.emergencyAlertTitle
   const alertSummary = emergencyNotice?.summary ?? home.emergencyAlertBody
   const lp = (path: string) => localePath(path, locale)
+  const nextArrival = arrivalsData.records?.[0]
+  const nextDeparture = departuresData.records?.[0]
+
+  const heroInsights = [
+    {
+      href: lp('/arrivals'),
+      label: dict.flights.arrivals_title,
+      meta: nextArrival
+        ? `${nextArrival.route} · ${formatDateTime(nextArrival.estimatedTime ?? nextArrival.scheduledTime, locale)}`
+        : arrivalsData.providerLabel,
+      tone: 'sky' as const,
+      value: arrivalsData.configured ? String(arrivalsData.records.length).padStart(2, '0') : '--',
+    },
+    {
+      href: lp('/departures'),
+      label: dict.flights.departures_title,
+      meta: nextDeparture
+        ? `${nextDeparture.route} · ${formatDateTime(nextDeparture.estimatedTime ?? nextDeparture.scheduledTime, locale)}`
+        : departuresData.providerLabel,
+      tone: 'aurora' as const,
+      value: departuresData.configured ? String(departuresData.records.length).padStart(2, '0') : '--',
+    },
+    {
+      href: lp('/flight-status'),
+      label: dict.weather.title,
+      meta:
+        weather.temperatureC != null
+          ? [weather.summary, weather.visibility ? `${weather.visibility} ${dict.weather.km}` : null]
+              .filter(Boolean)
+              .join(' · ')
+          : weather.providerLabel,
+      tone: 'default' as const,
+      value: weather.temperatureC != null ? `${weather.temperatureC}°C` : '--',
+    },
+    {
+      href: lp('/emergency-services'),
+      label: d.emergency_title,
+      meta: d.emergency_notice,
+      tone: 'alert' as const,
+      value: d.emergency_line_number,
+    },
+  ]
 
   return (
     <main className="site-main">
@@ -66,6 +110,11 @@ export default async function HomePage() {
         eyebrow={site.siteName}
         title={d.hero_title}
         summary={d.hero_summary}
+        ctaLabel={dict.nav.flight_status}
+        ctaHref={lp('/flight-status')}
+        secondaryCtaLabel={dict.nav.airport_map}
+        secondaryCtaHref={lp('/airport-map')}
+        insights={heroInsights}
         meta={dict.common.hero_meta}
         variant="home"
       />
@@ -74,20 +123,23 @@ export default async function HomePage() {
       <QuickActions />
 
       {/* â”€â”€ Flight preview â”€â”€ */}
-      <FlightBoardPreview arrivals={arrivalsData} departures={departuresData} />
+      <FlightBoardPreviewLive
+        initialArrivals={arrivalsData}
+        initialDepartures={departuresData}
+      />
 
       {/* â”€â”€ Notices & News sliders â”€â”€ */}
       <section className="section section-alt">
-        <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="container flex-col-gap flex-col-gap--lg">
           {/* Notices slider */}
           {notices.length > 0 ? (
             <ContentSlider label={d.notices_title} viewAllHref={lp('/notices')} viewAllLabel={d.all_notices}>
               {notices.map((notice: any) => (
                 <Link key={notice.id} href={lp(`/notices/${notice.slug}`)} className="slider-card">
                   <div className="slider-card__meta">
-                    {notice.category && <span className="pill">{(dict as any).notice_categories?.[notice.category] ?? notice.category}</span>}
+                    {notice.category && <span className="pill">{dict.notice_categories?.[notice.category as keyof typeof dict.notice_categories] ?? notice.category}</span>}
                     {notice.urgent && <span className="pill pill--danger">{dict.labels.urgent}</span>}
-                    {notice.pinned && <span className="pill" style={{ background: 'var(--primary)', color: 'white' }}>{dict.labels.pinned}</span>}
+                    {notice.pinned && <span className="pill pill--primary">{dict.labels.pinned}</span>}
                   </div>
                   <p className="slider-card__title">{notice.title}</p>
                   {notice.summary && <p className="slider-card__summary">{notice.summary}</p>}
@@ -105,7 +157,7 @@ export default async function HomePage() {
               {newsItems.map((item: any) => (
                 <Link key={item.id} href={lp(`/news-events/${item.slug}`)} className="slider-card">
                   <div className="slider-card__meta">
-                    {item.type && <span className="pill">{(dict as any).news_types?.[item.type] ?? item.type}</span>}
+                    {item.type && <span className="pill">{dict.news_types?.[item.type as keyof typeof dict.news_types] ?? item.type}</span>}
                     {item.isPinned && <span className="pill pill--danger">{dict.labels.featured}</span>}
                   </div>
                   <p className="slider-card__title">{item.title}</p>
@@ -125,7 +177,7 @@ export default async function HomePage() {
         <div className="container">
           <div className="services-layout">
             <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem' }}>{d.services_title}</h2>
+              <h2 className="services-section__heading">{d.services_title}</h2>
               <div className="services-grid">
                 <Link href={lp('/passenger-guide')} className="service-card">
                   <div className="icon-box">
@@ -186,7 +238,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <WeatherPreview weather={weather} />
+            <WeatherPreviewLive initialWeather={weather} />
           </div>
         </div>
       </section>
@@ -197,60 +249,60 @@ export default async function HomePage() {
           <div className="map-emergency-grid">
             {/* Airport location */}
             <Link href={lp('/airport-map')} className="map-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <div className="card-section-header">
                 <svg width="20" height="20" fill="none" stroke="var(--primary)" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{d.location_title}</h2>
+                <h2>{d.location_title}</h2>
               </div>
               <div className="map-placeholder">
-                <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true" style={{ opacity: 0.4 }}>
+                <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true" className="map-placeholder__icon">
                   <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
                 <p>{d.view_map}</p>
-                <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>{d.location_sub}</p>
+                <p className="map-placeholder__sub">{d.location_sub}</p>
               </div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 500, marginTop: '0.75rem' }}>
+              <p className="map-card__link">
                 {d.open_map}
               </p>
             </Link>
 
             {/* Emergency info */}
             <div className="emergency-card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div className="card-section-header card-section-header--emergency">
                 <svg width="20" height="20" fill="none" stroke="var(--danger)" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
                   <path d="M12 9v4M12 17h.01" />
                 </svg>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{d.emergency_title}</h2>
+                <h2>{d.emergency_title}</h2>
               </div>
 
               <div className="alert-info">
-                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true">
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 16v-4M12 8h.01" />
                 </svg>
                 <span>{d.emergency_notice}</span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div>
                 <div className="emergency-contact-row">
-                  <span style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>{d.emergency_line}</span>
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{site.primaryPhone ?? d.emergency_line_number}</span>
+                  <span className="emergency-contact-row__label">{d.emergency_line}</span>
+                  <span className="emergency-contact-row__value">{site.primaryPhone ?? d.emergency_line_number}</span>
                 </div>
                 <div className="emergency-contact-row">
-                  <span style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>{d.police}</span>
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{d.police_number}</span>
+                  <span className="emergency-contact-row__label">{d.police}</span>
+                  <span className="emergency-contact-row__value">{d.police_number}</span>
                 </div>
-                <div className="emergency-contact-row" style={{ borderBottom: 'none' }}>
-                  <span style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>{d.samu}</span>
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{d.samu_number}</span>
+                <div className="emergency-contact-row">
+                  <span className="emergency-contact-row__label">{d.samu}</span>
+                  <span className="emergency-contact-row__value">{d.samu_number}</span>
                 </div>
               </div>
 
-              <Link href={lp('/emergency-services')} className="text-link" style={{ display: 'block', marginTop: '1rem', fontSize: '0.75rem' }}>
+              <Link href={lp('/emergency-services')} className="text-link emergency-card__link">
                 {d.view_emergency}
               </Link>
             </div>

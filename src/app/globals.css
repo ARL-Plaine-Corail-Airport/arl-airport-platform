@@ -73,6 +73,63 @@
   );
 }
 
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Surfaces */
+    --bg:             hsl(210 25% 8%);
+    --surface:        hsl(210 20% 12%);
+    --surface-alt:    hsl(210 18% 16%);
+
+    /* Text */
+    --text:           hsl(210 20% 92%);
+    --muted:          hsl(210 12% 58%);
+
+    /* Border */
+    --border:         hsl(210 15% 22%);
+
+    /* Primary stays the same (brand) but lighten for contrast */
+    --primary:        hsl(210 70% 50%);
+    --primary-strong: hsl(210 70% 45%);
+    --primary-fg:     hsl(0 0% 100%);
+
+    /* Secondary */
+    --secondary:      hsl(185 50% 45%);
+
+    /* Semantic — Danger */
+    --danger:         hsl(0 65% 60%);
+    --danger-bg:      hsl(0 40% 15%);
+    --danger-border:  hsl(0 40% 25%);
+
+    /* Semantic — Warning */
+    --warning:        hsl(38 80% 55%);
+    --warning-fg:     hsl(38 80% 85%);
+    --warning-bg:     hsl(38 40% 14%);
+
+    /* Semantic — Success */
+    --success:        hsl(152 50% 45%);
+    --success-bg:     hsl(152 30% 14%);
+
+    /* Semantic — Info */
+    --info:           hsl(210 70% 60%);
+    --info-bg:        hsl(210 40% 14%);
+    --info-border:    hsl(210 40% 25%);
+
+    /* Shadows (darker, more subtle) */
+    --shadow-sm:      0 1px 3px 0 hsl(210 30% 4% / 0.3),
+                      0 1px 2px -1px hsl(210 30% 4% / 0.2);
+    --shadow-md:      0 4px 12px 0 hsl(210 30% 4% / 0.4),
+                      0 2px 4px -2px hsl(210 30% 4% / 0.2);
+
+    /* Focus ring */
+    --focus:          0 0 0 2px hsl(210 70% 50%);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+}
+
 @import '../styles/components/base.css';
 @import '../styles/components/layout.css';
 @import '../styles/components/utilities.css';
@@ -94,3 +151,4 @@
 @import '../styles/components/content-slider.css';
 @import '../styles/components/duty-free.css';
 @import '../styles/components/pwa.css';
+@import '../styles/components/experience.css';

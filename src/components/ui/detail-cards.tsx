@@ -27,16 +27,19 @@ export function DetailCards({
   return (
     <section className="card-grid">
       {items.map((item, index) => (
-        <article className="card" key={`${item.title}-${index}`}>
-          <div className="stack-sm">
-            <h2>{item.title ?? ''}</h2>
-            <p>{item.value ?? ''}</p>
-            {item.link ? (
-              <a href={item.link} className="text-link" target={item.link.startsWith('tel:') || item.link.startsWith('mailto:') ? undefined : '_blank'} rel={item.link.startsWith('tel:') || item.link.startsWith('mailto:') ? undefined : 'noreferrer'}>
-                {getLinkLabel(item.link, t)}
-              </a>
-            ) : null}
-          </div>
+        <article className="detail-card" key={`${item.title}-${index}`}>
+          <p className="detail-card__label">{item.title ?? ''}</p>
+          <p className="detail-card__value">{item.value ?? ''}</p>
+          {item.link ? (
+            <a
+              href={item.link}
+              className="detail-card__link"
+              target={item.link.startsWith('tel:') || item.link.startsWith('mailto:') ? undefined : '_blank'}
+              rel={item.link.startsWith('tel:') || item.link.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+            >
+              {getLinkLabel(item.link, t)}
+            </a>
+          ) : null}
         </article>
       ))}
     </section>

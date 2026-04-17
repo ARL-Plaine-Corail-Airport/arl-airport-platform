@@ -7,6 +7,8 @@ import { getEmergencyServices } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 import { splitParagraphs } from '@/lib/text'
 
+export const revalidate = 30
+
 export async function generateMetadata() {
   const locale = await getLocale()
   const dict = await getDictionary(locale)
@@ -25,7 +27,7 @@ export default async function EmergencyServicesPage() {
     title: contact.serviceName,
     value: [contact.phone, contact.description, contact.available24h ? '24/7' : null]
       .filter(Boolean)
-      .join(' Â· '),
+      .join(' \u00B7 '),
     link: contact.phone ? `tel:${contact.phone}` : undefined,
   }))
 

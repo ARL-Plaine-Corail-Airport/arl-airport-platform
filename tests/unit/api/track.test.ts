@@ -1,11 +1,17 @@
 import { NextRequest } from 'next/server'
+import { createHash } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const { createMock, getPayloadClient, loggerError } = vi.hoisted(() => ({
-  createMock: vi.fn(),
-  getPayloadClient: vi.fn(),
-  loggerError: vi.fn(),
-}))
+const { createMock, getPayloadClient, loggerError } = vi.hoisted(() => {
+  process.env.VISITOR_HASH_SALT ??= 'test-visitor-hash-salt'
+  process.env.NEXT_PUBLIC_SITE_URL ??= 'http://localhost:3000'
+
+  return {
+    createMock: vi.fn(),
+    getPayloadClient: vi.fn(),
+    loggerError: vi.fn(),
+  }
+})
 
 vi.mock('@/lib/payload', () => ({
   getPayloadClient,
@@ -18,6 +24,11 @@ vi.mock('@/lib/logger', () => ({
 }))
 
 import { POST } from '@/app/api/track/route'
+
+function hashVisitorForTest(ip: string, salt: string): string {
+  const date = new Date().toISOString().slice(0, 10)
+  return createHash('sha256').update(`${salt}:${ip}:${date}`).digest('hex')
+}
 
 describe('track route', () => {
   afterEach(() => {
@@ -58,6 +69,30 @@ describe('track route', () => {
         visitorHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     })
+    expect(createMock.mock.calls[0]?.[0].data.visitorHash).toBe(
+      hashVisitorForTest('203.0.113.10', 'test-visitor-hash-salt'),
+    )
+  })
+
+  it('rejects requests from foreign origins', async () => {
+    const request = new NextRequest('http://localhost/api/track', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'pageview',
+        path: '/en/contact',
+      }),
+      headers: {
+        'content-type': 'application/json',
+        origin: 'https://evil.example',
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(403)
+    await expect(response.text()).resolves.toBe('')
+    expect(getPayloadClient).not.toHaveBeenCalled()
+    expect(createMock).not.toHaveBeenCalled()
   })
 
   it('rejects admin, dashboard, and api paths', async () => {
@@ -161,6 +196,30 @@ describe('track route', () => {
     const firstCall = createMock.mock.calls[0]?.[0]
     const secondCall = createMock.mock.calls[1]?.[0]
     expect(firstCall?.data.visitorHash).toBe(secondCall?.data.visitorHash)
+  })
+
+  it('rejects malformed IPv6 candidates and hashes the fallback unknown identity', async () => {
+    getPayloadClient.mockResolvedValue({ create: createMock })
+
+    const request = new NextRequest('http://localhost/api/track', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'pageview',
+        path: '/en/contact',
+      }),
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': '2001:db8:::1',
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(201)
+    expect(createMock).toHaveBeenCalledTimes(1)
+    expect(createMock.mock.calls[0]?.[0].data.visitorHash).toBe(
+      hashVisitorForTest('unknown', 'test-visitor-hash-salt'),
+    )
   })
 
   it('logs unexpected create failures without exposing details to the client', async () => {

@@ -33,4 +33,18 @@ describe('autoSlug', () => {
     expect(result?.slug).toMatch(/^item-[a-z0-9]+$/)
     expect(result?.slug).not.toBe('item-')
   })
+
+  it('uses the first localized title string when the title field is an object', () => {
+    const hook = autoSlug('title')
+    const result = hook({
+      data: {
+        title: {
+          fr: 'Arrivées',
+          en: 'Arrivals',
+        },
+      },
+    } as any)
+
+    expect(result?.slug).toBe('arrivees')
+  })
 })

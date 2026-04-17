@@ -116,4 +116,21 @@ describe('dashboard auth helpers', () => {
       'redirect:/dashboard',
     )
   })
+
+  it('redirects users with no valid dashboard role', async () => {
+    headersMock.mockResolvedValue(new Headers())
+    getPayloadClient.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({
+        user: {
+          email: 'viewer@example.com',
+          roles: ['unknown_role'],
+        },
+      }),
+    })
+    getPrimaryRole.mockReturnValue(null)
+
+    const { getDashboardSession } = await import('@/lib/dashboard-auth')
+
+    await expect(getDashboardSession()).rejects.toThrow('redirect:/admin')
+  })
 })

@@ -44,7 +44,7 @@ describe('news event attachment signing', () => {
     vi.doMock('@/lib/storage/supabase-client', () => ({
       getSignedURLs,
     }))
-    vi.doMock('@/lib/env', () => ({
+    vi.doMock('@/lib/env.server', () => ({
       serverEnv: {
         documentsBucket: 'arl-protected-docs',
       },
@@ -85,7 +85,7 @@ describe('news event attachment signing', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-14T12:00:00Z'))
 
-    const payloadFind = vi.fn(async ({ collection }: { collection: string }) => {
+    const payloadFind = vi.fn(async ({ collection }: any) => {
       if (collection !== 'notices') {
         return { totalDocs: 0, docs: [] }
       }
@@ -193,6 +193,39 @@ describe('news event attachment signing', () => {
     expect(loggerWarn).toHaveBeenCalledWith('Truncated 2 items from notices', 'content')
   })
 
+  it('passes the caller-provided FAQ limit through to Payload', async () => {
+    const payloadFind = vi.fn(async ({ limit }: { limit: number }) => ({
+      totalDocs: limit,
+      docs: Array.from({ length: limit }, (_, index) => ({ id: index + 1 })),
+    }))
+
+    vi.doMock('@/lib/payload', () => ({
+      getPayloadClient: vi.fn(async () => ({
+        find: payloadFind,
+      })),
+    }))
+    vi.doMock('@/lib/logger', () => ({
+      logger: {
+        error: vi.fn(),
+        warn: vi.fn(),
+      },
+    }))
+    vi.doMock('@/lib/build-db', () => ({
+      isBuildTimeDbDisabledError: () => false,
+    }))
+
+    const { getFAQs } = await import('@/lib/content')
+    const docs = await getFAQs(2, 'en')
+
+    expect(docs).toEqual([{ id: 1 }, { id: 2 }])
+    expect(payloadFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'faqs',
+        limit: 2,
+      }),
+    )
+  })
+
   it('returns news events unchanged when signed URL generation fails', async () => {
     const error = new Error('signing unavailable')
     const loggerError = vi.fn()
@@ -226,7 +259,7 @@ describe('news event attachment signing', () => {
         throw error
       }),
     }))
-    vi.doMock('@/lib/env', () => ({
+    vi.doMock('@/lib/env.server', () => ({
       serverEnv: {
         documentsBucket: 'arl-protected-docs',
       },

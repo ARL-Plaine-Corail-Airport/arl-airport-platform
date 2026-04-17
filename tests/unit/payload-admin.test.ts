@@ -20,7 +20,11 @@ vi.mock('@/lib/payload', () => ({
   getPayloadClient,
 }))
 
-import { dashboardQuery, getAuthenticatedPayload } from '@/lib/payload-admin'
+import {
+  PayloadAuthError,
+  dashboardQuery,
+  getAuthenticatedPayload,
+} from '@/lib/payload-admin'
 
 describe('payload admin helpers', () => {
   afterEach(() => {
@@ -51,9 +55,27 @@ describe('payload admin helpers', () => {
       auth: vi.fn().mockResolvedValue({ user: null }),
     })
 
-    await expect(getAuthenticatedPayload()).rejects.toThrow(
-      'Unauthenticated dashboard access attempt',
-    )
+    await expect(getAuthenticatedPayload()).rejects.toMatchObject({
+      name: 'PayloadAuthError',
+      message: 'Unauthenticated dashboard access attempt',
+      status: 401,
+    })
+  })
+
+  it('rethrows payload auth errors through the dashboard query path', async () => {
+    const error = new PayloadAuthError()
+    getPayloadClient.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user: { email: 'admin@example.com' } }),
+    })
+
+    await expect(
+      dashboardQuery('notices', [], async () => {
+        throw error
+      }),
+    ).rejects.toMatchObject({
+      name: 'PayloadAuthError',
+      status: 401,
+    })
   })
 
   it('returns a fallback and logs errors for dashboard queries', async () => {

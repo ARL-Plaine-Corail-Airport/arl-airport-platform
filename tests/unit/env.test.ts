@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { env, serverEnv } from '@/lib/env'
+import { env } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 
 describe('env', () => {
   it('exposes public env with sensible defaults', () => {
     expect(env.siteURL).toBeTruthy()
-    expect(env.flightProviderMode).toBe('airlabs')
-    expect(env.flightProviderLabel).toBe('AirLabs')
   })
 
   it('resolves weather provider defaults when unconfigured', () => {
@@ -17,6 +16,10 @@ describe('env', () => {
 
 describe('serverEnv', () => {
   it('exposes server env with sensible defaults', () => {
+    expect(serverEnv.siteUrl).toBeTruthy()
+    expect(serverEnv.visitorHashSalt).toBeTruthy()
+    expect(serverEnv.flightProviderMode).toBe('airlabs')
+    expect(serverEnv.flightProviderLabel).toBe('AirLabs')
     expect(serverEnv.flightProviderIataCode).toBe('RRG')
     expect(serverEnv.s3Region).toBe('eu-west-1')
     expect(serverEnv.mediaBucket).toBe('arl-public-media')

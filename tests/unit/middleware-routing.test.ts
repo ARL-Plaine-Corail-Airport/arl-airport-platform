@@ -39,4 +39,13 @@ describe('middleware routing helpers', () => {
     expect(getLegacyVipRedirectPath('/airport-vip-lounge', 'fr')).toBe('/fr/vip-lounge')
     expect(getLegacyVipRedirectPath('/vip-lounge', 'en')).toBeNull()
   })
+
+  it('normalizes overlong pathnames to the root path', () => {
+    const result = getMiddlewarePathInfo(`/${'a'.repeat(2049)}`)
+
+    expect(result).toEqual({
+      locale: null,
+      normalizedPathname: '/',
+    })
+  })
 })

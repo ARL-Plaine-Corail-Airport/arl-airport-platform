@@ -72,7 +72,7 @@ function setupFlightRuntime(options: SetupOptions = {}) {
     }),
   }))
 
-  vi.doMock('@/lib/env', () => ({
+  vi.doMock('@/lib/env.server', () => ({
     env: {
       flightProviderLabel: 'AirLabs',
     },

@@ -107,4 +107,35 @@ describe('getAnalytics', () => {
       'analytics',
     )
   })
+
+  it('does not warn when the final fetched page is exactly the cap and no further page exists', async () => {
+    for (let page = 1; page <= 49; page++) {
+      findMock.mockResolvedValueOnce({
+        docs: [
+          {
+            createdAt: '2026-03-01T08:00:00.000Z',
+            visitorHash: `hash-${page}`,
+            path: '/fr/contact',
+          },
+        ],
+        hasNextPage: true,
+      })
+    }
+
+    findMock.mockResolvedValueOnce({
+      docs: [
+        {
+          createdAt: '2026-03-01T08:00:00.000Z',
+          visitorHash: 'hash-final',
+          path: '/fr/contact',
+        },
+      ],
+      hasNextPage: false,
+    })
+
+    await getAnalytics('30d')
+
+    expect(findMock).toHaveBeenCalledTimes(50)
+    expect(loggerWarn).not.toHaveBeenCalled()
+  })
 })

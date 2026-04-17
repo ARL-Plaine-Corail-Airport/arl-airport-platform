@@ -9,7 +9,7 @@ vi.mock('next/cache', () => ({
   revalidatePath,
 }))
 
-vi.mock('@/lib/env', () => ({
+vi.mock('@/lib/env.server', () => ({
   serverEnv: {
     revalidateSecret: 'supersecret-12345',
   },

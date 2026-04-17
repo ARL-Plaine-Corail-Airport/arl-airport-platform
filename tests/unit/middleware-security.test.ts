@@ -5,6 +5,15 @@ const originalUpstashUrl = process.env.UPSTASH_REDIS_REST_URL
 const originalUpstashToken = process.env.UPSTASH_REDIS_REST_TOKEN
 const loggerError = vi.fn()
 
+function buildExpiredJwt(expirationSecondsAgo = 60) {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({
+    exp: Math.floor(Date.now() / 1000) - expirationSecondsAgo,
+  })).toString('base64url')
+
+  return `${header}.${payload}.signature`
+}
+
 function restoreEnv(
   key: string,
   value: string | undefined,
@@ -55,7 +64,7 @@ describe('middleware security', () => {
     expect(response.headers.get('Content-Security-Policy')).toContain(
       "script-src 'self' 'nonce-",
     )
-    expect(response.headers.get('x-nonce')).toBeTruthy()
+    expect(response.headers.get('x-nonce')).toBeNull()
   })
 
   it('sets HSTS and SAMEORIGIN frame protection in production headers', async () => {
@@ -100,6 +109,7 @@ describe('middleware security', () => {
       },
     }))
 
+    expect(englishResponse.status).toBe(307)
     expect(englishResponse.headers.get('location')).toContain('/en/contact')
 
     const frenchResponse = await middleware(new NextRequest('http://localhost/contact', {
@@ -108,6 +118,7 @@ describe('middleware security', () => {
       },
     }))
 
+    expect(frenchResponse.status).toBe(307)
     expect(frenchResponse.headers.get('location')).toContain('/fr/contact')
   })
 
@@ -122,6 +133,19 @@ describe('middleware security', () => {
     }))
 
     expect(response.headers.get('location')).toContain('/en/contact')
+  })
+
+  it('redirects obviously expired dashboard JWT cookies before server-side auth', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+
+    const response = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${buildExpiredJwt()}`,
+      },
+    }))
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toContain('/admin/login?redirect=%2Fdashboard')
   })
 
   it('fails open when the Upstash rate limiter throws', async () => {
@@ -170,7 +194,7 @@ describe('middleware security', () => {
     )
   })
 
-  it('uses the anonymous rate-limit bucket when IP headers are missing', async () => {
+  it('derives a per-request fallback fingerprint when IP headers are missing', async () => {
     ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
     ;(process.env as Record<string, string | undefined>).UPSTASH_REDIS_REST_URL = 'https://redis.example'
     ;(process.env as Record<string, string | undefined>).UPSTASH_REDIS_REST_TOKEN = 'token'
@@ -202,11 +226,22 @@ describe('middleware security', () => {
       import('next/server'),
     ])
 
-    const response = await middleware(new NextRequest('http://localhost/api/weather'))
+    const firstResponse = await middleware(new NextRequest('http://localhost/api/weather'))
+    const secondResponse = await middleware(new NextRequest('http://localhost/api/weather'))
 
-    expect(response.status).toBe(200)
-    expect(limitMock).toHaveBeenCalledWith('anonymous')
-    expect(response.headers.get('X-RateLimit-Limit')).toBe('60')
-    expect(response.headers.get('X-RateLimit-Remaining')).toBe('59')
+    expect(firstResponse.status).toBe(200)
+    expect(secondResponse.status).toBe(200)
+    expect(limitMock).toHaveBeenCalledTimes(2)
+
+    const firstKey = limitMock.mock.calls[0]?.[0]
+    const secondKey = limitMock.mock.calls[1]?.[0]
+
+    expect(firstKey).toMatch(/^anon:/)
+    expect(secondKey).toMatch(/^anon:/)
+    expect(firstKey).not.toBe('anonymous')
+    expect(secondKey).not.toBe('anonymous')
+    expect(firstKey).toBe(secondKey)
+    expect(firstResponse.headers.get('X-RateLimit-Limit')).toBe('60')
+    expect(firstResponse.headers.get('X-RateLimit-Remaining')).toBe('59')
   })
 })

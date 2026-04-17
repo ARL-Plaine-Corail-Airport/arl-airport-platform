@@ -7,7 +7,7 @@ test.describe('Runtime probes', () => {
       maxRedirects: 0,
     })
 
-    expect(response.status()).toBe(308)
+    expect(response.status()).toBe(307)
     expect(response.headers().location).toBe('/en/contact')
   })
 

@@ -23,7 +23,7 @@ async function loadCacheModule(options: CacheModuleOptions = {}) {
     }
   })
 
-  vi.doMock('@/lib/env', () => ({
+  vi.doMock('@/lib/env.server', () => ({
     serverEnv: {
       upstashRedisRestUrl: useRedis ? 'https://redis.example' : '',
       upstashRedisRestToken: useRedis ? 'token' : '',
@@ -54,6 +54,7 @@ async function loadCacheModule(options: CacheModuleOptions = {}) {
 describe('cachedFetch runtime behavior', () => {
   afterEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     vi.resetModules()
   })
 
@@ -147,5 +148,67 @@ describe('cachedFetch runtime behavior', () => {
       writeError,
       'cache',
     )
+  })
+
+  it('treats empty cached strings as valid values', async () => {
+    const { cachedFetch, getMock, setMock } = await loadCacheModule({
+      useRedis: true,
+      getMock: vi.fn().mockResolvedValue(''),
+      setMock: vi.fn().mockResolvedValue('OK'),
+    })
+
+    const fetcher = vi.fn()
+    const result = await cachedFetch('redis-empty-string', 60, fetcher)
+
+    expect(result).toBe('')
+    expect(fetcher).not.toHaveBeenCalled()
+    expect(getMock).toHaveBeenCalledOnce()
+    expect(setMock).not.toHaveBeenCalled()
+  })
+
+  it('deduplicates concurrent cache misses through a shared in-flight fetch', async () => {
+    const { cachedFetch } = await loadCacheModule()
+    let resolveFetch: ((value: { value: string }) => void) | undefined
+    const fetchPromise = new Promise<{ value: string }>((resolve) => {
+      resolveFetch = resolve
+    })
+    const fetcher = vi.fn().mockReturnValue(fetchPromise)
+
+    const firstCall = cachedFetch('shared-in-flight', 60, fetcher)
+    const secondCall = cachedFetch('shared-in-flight', 60, fetcher)
+
+    resolveFetch?.({ value: 'fresh' })
+
+    await expect(firstCall).resolves.toEqual({ value: 'fresh' })
+    await expect(secondCall).resolves.toEqual({ value: 'fresh' })
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
+
+  it('serves stale dev cache entries while a refresh is revalidating in the background', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-09T00:00:00.000Z'))
+
+    const { cachedFetch } = await loadCacheModule()
+
+    await cachedFetch('stale-while-revalidate', 1, async () => ({ value: 'old' }))
+    vi.setSystemTime(new Date('2026-04-09T00:00:02.000Z'))
+
+    let resolveRefresh: ((value: { value: string }) => void) | undefined
+    const refreshPromise = new Promise<{ value: string }>((resolve) => {
+      resolveRefresh = resolve
+    })
+    const fetcher = vi.fn().mockReturnValue(refreshPromise)
+
+    const staleResult = await cachedFetch('stale-while-revalidate', 1, fetcher)
+    expect(staleResult).toEqual({ value: 'old' })
+    expect(fetcher).toHaveBeenCalledOnce()
+
+    resolveRefresh?.({ value: 'fresh' })
+    await refreshPromise
+    await Promise.resolve()
+
+    const freshResult = await cachedFetch('stale-while-revalidate', 1, fetcher)
+    expect(freshResult).toEqual({ value: 'fresh' })
+    expect(fetcher).toHaveBeenCalledOnce()
   })
 })

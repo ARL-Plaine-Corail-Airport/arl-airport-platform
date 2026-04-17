@@ -41,6 +41,11 @@ describe('revalidateSchema', () => {
     ).toBe(false)
     expect(
       revalidateSchema.safeParse({
+        paths: ['/%2e%2e/etc/passwd'],
+      }).success,
+    ).toBe(false)
+    expect(
+      revalidateSchema.safeParse({
         paths: ['/page#fragment'],
       }).success,
     ).toBe(false)
@@ -89,6 +94,12 @@ describe('trackEventSchema', () => {
       trackEventSchema.safeParse({
         type: 'pageview',
         path: '/arrivals?debug=true',
+      }).success,
+    ).toBe(false)
+    expect(
+      trackEventSchema.safeParse({
+        type: 'pageview',
+        path: '/%2e%2e/etc/passwd',
       }).success,
     ).toBe(false)
     expect(

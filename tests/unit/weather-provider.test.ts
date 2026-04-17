@@ -20,7 +20,7 @@ describe('weather provider configuration', () => {
   })
 
   it('weatherProviderEndpoint falls back to the public Open-Meteo URL', async () => {
-    const { serverEnv } = await import('@/lib/env')
+    const { serverEnv } = await import('@/lib/env.server')
     // When WEATHER_PROVIDER_ENDPOINT is not set, should default to Open-Meteo
     expect(serverEnv.weatherProviderEndpoint).toContain('open-meteo.com')
   })

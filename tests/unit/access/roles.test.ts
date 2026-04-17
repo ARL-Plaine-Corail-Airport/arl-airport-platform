@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { isAdmin, isApprover, isEditor, publishedOrAdmin } from '@/access'
+import {
+  isAdmin,
+  isApprover,
+  isEditor,
+  publishedOrAdmin,
+  publishedVersionOrAdmin,
+} from '@/access'
 import * as reexportedAccess from '@/access/index'
 
 function buildAccessArgs(roles?: string[]) {
@@ -36,10 +42,20 @@ describe('access roles', () => {
     })
   })
 
+  it('supports collections that rely on Payload draft status instead of a custom status field', () => {
+    expect(publishedVersionOrAdmin(buildAccessArgs())).toEqual({
+      _status: { equals: 'published' },
+    })
+    expect(publishedVersionOrAdmin(buildAccessArgs(['super_admin']))).toBe(true)
+  })
+
   it('keeps the access re-export aligned with the shared role helpers', () => {
     expect(reexportedAccess.isAdmin(buildAccessArgs(['content_admin']))).toBe(true)
     expect(reexportedAccess.publishedOrAdmin(buildAccessArgs(['operations_editor']))).toEqual({
       status: { equals: 'published' },
+    })
+    expect(reexportedAccess.publishedVersionOrAdmin(buildAccessArgs(['operations_editor']))).toEqual({
+      _status: { equals: 'published' },
     })
   })
 })

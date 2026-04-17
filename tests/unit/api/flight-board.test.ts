@@ -143,4 +143,21 @@ describe('flight board route', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(loggerError).toHaveBeenCalledOnce()
   })
+
+  it('returns a guarded 502 when the requested board type is missing from the payload', async () => {
+    getFlightBoards.mockResolvedValue({
+      departures: departuresPayload,
+      degraded: false,
+    } as never)
+
+    const response = await GET(
+      new NextRequest('http://localhost/api/flight-board?type=arrivals'),
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body).toEqual({ error: 'Board type unavailable' })
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(loggerError).not.toHaveBeenCalled()
+  })
 })

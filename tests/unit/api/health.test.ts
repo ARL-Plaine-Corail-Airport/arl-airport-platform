@@ -30,6 +30,7 @@ describe('health route', () => {
     expect(response.status).toBe(200)
     expect(body.ok).toBe(true)
     expect(typeof body.timestamp).toBe('string')
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(getPayloadClient).not.toHaveBeenCalled()
   })
 
@@ -47,6 +48,7 @@ describe('health route', () => {
       payload: 'ok',
       database: 'ok',
     })
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(findGlobal).toHaveBeenCalledWith({
       slug: 'site-settings',
       depth: 0,
@@ -70,6 +72,7 @@ describe('health route', () => {
       database: 'error',
     })
     expect(body.error).toBe('Healthcheck failed')
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(loggerError).toHaveBeenCalledWith('Healthcheck failed', error, 'health')
   })
 })

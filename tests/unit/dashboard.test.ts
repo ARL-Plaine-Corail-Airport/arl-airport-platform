@@ -15,9 +15,9 @@ describe('getPrimaryRole', () => {
     expect(getPrimaryRole(['translator', 'approver'])).toBe('approver')
   })
 
-  it('falls back to viewer_auditor for unknown roles', () => {
-    expect(getPrimaryRole(['unknown_role'])).toBe('viewer_auditor')
-    expect(getPrimaryRole([])).toBe('viewer_auditor')
+  it('returns null for unknown roles', () => {
+    expect(getPrimaryRole(['unknown_role'])).toBe(null)
+    expect(getPrimaryRole([])).toBe(null)
   })
 })
 

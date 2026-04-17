@@ -81,17 +81,76 @@ describe('translate', () => {
 
     await translate({ text: 'oldest', from: 'en', to: 'fr' })
     for (let i = 0; i < 1000; i++) {
+      if (i > 0 && i % 19 === 0) {
+        vi.setSystemTime(new Date(Date.now() + 61_000))
+      }
       await translate({ text: `entry-${i}`, from: 'en', to: 'fr' })
     }
+    vi.setSystemTime(new Date(Date.now() + 61_000))
 
     await translate({ text: 'oldest', from: 'en', to: 'fr' })
     expect(fetchMock).toHaveBeenCalledTimes(1002)
   })
 
-  it('translates batches in parallel', async () => {
+  it('short-circuits translations that exceed the maximum length', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { translate } = await import('@/lib/translate')
+    const longText = 'x'.repeat(5001)
+    const result = await translate({
+      text: longText,
+      from: 'en',
+      to: 'fr',
+    })
+
+    expect(result).toBe(longText)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[WARN] [translate] Translation skipped: input exceeds 5000 characters',
+    )
+  })
+
+  it('rate limits uncached translations within the current window', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-09T00:00:00.000Z'))
+
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input.toString())
+      const text = url.searchParams.get('q') ?? ''
+
+      return {
+        ok: true,
+        json: async () => ({
+          responseStatus: 200,
+          responseData: { translatedText: `${text}-fr`, match: 1 },
+        }),
+      }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { translate } = await import('@/lib/translate')
+
+    for (let i = 0; i < 20; i++) {
+      await expect(translate({ text: `entry-${i}`, from: 'en', to: 'fr' })).resolves.toBe(
+        `entry-${i}-fr`,
+      )
+    }
+
+    await expect(translate({ text: 'entry-21', from: 'en', to: 'fr' })).resolves.toBe(
+      'entry-21',
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(20)
+  })
+
+  it('translates batches with a maximum concurrency of five', async () => {
     const started: string[] = []
-    let resolveFirst: (() => void) | undefined
-    let resolveSecond: (() => void) | undefined
+    const resolvers = new Map<string, () => void>()
+    let resolveSixthStarted: (() => void) | undefined
+    const sixthStarted = new Promise<void>((resolve) => {
+      resolveSixthStarted = resolve
+    })
 
     vi.stubGlobal(
       'fetch',
@@ -100,6 +159,9 @@ describe('translate', () => {
         const text = url.searchParams.get('q') ?? ''
 
         started.push(text)
+        if (text === 'sixth') {
+          resolveSixthStarted?.()
+        }
 
         return await new Promise((resolve) => {
           const response = {
@@ -110,27 +172,41 @@ describe('translate', () => {
             }),
           }
 
-          if (text === 'first') {
-            resolveFirst = () => resolve(response)
-          } else {
-            resolveSecond = () => resolve(response)
-          }
+          resolvers.set(text, () => resolve(response))
         })
       }),
     )
 
     const { translateBatch } = await import('@/lib/translate')
-    const batchPromise = translateBatch(['first', 'second'], 'en', 'fr')
+    const batchPromise = translateBatch(
+      ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'],
+      'en',
+      'fr',
+    )
 
     await Promise.resolve()
 
     try {
-      expect(started).toEqual(['first', 'second'])
+      expect(started.slice(0, 5)).toEqual(['first', 'second', 'third', 'fourth', 'fifth'])
+      expect(started).not.toContain('sixth')
     } finally {
-      resolveFirst?.()
-      resolveSecond?.()
+      for (const text of ['first', 'second', 'third', 'fourth', 'fifth']) {
+        resolvers.get(text)?.()
+      }
     }
 
-    await expect(batchPromise).resolves.toEqual(['first-fr', 'second-fr'])
+    await sixthStarted
+    expect(started).toEqual(['first', 'second', 'third', 'fourth', 'fifth', 'sixth'])
+
+    resolvers.get('sixth')?.()
+
+    await expect(batchPromise).resolves.toEqual([
+      'first-fr',
+      'second-fr',
+      'third-fr',
+      'fourth-fr',
+      'fifth-fr',
+      'sixth-fr',
+    ])
   })
 })

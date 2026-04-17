@@ -45,7 +45,7 @@ function mockPageModuleDeps() {
   vi.doMock('@/lib/date', () => ({
     formatDateTime: vi.fn(() => ''),
   }))
-  vi.doMock('@/lib/env', () => ({
+  vi.doMock('@/lib/env.server', () => ({
     env: {
       siteURL: 'https://example.com',
     },

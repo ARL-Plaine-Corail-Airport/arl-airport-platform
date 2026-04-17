@@ -12,6 +12,7 @@
     "analyze": "node scripts/build.mjs --analyze",
     "start": "next start",
     "lint": "next lint",
+    "migrate": "payload migrate",
     "format": "prettier --write --no-error-on-unmatched-pattern \"package.json\" \".prettierrc\" \".github/workflows/*.{yml,yaml}\" \"playwright.config.ts\" \"vitest.config.ts\" \"tests/setup.ts\" \"instrumentation*.ts\" \"sentry*.config.ts\"",
     "format:check": "prettier --check --no-error-on-unmatched-pattern \"package.json\" \".prettierrc\" \".github/workflows/*.{yml,yaml}\" \"playwright.config.ts\" \"vitest.config.ts\" \"tests/setup.ts\" \"instrumentation*.ts\" \"sentry*.config.ts\"",
     "generate:types": "payload generate:types",
@@ -19,7 +20,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:load": "artillery run tests/load/baseline.yml",
+    "test:load:stress": "artillery run tests/load/stress.yml"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.79.1",
@@ -57,6 +60,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.1",
+    "artillery": "^2.0.30",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.4.11",
     "eslint-config-prettier": "^10.1.8",

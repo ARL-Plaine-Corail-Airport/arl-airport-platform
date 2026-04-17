@@ -1,0 +1,82 @@
+# Artillery load test - baseline performance validation
+# Usage: npx artillery run tests/load/baseline.yml
+# Requires: APP_URL environment variable (defaults to https://localhost)
+#
+# Phases:
+#   1. Warm-up: 5 users/sec for 30s (150 total)
+#   2. Ramp-up: 5 to 50 users/sec over 60s (~1650 total)
+#   3. Sustained: 50 users/sec for 60s (3000 total)
+#   Total: ~4800 virtual users over 2.5 minutes
+
+config:
+  target: '{{ $processEnvironment.APP_URL }}'
+  defaults:
+    headers:
+      Accept-Language: 'en'
+  phases:
+    - name: 'Warm-up'
+      duration: 30
+      arrivalRate: 5
+    - name: 'Ramp-up'
+      duration: 60
+      arrivalRate: 5
+      rampTo: 50
+    - name: 'Sustained load'
+      duration: 60
+      arrivalRate: 50
+  ensure:
+    thresholds:
+      - http.response_time.p99: 2000
+      - http.response_time.p95: 1000
+    conditions:
+      - expression: 'http.codes.200 / (http.codes.200 + http.codes.500) > 0.99'
+        strict: true
+
+scenarios:
+  - name: 'Homepage flow'
+    weight: 40
+    flow:
+      - get:
+          url: '/en'
+      - think: 1
+      - get:
+          url: '/en/arrivals'
+      - think: 2
+      - get:
+          url: '/en/departures'
+
+  - name: 'Notice browsing'
+    weight: 20
+    flow:
+      - get:
+          url: '/en/notices'
+      - think: 2
+      - get:
+          url: '/en/passenger-guide'
+
+  - name: 'Information pages'
+    weight: 20
+    flow:
+      - get:
+          url: '/en/contact'
+      - think: 1
+      - get:
+          url: '/en/transport-parking'
+      - think: 1
+      - get:
+          url: '/en/amenities'
+
+  - name: 'API health check'
+    weight: 10
+    flow:
+      - get:
+          url: '/api/health'
+
+  - name: 'Flight board API'
+    weight: 10
+    flow:
+      - get:
+          url: '/api/flight-board?type=arrivals'
+      - think: 1
+      - get:
+          url: '/api/flight-board?type=departures'

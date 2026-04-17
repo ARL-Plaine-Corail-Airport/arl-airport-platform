@@ -1,0 +1,39 @@
+# Artillery stress test - find breaking points
+# Usage: npx artillery run tests/load/stress.yml
+# WARNING: This generates significant load. Only run against staging or localhost.
+
+config:
+  target: '{{ $processEnvironment.APP_URL }}'
+  defaults:
+    headers:
+      Accept-Language: 'en'
+  phases:
+    - name: 'Warm-up'
+      duration: 30
+      arrivalRate: 10
+    - name: 'Ramp to stress'
+      duration: 120
+      arrivalRate: 10
+      rampTo: 200
+    - name: 'Peak sustained'
+      duration: 60
+      arrivalRate: 200
+  ensure:
+    thresholds:
+      - http.response_time.p99: 5000
+      - http.response_time.p95: 3000
+
+scenarios:
+  - name: 'Mixed traffic'
+    flow:
+      - get:
+          url: '/en'
+      - think: 0.5
+      - get:
+          url: '/en/arrivals'
+      - think: 0.5
+      - get:
+          url: '/api/flight-board?type=arrivals'
+      - think: 1
+      - get:
+          url: '/en/notices'

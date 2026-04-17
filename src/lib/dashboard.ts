@@ -45,6 +45,8 @@ const ROLE_BADGE: Record<DashboardRole, string> = {
   viewer_auditor: 'role-viewer',
 }
 
+// Source of truth for dashboard section access. Middleware only handles the
+// unauthenticated redirect and does not duplicate role checks.
 const ROLE_ACCESS: Record<DashboardRole, string[]> = {
   super_admin: [
     'overview', 'analytics', 'flights', 'notices', 'emergency', 'weather',

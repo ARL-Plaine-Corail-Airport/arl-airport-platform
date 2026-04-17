@@ -2,6 +2,8 @@
 // In production, replace console.error with a log aggregation service
 // (e.g. Sentry, Datadog, Axiom) by changing the `output` function.
 
+import * as Sentry from '@sentry/nextjs'
+
 type LogLevel = 'error' | 'warn' | 'info'
 
 interface LogEntry {
@@ -40,6 +42,17 @@ export const logger = {
       error,
       timestamp: new Date().toISOString(),
     })
+
+    if (error instanceof Error) {
+      Sentry.captureException(error, {
+        tags: context ? { context } : undefined,
+      })
+    } else if (error !== undefined) {
+      Sentry.captureMessage(String(error), {
+        level: 'error',
+        tags: context ? { context } : undefined,
+      })
+    }
   },
 
   warn(message: string, context?: string) {

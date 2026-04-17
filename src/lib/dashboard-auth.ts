@@ -11,8 +11,18 @@ import { getPayloadClient } from '@/lib/payload'
 type DashboardUser = {
   email?: string | null
   fullName?: string | null
-  roles?: string[]
+  roles: string[]
 } & Record<string, unknown>
+
+function isDashboardUser(user: unknown): user is DashboardUser {
+  if (!user || typeof user !== 'object') {
+    return false
+  }
+
+  const { roles } = user as { roles?: unknown }
+
+  return Array.isArray(roles) && roles.every((role) => typeof role === 'string')
+}
 
 export type DashboardSession = {
   user: DashboardUser
@@ -29,12 +39,12 @@ export const getDashboardSession = cache(async (): Promise<DashboardSession> => 
   const payload = await getPayloadClient()
   const { user } = await payload.auth({ headers: requestHeaders })
 
-  if (!user) {
+  if (!isDashboardUser(user)) {
     redirect('/admin/login')
   }
 
-  const dashboardUser = user as unknown as DashboardUser
-  const roles = Array.isArray(dashboardUser.roles) ? dashboardUser.roles : []
+  const dashboardUser = user
+  const roles = dashboardUser.roles
 
   if (roles.length === 0) {
     redirect('/admin')
@@ -57,6 +67,7 @@ export const getDashboardSession = cache(async (): Promise<DashboardSession> => 
 export async function requireDashboardSectionAccess(section: string) {
   const session = await getDashboardSession()
 
+  // Section-level access is enforced server-side here after payload.auth().
   if (!canAccessAny(session.roles, section)) {
     redirect('/dashboard')
   }

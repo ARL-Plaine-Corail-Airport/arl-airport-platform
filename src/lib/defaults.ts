@@ -5,7 +5,7 @@ export const defaultSiteSettings = {
     'Official passenger information platform for operational notices, flight information, passenger guidance, and mobile-first access.',
   primaryPhone: '+230 832 78 88',
   primaryEmail: 'info@arl.aero',
-  physicalAddress: 'Sir Gaetan Duval Airport, Rodrigues Island, Republic of Mauritius',
+  physicalAddress: 'Plaine Corail Airport, Rodrigues Island, Republic of Mauritius',
   workingHours: 'Operational hours vary by flight schedule and official notices.',
   socialLinks: [
     { label: 'Facebook', url: 'https://www.facebook.com/AirportOfRodriguesLtd' },

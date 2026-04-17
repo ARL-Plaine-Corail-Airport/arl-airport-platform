@@ -1,19 +1,112 @@
 import { cache } from 'react'
+import type { Where } from 'payload'
 
+import { isBuildTimeDbDisabledError } from '@/lib/build-db'
 import { defaultHomePage, defaultSiteSettings, emptySectionsPage } from '@/lib/defaults'
+import { serverEnv } from '@/lib/env'
 import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
+import { normalizeSiteSettings } from '@/lib/site-settings'
+import { getSignedURLs } from '@/lib/storage/supabase-client'
 
 // All content functions accept an optional `locale` parameter.
 // When provided, Payload returns field values for that locale.
 type Loc = 'en' | 'fr' | 'mfe' | 'all'
 
+function logContentError(message: string, error: unknown) {
+  if (isBuildTimeDbDisabledError(error)) return
+  logger.error(message, error, 'content')
+}
+
+function logTruncationWarning(collection: string, result: { totalDocs?: number; docs: Array<unknown> }) {
+  if (typeof result.totalDocs !== 'number') return
+
+  if (result.totalDocs > result.docs.length) {
+    logger.warn(`Truncated ${result.totalDocs - result.docs.length} items from ${collection}`, 'content')
+  }
+}
+
+function getPublishedNoticeFilters(nowIso: string): Where[] {
+  return [
+    { status: { equals: 'published' } },
+    {
+      or: [
+        { expiresAt: { exists: false } },
+        { expiresAt: { greater_than: nowIso } },
+      ],
+    },
+  ]
+}
+
+function getDocumentStoragePath(file: {
+  prefix?: string | null
+  filename?: string | null
+} | null | undefined): string | null {
+  if (!file?.filename) return null
+  return file.prefix ? `${file.prefix}/${file.filename}` : file.filename
+}
+
+async function signNewsEventAttachmentURLs<T extends {
+  attachments?: Array<{ file?: unknown } | null> | null
+}>(items: T[]): Promise<T[]> {
+  const storagePaths = Array.from(new Set(
+    items.flatMap((item) =>
+      (item.attachments ?? []).flatMap((attachment) => {
+        if (!attachment?.file || typeof attachment.file !== 'object') return []
+        const path = getDocumentStoragePath(attachment.file as {
+          prefix?: string | null
+          filename?: string | null
+        })
+        return path ? [path] : []
+      }),
+    ),
+  ))
+
+  if (storagePaths.length === 0) return items
+
+  try {
+    const signedURLs = await getSignedURLs(serverEnv.documentsBucket, storagePaths)
+
+    return items.map((item) => ({
+      ...item,
+      attachments: item.attachments?.map((attachment) => {
+        if (!attachment?.file || typeof attachment.file !== 'object') return attachment
+
+        const path = getDocumentStoragePath(attachment.file as {
+          prefix?: string | null
+          filename?: string | null
+        })
+
+        if (!path) return attachment
+
+        const signedURL = signedURLs[path]
+        if (!signedURL) return attachment
+
+        return {
+          ...attachment,
+          file: {
+            ...attachment.file,
+            url: signedURL,
+          },
+        }
+      }) ?? item.attachments,
+    }))
+  } catch (error) {
+    logContentError('Failed to sign news event attachments', error)
+    return items
+  }
+}
+
 export const getSiteSettings = cache(async (locale?: string) => {
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'site-settings', depth: 1, locale: locale as Loc })) || defaultSiteSettings
+    const settings =
+      (await payload.findGlobal({ slug: 'site-settings', depth: 1, locale: locale as Loc })) ||
+      defaultSiteSettings
+
+    return normalizeSiteSettings(settings)
   } catch (error) {
-    logger.error('Failed to fetch site settings', error, 'content')
+    logContentError('Failed to fetch site settings', error)
     return defaultSiteSettings
   }
 })
@@ -23,7 +116,7 @@ export const getHomePage = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'home-page', depth: 1, locale: locale as Loc })) || defaultHomePage
   } catch (error) {
-    logger.error('Failed to fetch home page', error, 'content')
+    logContentError('Failed to fetch home page', error)
     return defaultHomePage
   }
 })
@@ -33,7 +126,7 @@ export const getPassengerGuide = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'passenger-guide', depth: 1, locale: locale as Loc })) || emptySectionsPage
   } catch (error) {
-    logger.error('Failed to fetch passenger guide', error, 'content')
+    logContentError('Failed to fetch passenger guide', error)
     return emptySectionsPage
   }
 })
@@ -43,7 +136,7 @@ export const getTransportParking = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'transport-parking', depth: 1, locale: locale as Loc })) || emptySectionsPage
   } catch (error) {
-    logger.error('Failed to fetch transport parking', error, 'content')
+    logContentError('Failed to fetch transport parking', error)
     return emptySectionsPage
   }
 })
@@ -53,7 +146,7 @@ export const getAccessibilityInfo = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'accessibility-info', depth: 1, locale: locale as Loc })) || emptySectionsPage
   } catch (error) {
-    logger.error('Failed to fetch accessibility info', error, 'content')
+    logContentError('Failed to fetch accessibility info', error)
     return emptySectionsPage
   }
 })
@@ -70,7 +163,7 @@ export const getAirportMap = cache(async (locale?: string) => {
       }
     )
   } catch (error) {
-    logger.error('Failed to fetch airport map', error, 'content')
+    logContentError('Failed to fetch airport map', error)
     return {
       introTitle: 'Airport map',
       introSummary: 'Map data will appear here once editorial content is configured.',
@@ -91,7 +184,7 @@ export const getContactInfo = cache(async (locale?: string) => {
       }
     )
   } catch (error) {
-    logger.error('Failed to fetch contact info', error, 'content')
+    logContentError('Failed to fetch contact info', error)
     return {
       helpDeskTitle: 'Contact and help desk',
       helpDeskSummary: 'Official support details will appear here.',
@@ -103,6 +196,7 @@ export const getContactInfo = cache(async (locale?: string) => {
 export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
   try {
     const payload = await getPayloadClient()
+    const nowIso = new Date().toISOString()
     const result = await payload.find({
       collection: 'notices',
       depth: 1,
@@ -110,16 +204,16 @@ export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
       locale: locale as Loc,
       sort: '-publishedAt',
       where: {
-        status: {
-          equals: 'published',
-        },
+        and: getPublishedNoticeFilters(nowIso),
       },
     })
+
+    logTruncationWarning('notices', result)
 
     // Filter out notices missing a title in the current locale
     return result.docs.filter((doc: any) => !!doc.title)
   } catch (error) {
-    logger.error('Failed to fetch latest notices', error, 'content')
+    logContentError('Failed to fetch latest notices', error)
     return []
   }
 })
@@ -127,6 +221,7 @@ export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
 export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
   try {
     const payload = await getPayloadClient()
+    const nowIso = new Date().toISOString()
     const result = await payload.find({
       collection: 'notices',
       depth: 1,
@@ -135,7 +230,7 @@ export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
       sort: '-publishedAt',
       where: {
         and: [
-          { status: { equals: 'published' } },
+          ...getPublishedNoticeFilters(nowIso),
           { urgent: { equals: true } },
           { promoteToBanner: { equals: true } },
         ],
@@ -144,7 +239,7 @@ export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
 
     return result.docs[0] || null
   } catch (error) {
-    logger.error('Failed to fetch emergency notice', error, 'content')
+    logContentError('Failed to fetch emergency notice', error)
     return null
   }
 })
@@ -152,6 +247,7 @@ export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
 export const getNoticeBySlug = cache(async (slug: string, locale?: string) => {
   try {
     const payload = await getPayloadClient()
+    const nowIso = new Date().toISOString()
     const result = await payload.find({
       collection: 'notices',
       depth: 1,
@@ -160,19 +256,19 @@ export const getNoticeBySlug = cache(async (slug: string, locale?: string) => {
       where: {
         and: [
           { slug: { equals: slug } },
-          { status: { equals: 'published' } },
+          ...getPublishedNoticeFilters(nowIso),
         ],
       },
     })
 
     return result.docs[0] || null
   } catch (error) {
-    logger.error(`Failed to fetch notice: ${slug}`, error, 'content')
+    logContentError(`Failed to fetch notice: ${slug}`, error)
     return null
   }
 })
 
-export const getFAQs = cache(async (locale?: string) => {
+export const getFAQs = cache(async (limit = 100, locale?: string) => {
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
@@ -188,9 +284,11 @@ export const getFAQs = cache(async (locale?: string) => {
       },
     })
 
+    logTruncationWarning('faqs', result)
+
     return result.docs
   } catch (error) {
-    logger.error('Failed to fetch FAQs', error, 'content')
+    logContentError('Failed to fetch FAQs', error)
     return []
   }
 })
@@ -213,7 +311,7 @@ export const getPageBySlug = cache(async (slug: string, locale?: string) => {
 
     return result.docs[0] || null
   } catch (error) {
-    logger.error(`Failed to fetch page: ${slug}`, error, 'content')
+    logContentError(`Failed to fetch page: ${slug}`, error)
     return null
   }
 })
@@ -234,7 +332,7 @@ export const getVIPLounge = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'vip-lounge', depth: 1, locale: locale as Loc })) || fallback
   } catch (error) {
-    logger.error('Failed to fetch VIP lounge', error, 'content')
+    logContentError('Failed to fetch VIP lounge', error)
     return fallback
   }
 })
@@ -258,7 +356,7 @@ export const getUsefulLinks = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'useful-links', depth: 1, locale: locale as Loc })) || fallback
   } catch (error) {
-    logger.error('Failed to fetch useful links', error, 'content')
+    logContentError('Failed to fetch useful links', error)
     return fallback
   }
 })
@@ -285,7 +383,7 @@ export const getEmergencyServices = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'emergency-services', depth: 1, locale: locale as Loc })) || fallback
   } catch (error) {
-    logger.error('Failed to fetch emergency services', error, 'content')
+    logContentError('Failed to fetch emergency services', error)
     return fallback
   }
 })
@@ -321,7 +419,7 @@ export const getLegalPages = cache(async (locale?: string) => {
     const payload = await getPayloadClient()
     return (await payload.findGlobal({ slug: 'legal-pages', depth: 1, locale: locale as Loc })) || fallback
   } catch (error) {
-    logger.error('Failed to fetch legal pages', error, 'content')
+    logContentError('Failed to fetch legal pages', error)
     return fallback
   }
 })
@@ -342,9 +440,11 @@ export const getNewsEvents = cache(async (limit = 24, locale?: string) => {
       },
     })
 
+    logTruncationWarning('news-events', result)
+
     return result.docs
   } catch (error) {
-    logger.error('Failed to fetch news events', error, 'content')
+    logContentError('Failed to fetch news events', error)
     return []
   }
 })
@@ -367,9 +467,22 @@ export const getNewsEventBySlug = cache(async (slug: string, locale?: string) =>
 
     return result.docs[0] || null
   } catch (error) {
-    logger.error(`Failed to fetch news event: ${slug}`, error, 'content')
+    logContentError(`Failed to fetch news event: ${slug}`, error)
     return null
   }
+})
+
+export const getNewsEventsWithSignedAttachments = cache(async (limit = 24, locale?: string) => {
+  const items = await getNewsEvents(limit, locale)
+  return signNewsEventAttachmentURLs(items)
+})
+
+export const getNewsEventBySlugWithSignedAttachments = cache(async (slug: string, locale?: string) => {
+  const item = await getNewsEventBySlug(slug, locale)
+  if (!item) return null
+
+  const [signedItem] = await signNewsEventAttachmentURLs([item])
+  return signedItem ?? null
 })
 
 export const getAirportProjectItems = cache(async (limit = 24, locale?: string) => {
@@ -388,9 +501,11 @@ export const getAirportProjectItems = cache(async (limit = 24, locale?: string) 
       },
     })
 
+    logTruncationWarning('airport-project', result)
+
     return result.docs
   } catch (error) {
-    logger.error('Failed to fetch airport project items', error, 'content')
+    logContentError('Failed to fetch airport project items', error)
     return []
   }
 })
@@ -413,7 +528,7 @@ export const getAirportProjectBySlug = cache(async (slug: string, locale?: strin
 
     return result.docs[0] || null
   } catch (error) {
-    logger.error(`Failed to fetch airport project item: ${slug}`, error, 'content')
+    logContentError(`Failed to fetch airport project item: ${slug}`, error)
     return null
   }
 })
@@ -433,9 +548,11 @@ export const getPublishedPages = cache(async (locale?: string) => {
       },
     })
 
+    logTruncationWarning('pages', result)
+
     return result.docs
   } catch (error) {
-    logger.error('Failed to fetch published pages', error, 'content')
+    logContentError('Failed to fetch published pages', error)
     return []
   }
 })

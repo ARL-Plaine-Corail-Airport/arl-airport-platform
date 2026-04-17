@@ -74,7 +74,7 @@ function buildPassengerAdvisory(input: {
     return 'Reduced visibility around the airport'
   }
 
-  if (windGustsKmh != null && windGustsKmh >= 50) {
+  if (windGustsKmh !== null && windGustsKmh !== undefined && windGustsKmh >= 50) {
     return 'Strong wind gusts reported'
   }
 
@@ -107,7 +107,7 @@ export const getWeatherSnapshot = cache(async (): Promise<WeatherResponse> => {
       },
       signal: AbortSignal.timeout(5000),
       next: {
-        revalidate: 600,
+        revalidate: 300,
       },
     })
 

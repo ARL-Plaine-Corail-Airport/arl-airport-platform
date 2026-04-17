@@ -26,6 +26,7 @@ function getPeriodStart(period: AnalyticsPeriod): Date {
 // ─── Paginated fetch ────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 1000
+const MAX_PAGES = 50
 
 async function fetchAllPageViews(since: Date): Promise<any[]> {
   const payload = await getPayloadClient()
@@ -33,7 +34,7 @@ async function fetchAllPageViews(since: Date): Promise<any[]> {
   let page = 1
   let hasMore = true
 
-  while (hasMore) {
+  while (hasMore && page <= MAX_PAGES) {
     const result = await payload.find({
       collection: 'page-views',
       limit: PAGE_SIZE,
@@ -47,6 +48,10 @@ async function fetchAllPageViews(since: Date): Promise<any[]> {
     docs.push(...result.docs)
     hasMore = result.hasNextPage
     page++
+  }
+
+  if (page > MAX_PAGES) {
+    logger.warn(`fetchAllPageViews hit MAX_PAGES cap (${MAX_PAGES})`, 'analytics')
   }
 
   return docs
@@ -63,18 +68,22 @@ export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<Ana
     // ── Daily unique visitors ────────────────────────────────────────
     // The visitor hash is IP+date, so the same person on different days
     // produces different hashes. We count distinct hashes per day and
-    // average across the period to give a meaningful "daily uniques" number.
+    // average across the days that recorded traffic.
     const dailyHashSets = new Map<string, Set<string>>()
     for (const doc of docs) {
       const date = (doc.createdAt as string)?.slice(0, 10)
       if (!date || !doc.visitorHash) continue
       if (!dailyHashSets.has(date)) dailyHashSets.set(date, new Set())
-      dailyHashSets.get(date)!.add(doc.visitorHash)
+      const hashes = dailyHashSets.get(date)
+      if (!hashes) continue
+      hashes.add(doc.visitorHash)
     }
-    let dailyUniqueVisitors = 0
+    let totalDailyUniques = 0
     for (const hashes of dailyHashSets.values()) {
-      dailyUniqueVisitors += hashes.size
+      totalDailyUniques += hashes.size
     }
+    const dailyUniqueVisitors =
+      dailyHashSets.size > 0 ? totalDailyUniques / dailyHashSets.size : 0
 
     // ── Top pages ─────────────────────────────────────────────────────
     const pageCounts = new Map<string, { views: number; visitors: Set<string> }>()
@@ -83,7 +92,8 @@ export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<Ana
       if (!pageCounts.has(path)) {
         pageCounts.set(path, { views: 0, visitors: new Set() })
       }
-      const entry = pageCounts.get(path)!
+      const entry = pageCounts.get(path)
+      if (!entry) continue
       entry.views++
       if (doc.visitorHash) entry.visitors.add(doc.visitorHash)
     }

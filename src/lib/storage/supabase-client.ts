@@ -8,6 +8,8 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
+import { logger } from '@/lib/logger'
+
 // Module-level singleton to avoid creating a new client on every call
 let _client: SupabaseClient | null = null
 
@@ -94,8 +96,11 @@ export async function getSignedURLs(
 
   return Object.fromEntries(
     data
-      .filter((item) => item.signedUrl)
-      .map((item) => [item.path, item.signedUrl!]),
+      .filter(
+        (item): item is typeof item & { signedUrl: string } =>
+          item.signedUrl != null,
+      )
+      .map((item) => [item.path, item.signedUrl]),
   )
 }
 
@@ -115,9 +120,6 @@ export async function deleteStorageObject(
 
   if (error) {
     // Log but do not throw — a failed delete should not block Payload's response.
-    console.error(
-      `[supabase-client] Failed to delete ${bucket}/${path}:`,
-      error.message,
-    )
+    logger.error(`Failed to delete ${bucket}/${path}`, error, 'supabase-client')
   }
 }

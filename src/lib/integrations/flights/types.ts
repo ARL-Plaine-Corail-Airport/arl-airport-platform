@@ -18,4 +18,6 @@ export type FlightBoardResponse = {
   fetchedAt?: string | null
   message: string
   records: FlightRecord[]
+  /** True when the upstream API failed and data is degraded (manual-only or unavailable). */
+  degraded?: boolean
 }

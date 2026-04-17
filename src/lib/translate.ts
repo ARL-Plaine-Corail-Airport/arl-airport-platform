@@ -1,27 +1,15 @@
-/**
- * ARL Airport — Free Translation Service
- *
- * Uses the MyMemory API (api.mymemory.translated.net) for on-demand translation.
- * Free tier: 5 000 chars/day (anonymous), 50 000/day (with email).
- *
- * Supported language pairs:
- *   en ↔ fr   — full support
- *   en ↔ mfe  — limited (Mauritian Creole may fall back to French)
- *   fr ↔ mfe  — limited
- *
- * For Mauritian Creole, prefer the static dictionaries in src/i18n/dictionaries/.
- * This service is intended as a supplementary tool for dynamic CMS content.
- */
+import { logger } from '@/lib/logger'
 
 const MYMEMORY_BASE = 'https://api.mymemory.translated.net/get'
 
-/** In-memory cache to avoid hitting the API for the same text repeatedly */
-const translationCache = new Map<string, string>()
+const CACHE_MAX_SIZE = 1000
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const translationCache = new Map<string, { value: string; cachedAt: number }>()
 
 type TranslateOptions = {
   text: string
-  from: string  // e.g. 'en'
-  to: string    // e.g. 'fr' or 'mfe'
+  from: string
+  to: string
 }
 
 type MyMemoryResponse = {
@@ -32,23 +20,45 @@ type MyMemoryResponse = {
   }
 }
 
-/**
- * Translate a string using the MyMemory API.
- * Returns the original text on failure (graceful fallback).
- *
- * @example
- *   const french = await translate({ text: 'Hello', from: 'en', to: 'fr' })
- *   // → "Bonjour"
- */
+function getCachedTranslation(key: string): string | undefined {
+  const entry = translationCache.get(key)
+  if (!entry) return undefined
+
+  if (Date.now() - entry.cachedAt > CACHE_TTL_MS) {
+    translationCache.delete(key)
+    return undefined
+  }
+
+  return entry.value
+}
+
+function setCachedTranslation(key: string, value: string): void {
+  const now = Date.now()
+  const staleKeys: string[] = []
+  for (const [k, entry] of translationCache) {
+    if (now - entry.cachedAt > CACHE_TTL_MS) {
+      staleKeys.push(k)
+    }
+  }
+  for (const staleKey of staleKeys) {
+    translationCache.delete(staleKey)
+  }
+  if (translationCache.size >= CACHE_MAX_SIZE) {
+    const oldestKey = translationCache.keys().next().value
+    if (oldestKey !== undefined) translationCache.delete(oldestKey)
+  }
+
+  translationCache.set(key, { value, cachedAt: now })
+}
+
 export async function translate({ text, from, to }: TranslateOptions): Promise<string> {
   if (!text.trim()) return text
   if (from === to) return text
 
   const cacheKey = `${from}|${to}|${text}`
-  const cached = translationCache.get(cacheKey)
+  const cached = getCachedTranslation(cacheKey)
   if (cached) return cached
 
-  // MyMemory doesn't natively support 'mfe' — fall back to French for Creole
   const effectiveTo = to === 'mfe' ? 'fr' : to
   const effectiveFrom = from === 'mfe' ? 'fr' : from
 
@@ -62,26 +72,36 @@ export async function translate({ text, from, to }: TranslateOptions): Promise<s
       signal: AbortSignal.timeout(5000),
     })
 
-    if (!response.ok) return text
+    if (!response.ok) {
+      logger.error(
+        'Translation request failed',
+        `HTTP ${response.status}`,
+        'translate',
+      )
+      return text
+    }
 
     const data: MyMemoryResponse = await response.json()
 
     if (data.responseStatus === 200 && data.responseData?.translatedText) {
       const translated = data.responseData.translatedText
-      translationCache.set(cacheKey, translated)
+      setCachedTranslation(cacheKey, translated)
       return translated
     }
 
+    logger.error(
+      'Translation response did not contain translated text',
+      `status=${data.responseStatus}`,
+      'translate',
+    )
     return text
-  } catch {
-    // Network error, timeout, or API issue — fail silently
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.warn(`Translation failed: ${errorMessage}`, 'translate')
     return text
   }
 }
 
-/**
- * Translate multiple strings in one call (batched sequentially to respect rate limits).
- */
 export async function translateBatch(
   texts: string[],
   from: string,
@@ -89,9 +109,5 @@ export async function translateBatch(
 ): Promise<string[]> {
   if (from === to) return texts
 
-  const results: string[] = []
-  for (const text of texts) {
-    results.push(await translate({ text, from, to }))
-  }
-  return results
+  return Promise.all(texts.map((text) => translate({ text, from, to })))
 }

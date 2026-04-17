@@ -15,11 +15,14 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(request: NextRequest) {
   const deep = request.nextUrl.searchParams.get('deep') === 'true'
+  const noStoreHeaders = { 'Cache-Control': 'no-store' }
 
   if (!deep) {
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
+    }, {
+      headers: noStoreHeaders,
     })
   }
 
@@ -40,6 +43,8 @@ export async function GET(request: NextRequest) {
         payload: 'ok',
         database: 'ok',
       },
+    }, {
+      headers: noStoreHeaders,
     })
   } catch (error) {
     logger.error('Healthcheck failed', error, 'health')
@@ -54,7 +59,7 @@ export async function GET(request: NextRequest) {
         },
         error: 'Healthcheck failed',
       },
-      { status: 503 },
+      { status: 503, headers: noStoreHeaders },
     )
   }
 }

@@ -1,9 +1,11 @@
+import 'server-only'
+
 import { timingSafeEqual } from 'crypto'
 
 import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
-import { serverEnv } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 import { revalidateSchema } from '@/lib/validation'
 
 function safeCompare(a: string, b: string): boolean {
@@ -12,7 +14,8 @@ function safeCompare(a: string, b: string): boolean {
   const bufB = Buffer.alloc(maxLen)
   bufA.write(a)
   bufB.write(b)
-  return a.length === b.length && timingSafeEqual(bufA, bufB)
+  const equal = timingSafeEqual(bufA, bufB)
+  return a.length === b.length && equal
 }
 
 export async function POST(request: NextRequest) {

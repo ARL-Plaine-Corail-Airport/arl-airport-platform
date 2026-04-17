@@ -1,7 +1,9 @@
 import { z } from 'zod'
 
+import { locales } from '@/i18n/config'
+
 function isSafePathname(path: string): boolean {
-  if (path.includes('//') || path.includes('?') || path.includes('#')) {
+  if (path.includes('%') || path.includes('//') || path.includes('?') || path.includes('#')) {
     return false
   }
 
@@ -26,7 +28,7 @@ export const trackEventSchema = z.object({
   type: z.enum(['pageview']),
   path: pathnameSchema(500),
   referrer: z.string().max(2000).optional(),
-  locale: z.enum(['en', 'fr', 'mfe']).optional(),
+  locale: z.enum(locales).optional(),
 })
 
 export const flightBoardQuerySchema = z.object({

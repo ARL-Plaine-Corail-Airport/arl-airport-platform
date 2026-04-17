@@ -1,7 +1,9 @@
+import 'server-only'
+
 import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// Types
 
 export type AnalyticsPeriod = '7d' | '30d' | '90d'
 
@@ -15,7 +17,26 @@ export type AnalyticsSummary = {
   dailyViews: { date: string; views: number }[]
 }
 
-// ─── Period helpers ─────────────────────────────────────────────────────────
+type PageViewDoc = {
+  createdAt?: string | null
+  visitorHash?: string | null
+  path?: string | null
+  referrer?: string | null
+  device?: string | null
+  language?: string | null
+}
+
+type PageViewStats = {
+  totalViews: number
+  dailyHashSets: Map<string, Set<string>>
+  pageCounts: Map<string, { views: number; visitors: Set<string> }>
+  refCounts: Map<string, number>
+  deviceCounts: Map<string, number>
+  langCounts: Map<string, number>
+  dayCounts: Map<string, number>
+}
+
+// Period helpers
 
 function getPeriodStart(period: AnalyticsPeriod): Date {
   const now = new Date()
@@ -23,14 +44,23 @@ function getPeriodStart(period: AnalyticsPeriod): Date {
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
 }
 
-// ─── Paginated fetch ────────────────────────────────────────────────────────
+// Paginated fetch
 
 const PAGE_SIZE = 1000
 const MAX_PAGES = 50
 
-async function fetchAllPageViews(since: Date): Promise<any[]> {
+async function fetchAllPageViews(since: Date): Promise<PageViewStats> {
   const payload = await getPayloadClient()
-  const docs: any[] = []
+  const stats: PageViewStats = {
+    totalViews: 0,
+    dailyHashSets: new Map(),
+    pageCounts: new Map(),
+    refCounts: new Map(),
+    deviceCounts: new Map(),
+    langCounts: new Map(),
+    dayCounts: new Map(),
+  }
+
   let page = 1
   let hasMore = true
 
@@ -45,60 +75,72 @@ async function fetchAllPageViews(since: Date): Promise<any[]> {
       sort: 'createdAt',
     })
 
-    docs.push(...result.docs)
+    for (const doc of result.docs as PageViewDoc[]) {
+      stats.totalViews++
+
+      const date = doc.createdAt?.slice(0, 10)
+      if (date) {
+        stats.dayCounts.set(date, (stats.dayCounts.get(date) ?? 0) + 1)
+
+        if (doc.visitorHash) {
+          if (!stats.dailyHashSets.has(date)) stats.dailyHashSets.set(date, new Set())
+          const hashes = stats.dailyHashSets.get(date)
+          if (hashes) hashes.add(doc.visitorHash)
+        }
+      }
+
+      const path = doc.path ?? '/'
+      if (!stats.pageCounts.has(path)) {
+        stats.pageCounts.set(path, { views: 0, visitors: new Set() })
+      }
+      const pageEntry = stats.pageCounts.get(path)
+      if (pageEntry) {
+        pageEntry.views++
+        if (doc.visitorHash) pageEntry.visitors.add(doc.visitorHash)
+      }
+
+      const ref = doc.referrer ?? 'direct'
+      stats.refCounts.set(ref, (stats.refCounts.get(ref) ?? 0) + 1)
+
+      const device = doc.device ?? 'desktop'
+      stats.deviceCounts.set(device, (stats.deviceCounts.get(device) ?? 0) + 1)
+
+      const lang = mapLanguageLabel(doc.language ?? 'unknown')
+      stats.langCounts.set(lang, (stats.langCounts.get(lang) ?? 0) + 1)
+    }
+
     hasMore = result.hasNextPage
     page++
   }
 
-  if (page > MAX_PAGES) {
+  if (hasMore) {
     logger.warn(`fetchAllPageViews hit MAX_PAGES cap (${MAX_PAGES})`, 'analytics')
   }
 
-  return docs
+  return stats
 }
 
-// ─── Main query ─────────────────────────────────────────────────────────────
+// Main query
 
 export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<AnalyticsSummary> {
   try {
     const since = getPeriodStart(period)
-    const docs = await fetchAllPageViews(since)
-    const totalViews = docs.length
+    const stats = await fetchAllPageViews(since)
+    const totalViews = stats.totalViews
 
-    // ── Daily unique visitors ────────────────────────────────────────
+    // Daily unique visitors
     // The visitor hash is IP+date, so the same person on different days
     // produces different hashes. We count distinct hashes per day and
     // average across the days that recorded traffic.
-    const dailyHashSets = new Map<string, Set<string>>()
-    for (const doc of docs) {
-      const date = (doc.createdAt as string)?.slice(0, 10)
-      if (!date || !doc.visitorHash) continue
-      if (!dailyHashSets.has(date)) dailyHashSets.set(date, new Set())
-      const hashes = dailyHashSets.get(date)
-      if (!hashes) continue
-      hashes.add(doc.visitorHash)
-    }
     let totalDailyUniques = 0
-    for (const hashes of dailyHashSets.values()) {
+    for (const hashes of stats.dailyHashSets.values()) {
       totalDailyUniques += hashes.size
     }
     const dailyUniqueVisitors =
-      dailyHashSets.size > 0 ? totalDailyUniques / dailyHashSets.size : 0
+      stats.dailyHashSets.size > 0 ? totalDailyUniques / stats.dailyHashSets.size : 0
 
-    // ── Top pages ─────────────────────────────────────────────────────
-    const pageCounts = new Map<string, { views: number; visitors: Set<string> }>()
-    for (const doc of docs) {
-      const path = doc.path ?? '/'
-      if (!pageCounts.has(path)) {
-        pageCounts.set(path, { views: 0, visitors: new Set() })
-      }
-      const entry = pageCounts.get(path)
-      if (!entry) continue
-      entry.views++
-      if (doc.visitorHash) entry.visitors.add(doc.visitorHash)
-    }
-
-    const topPages = Array.from(pageCounts.entries())
+    // Top pages
+    const topPages = Array.from(stats.pageCounts.entries())
       .map(([path, data]) => ({
         path,
         views: data.views,
@@ -107,14 +149,8 @@ export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<Ana
       .sort((a, b) => b.views - a.views)
       .slice(0, 10)
 
-    // ── Referrers ─────────────────────────────────────────────────────
-    const refCounts = new Map<string, number>()
-    for (const doc of docs) {
-      const ref = doc.referrer ?? 'direct'
-      refCounts.set(ref, (refCounts.get(ref) ?? 0) + 1)
-    }
-
-    const referrers = Array.from(refCounts.entries())
+    // Referrers
+    const referrers = Array.from(stats.refCounts.entries())
       .map(([source, sessions]) => ({
         source: formatReferrer(source),
         sessions,
@@ -123,28 +159,16 @@ export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<Ana
       .sort((a, b) => b.sessions - a.sessions)
       .slice(0, 5)
 
-    // ── Devices ───────────────────────────────────────────────────────
-    const deviceCounts = new Map<string, number>()
-    for (const doc of docs) {
-      const device = doc.device ?? 'desktop'
-      deviceCounts.set(device, (deviceCounts.get(device) ?? 0) + 1)
-    }
-
-    const devices = Array.from(deviceCounts.entries())
+    // Devices
+    const devices = Array.from(stats.deviceCounts.entries())
       .map(([label, count]) => ({
         label: label.charAt(0).toUpperCase() + label.slice(1),
         value: totalViews > 0 ? Math.round((count / totalViews) * 100) : 0,
       }))
       .sort((a, b) => b.value - a.value)
 
-    // ── Languages ─────────────────────────────────────────────────────
-    const langCounts = new Map<string, number>()
-    for (const doc of docs) {
-      const lang = mapLanguageLabel(doc.language ?? 'unknown')
-      langCounts.set(lang, (langCounts.get(lang) ?? 0) + 1)
-    }
-
-    const languages = Array.from(langCounts.entries())
+    // Languages
+    const languages = Array.from(stats.langCounts.entries())
       .map(([label, count]) => ({
         label,
         value: totalViews > 0 ? Math.round((count / totalViews) * 100) : 0,
@@ -152,20 +176,13 @@ export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<Ana
       .sort((a, b) => b.value - a.value)
       .slice(0, 5)
 
-    // ── Daily views (for chart) ───────────────────────────────────────
-    const dayCounts = new Map<string, number>()
-    for (const doc of docs) {
-      const date = (doc.createdAt as string)?.slice(0, 10)
-      if (date) dayCounts.set(date, (dayCounts.get(date) ?? 0) + 1)
-    }
-
-    // Fill in zero-days
+    // Daily views (for chart)
     const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
     const dailyViews: { date: string; views: number }[] = []
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
       const key = d.toISOString().slice(0, 10)
-      dailyViews.push({ date: key, views: dayCounts.get(key) ?? 0 })
+      dailyViews.push({ date: key, views: stats.dayCounts.get(key) ?? 0 })
     }
 
     return {
@@ -191,7 +208,7 @@ export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<Ana
   }
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// Helpers
 
 function formatReferrer(source: string): string {
   if (source === 'direct') return 'Direct / Bookmark'

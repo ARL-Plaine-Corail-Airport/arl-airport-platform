@@ -1,5 +1,7 @@
+import 'server-only'
+
 // =============================================================================
-// Supabase Server Client — Storage Operations
+// Supabase Server Client - Storage Operations
 //
 // SERVER-ONLY. Do not import in client components or browser code.
 // Uses the service role key to bypass RLS when generating signed URLs
@@ -15,7 +17,7 @@ let _client: SupabaseClient | null = null
 
 /**
  * Returns a singleton Supabase client configured with the service role key.
- * This client has admin-level access — use only in server-side code.
+ * This client has admin-level access - use only in server-side code.
  */
 export function getSupabaseAdminClient(): SupabaseClient {
   if (_client) return _client
@@ -34,14 +36,16 @@ export function getSupabaseAdminClient(): SupabaseClient {
     auth: {
       // Service role clients do not need a persisted session
       autoRefreshToken: false,
-      persistSession:   false,
+      persistSession: false,
     },
   })
 
   return _client
 }
 
-// ── Signed URL Generation ────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Signed URL Generation
+// -----------------------------------------------------------------------------
 
 const SIGNED_URL_EXPIRY_SECONDS = 3600 // 1 hour
 
@@ -104,7 +108,9 @@ export async function getSignedURLs(
   )
 }
 
-// ── File Deletion ────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// File Deletion
+// -----------------------------------------------------------------------------
 
 /**
  * Deletes a file from a Supabase Storage bucket.
@@ -119,7 +125,7 @@ export async function deleteStorageObject(
   const { error } = await supabase.storage.from(bucket).remove([path])
 
   if (error) {
-    // Log but do not throw — a failed delete should not block Payload's response.
+    // Log but do not throw - a failed delete should not block Payload's response.
     logger.error(`Failed to delete ${bucket}/${path}`, error, 'supabase-client')
   }
 }

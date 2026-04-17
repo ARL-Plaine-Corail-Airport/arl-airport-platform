@@ -110,6 +110,60 @@ function buildRequestHeaders(
   return requestHeaders
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const [, payload] = token.split('.')
+
+  if (!payload) {
+    return null
+  }
+
+  try {
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const decoded = atob(padded)
+    const parsed = JSON.parse(decoded)
+
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null
+  } catch {
+    return null
+  }
+}
+
+function isExpiredJwt(token: string): boolean {
+  const payload = decodeJwtPayload(token)
+  const exp = payload?.exp
+
+  return typeof exp === 'number' && Number.isFinite(exp) && exp * 1000 <= Date.now()
+}
+
+function getRateLimitKey(request: NextRequest, normalizedPathname: string): string {
+  const IP_PATTERN =
+    /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$|^[a-f0-9:]{3,39}$/i
+  const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')?.trim()
+
+  if (rawIp && IP_PATTERN.test(rawIp)) {
+    return rawIp
+  }
+
+  const fingerprintParts = [
+    request.method,
+    request.headers.get('user-agent')?.trim() ?? '',
+    request.headers.get('accept-language')?.trim() ?? '',
+    request.headers.get('accept')?.trim() ?? '',
+    request.headers.get('sec-ch-ua')?.trim() ?? '',
+    request.headers.get('sec-ch-ua-mobile')?.trim() ?? '',
+    request.headers.get('sec-ch-ua-platform')?.trim() ?? '',
+    request.headers.get('sec-fetch-site')?.trim() ?? '',
+  ].filter((part): part is string => Boolean(part))
+
+  const fingerprintSource = fingerprintParts.length > 0
+    ? fingerprintParts.join('|')
+    : `${request.nextUrl.host}|${normalizedPathname}`
+
+  return `anon:${Buffer.from(fingerprintSource).toString('base64url')}`
+}
+
 function applyCspHeaders(
   response: NextResponse,
   mode: CspMode,
@@ -120,10 +174,6 @@ function applyCspHeaders(
     'Content-Security-Policy',
     mode === 'admin' ? buildAdminCspHeader() : buildAppCspHeader(nonce),
   )
-
-  if (mode === 'app') {
-    response.headers.set('x-nonce', nonce)
-  }
 
   return response
 }
@@ -240,7 +290,7 @@ export async function middleware(request: NextRequest) {
 
   const legacyRedirectPath = getLegacyVipRedirectPath(normalizedPathname, locale)
   if (legacyRedirectPath) {
-    return NextResponse.redirect(buildInternalUrl(legacyRedirectPath), 308)
+    return NextResponse.redirect(buildInternalUrl(legacyRedirectPath), 307)
   }
 
   // ── Rate limit public API routes ──────────────────────────────────────
@@ -255,19 +305,17 @@ export async function middleware(request: NextRequest) {
     // Forwarded client IP headers are only trustworthy when a trusted reverse
     // proxy such as Vercel or Cloudflare sits in front of the app and strips
     // spoofed values. On direct/self-hosted deployments, treat these headers as
-    // advisory rather than authoritative.
-    const IP_PATTERN =
-      /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$|^[a-f0-9:]{3,39}$/i
-    const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      ?? request.headers.get('x-real-ip')?.trim()
-    const ip = rawIp && IP_PATTERN.test(rawIp) ? rawIp : 'anonymous'
+    // advisory rather than authoritative. When no trusted IP is available, use
+    // a per-request fingerprint so all anonymous traffic does not share one
+    // limiter bucket.
+    const rateLimitKey = getRateLimitKey(request, normalizedPathname)
 
     let limited = false
     let remaining: number | null = null
 
     if (ratelimit) {
       try {
-        const result = await ratelimit.limit(ip)
+        const result = await ratelimit.limit(rateLimitKey)
         limited = !result.success
         remaining = result.remaining
       } catch (error) {
@@ -276,7 +324,7 @@ export async function middleware(request: NextRequest) {
         remaining = null
       }
     } else {
-      const result = devRateLimit(ip)
+      const result = devRateLimit(rateLimitKey)
       limited = result.limited
       remaining = result.remaining
     }
@@ -305,13 +353,13 @@ export async function middleware(request: NextRequest) {
 
   // ── Dashboard auth handoff ────────────────────────────────────────────
   // Payload stores auth in a JWT cookie named `payload-token`. Middleware
-  // only checks whether that cookie exists and redirects unauthenticated
-  // requests to the admin login. Section and role access are enforced
-  // server-side in the dashboard auth helpers after payload.auth().
+  // checks whether that cookie exists and, when possible, whether it is
+  // already expired. Section and role access are enforced server-side in the
+  // dashboard auth helpers after payload.auth().
   if (matchesPathPrefix(normalizedPathname, '/dashboard')) {
     const payloadToken = request.cookies.get('payload-token')?.value
 
-    if (!payloadToken) {
+    if (!payloadToken || isExpiredJwt(payloadToken)) {
       const loginUrl = new URL('/admin/login', request.url)
       loginUrl.searchParams.set('redirect', normalizedPathname)
       const redirectResponse = applyCspHeaders(
@@ -368,7 +416,7 @@ export async function middleware(request: NextRequest) {
     const locale = getPreferredLocale(request)
     const redirectUrl = new URL(`/${locale}${normalizedPathname}`, request.url)
     redirectUrl.search = request.nextUrl.search
-    return NextResponse.redirect(redirectUrl, 308)
+    return NextResponse.redirect(redirectUrl, 307)
   }
 
   return NextResponse.next()

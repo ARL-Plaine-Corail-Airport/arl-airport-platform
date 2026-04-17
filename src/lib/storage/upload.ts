@@ -1,12 +1,14 @@
+import 'server-only'
+
 // =============================================================================
-// Upload Utility — Supabase Storage
+// Upload Utility - Supabase Storage
 //
 // SERVER-ONLY. Direct uploads via the Supabase JS client for use cases
 // outside of Payload's managed upload flow (e.g. programmatic seeding,
 // or future integration with external document sources).
 //
 // For Payload-managed uploads (admin UI), the @payloadcms/storage-s3 plugin
-// handles upload routing automatically — you do not need this file for that.
+// handles upload routing automatically - you do not need this file for that.
 // =============================================================================
 
 import { getSupabaseAdminClient } from './supabase-client'
@@ -40,7 +42,9 @@ export interface UploadResult {
   publicURL: string | null
 }
 
-// ── Validation ────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Validation
+// -----------------------------------------------------------------------------
 
 export function validateUpload(
   contentType: string,
@@ -71,14 +75,16 @@ export function validateUpload(
   return { valid: true }
 }
 
-// ── Upload ────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Upload
+// -----------------------------------------------------------------------------
 
 /**
  * Uploads a file buffer to Supabase Storage.
  *
  * For public media bucket (arl-public-media), returns the public CDN URL.
  * For protected docs bucket (arl-protected-docs), returns null for publicURL
- * — use getSignedURL() from supabase-client.ts instead.
+ * - use getSignedURL() from supabase-client.ts instead.
  */
 export async function uploadToStorage(opts: UploadOptions): Promise<UploadResult> {
   const supabase = getSupabaseAdminClient()
@@ -87,9 +93,9 @@ export async function uploadToStorage(opts: UploadOptions): Promise<UploadResult
     opts.path,
     opts.buffer,
     {
-      contentType:  opts.contentType,
+      contentType: opts.contentType,
       cacheControl: opts.cacheControl ?? '3600',
-      upsert:       opts.upsert      ?? false,
+      upsert: opts.upsert ?? false,
     },
   )
 
@@ -110,13 +116,15 @@ export async function uploadToStorage(opts: UploadOptions): Promise<UploadResult
   }
 
   return {
-    path:      data.path,
-    fullPath:  data.fullPath,
+    path: data.path,
+    fullPath: data.fullPath,
     publicURL,
   }
 }
 
-// ── Convenience wrappers ──────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Convenience wrappers
+// -----------------------------------------------------------------------------
 
 /**
  * Upload a public image (goes to arl-public-media bucket).
@@ -131,18 +139,18 @@ export async function uploadPublicImage(
   if (!validation.valid) throw new Error(`[upload] ${validation.reason}`)
 
   return uploadToStorage({
-    bucket:       BUCKETS.publicMedia,
+    bucket: BUCKETS.publicMedia,
     path,
     buffer,
     contentType,
     cacheControl: '86400', // 24h CDN cache for public images
-    upsert:       false,
+    upsert: false,
   })
 }
 
 /**
  * Upload a protected PDF document (goes to arl-protected-docs bucket).
- * Access requires a server-generated signed URL — publicURL will be null.
+ * Access requires a server-generated signed URL - publicURL will be null.
  */
 export async function uploadProtectedDocument(
   buffer: Buffer,
@@ -152,11 +160,11 @@ export async function uploadProtectedDocument(
   if (!validation.valid) throw new Error(`[upload] ${validation.reason}`)
 
   return uploadToStorage({
-    bucket:       BUCKETS.protectedDocs,
+    bucket: BUCKETS.protectedDocs,
     path,
     buffer,
-    contentType:  'application/pdf',
+    contentType: 'application/pdf',
     cacheControl: '3600',
-    upsert:       false,
+    upsert: false,
   })
 }

@@ -1,9 +1,11 @@
+import 'server-only'
+
 import { cache } from 'react'
 import type { Where } from 'payload'
 
 import { isBuildTimeDbDisabledError } from '@/lib/build-db'
 import { defaultHomePage, defaultSiteSettings, emptySectionsPage } from '@/lib/defaults'
-import { serverEnv } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
 import { normalizeSiteSettings } from '@/lib/site-settings'
@@ -274,7 +276,7 @@ export const getFAQs = cache(async (limit = 100, locale?: string) => {
     const result = await payload.find({
       collection: 'faqs',
       depth: 1,
-      limit: 100,
+      limit,
       locale: locale as Loc,
       sort: 'order',
       where: {

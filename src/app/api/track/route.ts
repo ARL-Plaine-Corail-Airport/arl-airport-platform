@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { serverEnv } from '@/lib/env.server'
 import { getMiddlewarePathInfo, matchesPathPrefix } from '@/lib/middleware-routing'
 import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
 import { trackEventSchema } from '@/lib/validation'
 
 const BLOCKED_PATH_PREFIXES = ['/admin', '/dashboard', '/api'] as const
-const IP_PATTERN =
-  /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$|^[a-f0-9:]{3,39}$/i
+const IPV4_PATTERN = /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$/i
+const IPV6_PATTERN =
+  /^(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}$|^(?:[a-f0-9]{1,4}:){1,7}:$|^:(?::[a-f0-9]{1,4}){1,7}$|^(?:[a-f0-9]{1,4}:){1,6}:[a-f0-9]{1,4}$|^(?:[a-f0-9]{1,4}:){1,5}(?::[a-f0-9]{1,4}){1,2}$|^(?:[a-f0-9]{1,4}:){1,4}(?::[a-f0-9]{1,4}){1,3}$|^(?:[a-f0-9]{1,4}:){1,3}(?::[a-f0-9]{1,4}){1,4}$|^(?:[a-f0-9]{1,4}:){1,2}(?::[a-f0-9]{1,4}){1,5}$|^[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){1,6}$|^::$/i
 
 function normalizeTrackEventPayload(body: unknown): unknown {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return body
@@ -52,7 +54,7 @@ function extractReferrerDomain(referrer: string | null, siteHost: string): strin
 // Create a daily anonymized hash from IP — not reversible
 async function hashVisitor(ip: string): Promise<string> {
   const date = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
-  const data = new TextEncoder().encode(`${ip}:${date}`)
+  const data = new TextEncoder().encode(`${serverEnv.visitorHashSalt}:${ip}:${date}`)
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
@@ -68,7 +70,7 @@ function getClientIp(request: NextRequest): string {
   const realIp = request.headers.get('x-real-ip')?.trim()
 
   for (const candidate of [forwardedIp, realIp]) {
-    if (candidate && IP_PATTERN.test(candidate)) {
+    if (candidate && (IPV4_PATTERN.test(candidate) || IPV6_PATTERN.test(candidate))) {
       return candidate
     }
   }
@@ -76,8 +78,22 @@ function getClientIp(request: NextRequest): string {
   return 'unknown'
 }
 
+function isAllowedOrigin(origin: string | null, siteUrl: string): boolean {
+  if (!origin) return true
+
+  try {
+    return new URL(origin).host === new URL(siteUrl).host
+  } catch {
+    return false
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    if (!isAllowedOrigin(request.headers.get('origin'), serverEnv.siteUrl)) {
+      return new Response(null, { status: 403 })
+    }
+
     const body = await request.json().catch(() => null)
     const result = trackEventSchema.safeParse(normalizeTrackEventPayload(body))
 
@@ -93,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     const ua = request.headers.get('user-agent') ?? ''
     const acceptLang = request.headers.get('accept-language')
-    const siteHost = request.nextUrl.hostname
+    const siteHost = new URL(serverEnv.siteUrl).host
 
     const visitorHash = await hashVisitor(getClientIp(request))
 

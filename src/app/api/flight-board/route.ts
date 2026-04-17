@@ -34,6 +34,18 @@ export async function GET(request: NextRequest) {
     })
     const payload = boards[boardType]
 
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Board type unavailable' },
+        {
+          status: 502,
+          headers: {
+            'Cache-Control': 'no-store',
+          },
+        },
+      )
+    }
+
     return NextResponse.json(payload, {
       headers: {
         'Cache-Control': boards.degraded

@@ -1,3 +1,5 @@
+import 'server-only'
+
 import type { Metadata } from 'next'
 
 import { locales, type Locale } from '@/i18n/config'

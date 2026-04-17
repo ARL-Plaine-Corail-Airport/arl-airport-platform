@@ -18,7 +18,7 @@ describe('env', () => {
 describe('serverEnv', () => {
   it('exposes server env with sensible defaults', () => {
     expect(serverEnv.flightProviderIataCode).toBe('RRG')
-    expect(serverEnv.s3Region).toBe('ap-southeast-1')
+    expect(serverEnv.s3Region).toBe('eu-west-1')
     expect(serverEnv.mediaBucket).toBe('arl-public-media')
   })
 

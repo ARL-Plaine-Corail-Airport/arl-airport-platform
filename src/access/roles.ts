@@ -35,8 +35,14 @@ export const isApprover = ({ req }: AccessArgs) => hasAnyRole(req.user, APPROVER
 
 export const isEditor = ({ req }: AccessArgs) => hasAnyRole(req.user, EDITOR_ROLES)
 
-export const publishedOrAdmin = ({ req }: AccessArgs) => {
-  if (hasAnyRole(req.user, ADMIN_ROLES)) return true
-  // Unauthenticated / low-privilege users only see published content
-  return { status: { equals: 'published' } }
+function publishedFieldOrAdmin(field: 'status' | '_status') {
+  return ({ req }: AccessArgs) => {
+    if (hasAnyRole(req.user, ADMIN_ROLES)) return true
+    // Unauthenticated / low-privilege users only see published content.
+    return { [field]: { equals: 'published' } }
+  }
 }
+
+export const publishedOrAdmin = publishedFieldOrAdmin('status')
+
+export const publishedVersionOrAdmin = publishedFieldOrAdmin('_status')

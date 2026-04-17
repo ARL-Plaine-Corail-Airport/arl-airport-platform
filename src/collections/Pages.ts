@@ -1,13 +1,13 @@
 import type { CollectionConfig, Field } from 'payload'
 
-import { isApprover, isEditor, publishedOrAdmin } from '@/access'
+import { isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { sectionFields } from '@/fields/sectionFields'
 import { autoSlug } from '@/hooks/autoSlug'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
   access: {
-    read: publishedOrAdmin,
+    read: publishedVersionOrAdmin,
     create: isEditor,
     update: isEditor,
     delete: isApprover,
@@ -90,8 +90,8 @@ export const Pages: CollectionConfig = {
     beforeChange: [
       ({ data, operation }) => {
         if (operation === 'create' || operation === 'update') {
-          if (data._status === 'published' && data.status === 'draft') {
-            data.status = 'published'
+          if (data._status === 'published' && data.status !== 'published') {
+            throw new Error('Set status to Published before using Publish.')
           }
           if (data._status === 'draft' && data.status === 'published') {
             data.status = 'draft'

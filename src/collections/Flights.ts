@@ -21,7 +21,10 @@ const validateAirlineCode: TextFieldValidation = (value) => {
 export const Flights: CollectionConfig = {
   slug: 'flights',
   access: {
-    read: () => true,
+    read: ({ req }) => {
+      if (isEditor({ req })) return true
+      return { status: { equals: 'active' } }
+    },
     create: isEditor,
     update: isEditor,
     delete: isApprover,

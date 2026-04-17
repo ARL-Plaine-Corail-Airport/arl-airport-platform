@@ -7,7 +7,7 @@
 
 import type { CollectionConfig, TextFieldValidation } from 'payload'
 
-import { isAdmin, isEditor, publishedOrAdmin } from '@/access'
+import { isAdmin, isEditor, publishedVersionOrAdmin } from '@/access'
 
 const AIRLINE_WEBSITE_PROTOCOLS = new Set(['http:', 'https:'])
 const AIRLINE_CONTACT_PHONE_PATTERN = /^\+?[0-9()\-\s]+$/
@@ -83,7 +83,7 @@ const validateAirlineIcaoCode: TextFieldValidation = (value) => {
 export const Airlines: CollectionConfig = {
   slug: 'airlines',
   access: {
-    read:   publishedOrAdmin,
+    read:   publishedVersionOrAdmin,
     create: isAdmin,
     update: isEditor,
     delete: isAdmin,

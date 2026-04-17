@@ -1,6 +1,6 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 
-import { isAdmin, isEditor } from '@/access'
+import { isAdmin } from '@/access'
 
 const canUpdateRoles = (({ req }) =>
   Array.isArray(req.user?.roles) && req.user.roles.includes('super_admin')) satisfies FieldAccess
@@ -15,10 +15,14 @@ export const Users: CollectionConfig = {
   },
   access: {
     admin: isAdmin,
-    read: isAdmin,
+    read: ({ req }) => {
+      if (isAdmin({ req })) return true
+      if (req.user?.id) return { id: { equals: req.user.id } }
+      return false
+    },
     update: isAdmin,
     create: isAdmin,
-    delete: isAdmin,
+    delete: ({ req }) => Array.isArray(req.user?.roles) && req.user.roles.includes('super_admin'),
   },
   fields: [
     {
@@ -33,6 +37,7 @@ export const Users: CollectionConfig = {
       required: true,
       defaultValue: ['operations_editor'],
       access: {
+        create: canUpdateRoles,
         update: canUpdateRoles,
       },
       options: [

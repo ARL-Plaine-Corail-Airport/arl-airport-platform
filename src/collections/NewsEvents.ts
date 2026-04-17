@@ -7,13 +7,13 @@
 
 import type { CollectionConfig } from 'payload'
 
-import { isAdmin, isEditor, publishedOrAdmin } from '@/access'
+import { isAdmin, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
 
 export const NewsEvents: CollectionConfig = {
   slug: 'news-events',
   access: {
-    read:   publishedOrAdmin,
+    read:   publishedVersionOrAdmin,
     create: isEditor,
     update: isEditor,
     delete: isAdmin,
@@ -210,9 +210,8 @@ export const NewsEvents: CollectionConfig = {
     beforeChange: [
       ({ data, operation }) => {
         if (operation === 'create' || operation === 'update') {
-          // Sync custom status with Payload's draft system
           if (data._status === 'published' && data.status !== 'published') {
-            data.status = 'published'
+            throw new Error('Set status to Published before using Publish.')
           }
           if (data._status === 'draft' && data.status === 'published') {
             data.status = 'draft'

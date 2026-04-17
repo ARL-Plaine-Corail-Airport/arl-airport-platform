@@ -104,6 +104,10 @@ export const Documents: CollectionConfig = {
       name: 'uploadedAt',
       label: 'Uploaded At',
       type: 'date',
+      access: {
+        create: () => false,
+        update: () => false,
+      },
       admin: {
         readOnly:  true,
         position:  'sidebar',
@@ -115,6 +119,10 @@ export const Documents: CollectionConfig = {
       label: 'Uploaded By',
       type: 'relationship',
       relationTo: 'users',
+      access: {
+        create: () => false,
+        update: () => false,
+      },
       admin: {
         readOnly:  true,
         position:  'sidebar',

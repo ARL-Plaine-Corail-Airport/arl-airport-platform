@@ -54,7 +54,7 @@ export const FAQs: CollectionConfig = {
         {
           name: 'status',
           type: 'select',
-          defaultValue: 'published',
+          defaultValue: 'draft',
           admin: { width: '30%' },
           options: [
             { label: 'Draft', value: 'draft' },

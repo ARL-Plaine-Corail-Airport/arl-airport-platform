@@ -17,7 +17,20 @@ function toSlug(str: string): string {
 export function autoSlug(titleField = 'title'): CollectionBeforeValidateHook {
   return ({ data }) => {
     if (!data) return data
-    const titleValue = typeof data[titleField] === 'string' ? data[titleField] : ''
+    const rawTitle = data[titleField]
+    let titleValue = ''
+
+    if (typeof rawTitle === 'string') {
+      titleValue = rawTitle
+    } else if (rawTitle && typeof rawTitle === 'object') {
+      const localizedTitle = Object.values(rawTitle).find(
+        (value): value is string => typeof value === 'string',
+      )
+      if (localizedTitle) {
+        titleValue = localizedTitle
+      }
+    }
+
     if (!data.slug && titleValue) {
       const slug = toSlug(titleValue)
       if (slug) {

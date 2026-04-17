@@ -1,6 +1,6 @@
 import type { CollectionBeforeChangeHook, CollectionConfig } from 'payload'
 
-import { isApprover, isEditor, publishedOrAdmin } from '@/access'
+import { isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
 
 type NoticeExpirySiblingData = {
@@ -12,11 +12,14 @@ function hasNoticePublishedAt(siblingData: unknown): siblingData is NoticeExpiry
 }
 
 const syncNoticeStatus = (({ data, req }) => {
-  // Sync custom status with Payload's draft system
-  if (data?._status === 'published' && data?.status !== 'published') {
-    data.status = 'published'
-  }
-  if (data?._status === 'draft' && data?.status === 'published') {
+  if (data?._status === 'published') {
+    if (data?.status !== 'approved' && data?.status !== 'published') {
+      throw new Error('Set status to Approved before publishing this notice.')
+    }
+    if (data.status === 'approved') {
+      data.status = 'published'
+    }
+  } else if (data?._status === 'draft' && data?.status === 'published') {
     data.status = 'draft'
   }
 
@@ -34,7 +37,7 @@ const syncNoticeStatus = (({ data, req }) => {
 export const Notices: CollectionConfig = {
   slug: 'notices',
   access: {
-    read: publishedOrAdmin,
+    read: publishedVersionOrAdmin,
     create: isEditor,
     update: isEditor,
     delete: isApprover,

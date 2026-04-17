@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import type { Page } from '@/payload-types'
 
 export const metadata = { title: 'Amenities & Services' }
 
@@ -61,8 +62,8 @@ export default async function AmenitiesPage() {
   const payload = await getPayloadClient()
 
   // Amenities are managed as Pages in Payload with the slug "amenities"
-  let amenitiesPage: any | null = null
-  let relatedPages: any[] = []
+  let amenitiesPage: Page | null = null
+  let relatedPages: Page[] = []
 
   try {
     const result = await payload.find({
@@ -71,7 +72,7 @@ export default async function AmenitiesPage() {
       limit: 100,
       overrideAccess: true,
     })
-    const allPages = result.docs as any[]
+    const allPages = result.docs
     amenitiesPage = allPages.find((p) => p.slug === 'amenities') ?? null
     // Related service pages
     relatedPages = allPages.filter((p) =>

@@ -50,14 +50,7 @@ function ExternalIcon() {
 export default async function WeatherPage() {
   await requireDashboardSectionAccess('weather')
   const [siteSettings, weather] = await Promise.all([getSiteSettings(), getWeatherSnapshot()])
-  const providerConfigured =
-    env.weatherProviderMode !== 'unconfigured' || Boolean(serverEnv.weatherProviderEndpoint)
-  const weatherApiKeyStatus =
-    env.weatherProviderMode === 'open-meteo'
-      ? 'Not required'
-      : serverEnv.weatherProviderApiKey
-        ? 'Configured'
-        : 'Not configured'
+  const providerConfigured = true // Open-Meteo is always available (no key required)
 
   return (
     <main className="page-content">
@@ -182,7 +175,7 @@ export default async function WeatherPage() {
           </div>
           <div className="card-body">
             <div className="form-group">
-              <label className="form-label">Weather Provider</label>
+              <span className="form-label">Weather Provider</span>
               <input
                 className="form-input"
                 type="text"
@@ -193,7 +186,7 @@ export default async function WeatherPage() {
               <span className="form-hint">Configured via environment variables and the weather adapter</span>
             </div>
             <div className="form-group">
-              <label className="form-label">Airport Location</label>
+              <span className="form-label">Airport Location</span>
               <input
                 className="form-input"
                 type="text"
@@ -203,7 +196,7 @@ export default async function WeatherPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Weather Endpoint</label>
+              <span className="form-label">Weather Endpoint</span>
               <input
                 className="form-input"
                 type="text"
@@ -214,18 +207,16 @@ export default async function WeatherPage() {
               <span className="form-hint">Set `WEATHER_PROVIDER_ENDPOINT` in your environment</span>
             </div>
             <div className="form-group">
-              <label className="form-label">API Key</label>
+              <span className="form-label">API Key</span>
               <input
                 className="form-input"
                 type="text"
-                value={weatherApiKeyStatus}
+                value="Not required"
                 disabled
                 readOnly
               />
               <span className="form-hint">
-                {env.weatherProviderMode === 'open-meteo'
-                  ? 'Open-Meteo does not require an API key for non-commercial use.'
-                  : 'Configure a server-side API key only if your provider requires one.'}
+                Open-Meteo does not require an API key for non-commercial use.
               </span>
             </div>
             <div className="section-divider" />

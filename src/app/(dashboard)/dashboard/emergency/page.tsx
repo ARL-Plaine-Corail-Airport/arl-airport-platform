@@ -2,17 +2,13 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { formatDateTime as formatDate } from '@/lib/date'
+import type { Notice } from '@/payload-types'
 
 export const metadata = { title: 'Emergency Banners' }
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-  } catch { return '—' }
+function formatStatusLabel(status?: string | null): string {
+  return status ? status.replace('_', ' ') : '—'
 }
 
 function PlusIcon() {
@@ -49,8 +45,8 @@ export default async function EmergencyPage() {
   await requireDashboardSectionAccess('emergency')
   const payload = await getPayloadClient()
 
-  let activeAlerts: any[] = []
-  let allUrgent: any[] = []
+  let activeAlerts: Notice[] = []
+  let allUrgent: Notice[] = []
 
   try {
     // Active banners: published + urgent + promoteToBanner
@@ -68,7 +64,7 @@ export default async function EmergencyPage() {
         ],
       },
     })
-    activeAlerts = result.docs as any[]
+    activeAlerts = result.docs
   } catch (error) { logger.error('Failed to fetch emergency notices', error, 'dashboard') }
 
   try {
@@ -81,7 +77,7 @@ export default async function EmergencyPage() {
       overrideAccess: true,
       where: { urgent: { equals: true } },
     })
-    allUrgent = result.docs as any[]
+    allUrgent = result.docs
   } catch (error) { logger.error('Failed to fetch urgent notices', error, 'dashboard') }
 
   return (
@@ -175,7 +171,7 @@ export default async function EmergencyPage() {
               Use the form in Payload admin to create a fully configured alert.
             </p>
             <div className="form-group">
-              <label className="form-label">Title (preview)</label>
+              <span className="form-label">Title (preview)</span>
               <input
                 className="form-input"
                 type="text"
@@ -184,7 +180,7 @@ export default async function EmergencyPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Message (preview)</label>
+              <span className="form-label">Message (preview)</span>
               <textarea
                 className="form-textarea"
                 placeholder="Alert message visible to all passengers..."
@@ -193,7 +189,7 @@ export default async function EmergencyPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Expires At (preview)</label>
+              <span className="form-label">Expires At (preview)</span>
               <input className="form-input" type="datetime-local" disabled />
             </div>
             <div style={{ marginTop: 8 }}>
@@ -247,11 +243,11 @@ export default async function EmergencyPage() {
                           notice.status === 'approved' ? 'badge-warning' :
                           'badge-muted'
                         }`}>
-                          {notice.status.replace('_', ' ')}
+                          {formatStatusLabel(notice.status)}
                         </span>
                       </td>
                       <td>
-                        {(notice as any).promoteToBanner ? (
+                        {notice.promoteToBanner ? (
                           <span className="badge badge-danger">Active</span>
                         ) : (
                           <span className="badge badge-muted">No</span>

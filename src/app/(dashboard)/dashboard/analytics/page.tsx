@@ -96,8 +96,12 @@ export default async function AnalyticsPage({
             <UsersIcon />
           </div>
           <div className="stat-info">
-            <div className="stat-label">Daily Unique Visitors</div>
-            <div className="stat-value">{data.dailyUniqueVisitors.toLocaleString()}</div>
+            <div className="stat-label">Avg. Daily Unique Visitors</div>
+            <div className="stat-value">
+              {data.dailyUniqueVisitors.toLocaleString(undefined, {
+                maximumFractionDigits: 1,
+              })}
+            </div>
             <div className="stat-change">{PERIOD_LABELS[period]}</div>
           </div>
         </div>

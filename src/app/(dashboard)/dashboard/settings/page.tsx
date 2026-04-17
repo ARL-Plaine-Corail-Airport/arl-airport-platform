@@ -4,6 +4,7 @@ import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { env, serverEnv } from '@/lib/env'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { normalizeSiteSettings } from '@/lib/site-settings'
 
 export const metadata = { title: 'Settings' }
 
@@ -43,19 +44,16 @@ export default async function SettingsPage() {
           : `${locale.label} (${locale.code})`,
       )
       .join(', ') || 'Not configured'
-  const weatherApiKeyStatus =
-    env.weatherProviderMode === 'open-meteo'
-      ? 'Not required'
-      : serverEnv.weatherProviderApiKey
-        ? 'Configured'
-        : 'Not configured'
+  const weatherApiKeyStatus = 'Not required' // Open-Meteo needs no key
 
   try {
-    settings = await payload.findGlobal({
-      slug: 'site-settings',
-      depth: 0,
-      overrideAccess: true,
-    })
+    settings = normalizeSiteSettings(
+      await payload.findGlobal({
+        slug: 'site-settings',
+        depth: 0,
+        overrideAccess: true,
+      }),
+    )
   } catch (error) { logger.error('Failed to fetch site settings', error, 'dashboard'); settings = null }
 
   return (
@@ -95,7 +93,7 @@ export default async function SettingsPage() {
           <div className="card-body">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Site Name</label>
+                <span className="form-label">Site Name</span>
                 <input
                   className="form-input"
                   type="text"
@@ -105,7 +103,7 @@ export default async function SettingsPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Airport Name</label>
+                <span className="form-label">Airport Name</span>
                 <input
                   className="form-input"
                   type="text"
@@ -116,7 +114,7 @@ export default async function SettingsPage() {
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Tagline</label>
+              <span className="form-label">Tagline</span>
               <input
                 className="form-input"
                 type="text"
@@ -127,7 +125,7 @@ export default async function SettingsPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Physical Address</label>
+              <span className="form-label">Physical Address</span>
               <textarea
                 className="form-textarea"
                 value={settings?.physicalAddress ?? ''}
@@ -139,7 +137,7 @@ export default async function SettingsPage() {
             </div>
             {settings?.workingHours && (
               <div className="form-group">
-                <label className="form-label">Working Hours</label>
+                <span className="form-label">Working Hours</span>
                 <input
                   className="form-input"
                   type="text"
@@ -160,7 +158,7 @@ export default async function SettingsPage() {
           <div className="card-body">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Primary Phone</label>
+                <span className="form-label">Primary Phone</span>
                 <input
                   className="form-input"
                   type="tel"
@@ -171,7 +169,7 @@ export default async function SettingsPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Primary Email</label>
+                <span className="form-label">Primary Email</span>
                 <input
                   className="form-input"
                   type="email"
@@ -199,11 +197,11 @@ export default async function SettingsPage() {
                 ) => (
                   <div key={link.id ?? idx} className="form-row" style={{ marginBottom: 8 }}>
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Label</label>
+                      <span className="form-label">Label</span>
                       <input className="form-input" type="text" value={link.label ?? ''} disabled readOnly />
                     </div>
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">URL</label>
+                      <span className="form-label">URL</span>
                       <input className="form-input" type="url" value={link.url ?? ''} disabled readOnly />
                     </div>
                   </div>
@@ -233,7 +231,7 @@ export default async function SettingsPage() {
         <div className="card">
           <div className="card-body">
             <div className="form-group">
-              <label className="form-label">Default Page Title</label>
+              <span className="form-label">Default Page Title</span>
               <input
                 className="form-input"
                 type="text"
@@ -244,7 +242,7 @@ export default async function SettingsPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Default Meta Description</label>
+              <span className="form-label">Default Meta Description</span>
               <textarea
                 className="form-textarea"
                 value={settings?.seoDefaultDescription ?? ''}
@@ -347,7 +345,7 @@ export default async function SettingsPage() {
           <div className="card-body">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Flight Provider</label>
+                <span className="form-label">Flight Provider</span>
                 <input
                   className="form-input"
                   type="text"
@@ -357,7 +355,7 @@ export default async function SettingsPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Weather Provider</label>
+                <span className="form-label">Weather Provider</span>
                 <input
                   className="form-input"
                   type="text"
@@ -369,7 +367,7 @@ export default async function SettingsPage() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Flight Endpoint</label>
+                <span className="form-label">Flight Endpoint</span>
                 <input
                   className="form-input"
                   type="text"
@@ -379,7 +377,7 @@ export default async function SettingsPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Weather Endpoint</label>
+                <span className="form-label">Weather Endpoint</span>
                 <input
                   className="form-input"
                   type="text"
@@ -391,7 +389,7 @@ export default async function SettingsPage() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Flight API Key</label>
+                <span className="form-label">Flight API Key</span>
                 <input
                   className="form-input"
                   type="text"
@@ -401,7 +399,7 @@ export default async function SettingsPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Weather API Key</label>
+                <span className="form-label">Weather API Key</span>
                 <input
                   className="form-input"
                   type="text"
@@ -422,21 +420,21 @@ export default async function SettingsPage() {
           <div className="card-body">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Platform</label>
+                <span className="form-label">Platform</span>
                 <input className="form-input" type="text" value="Next.js 15 + Payload CMS 3.x" disabled readOnly />
               </div>
               <div className="form-group">
-                <label className="form-label">Database</label>
+                <span className="form-label">Database</span>
                 <input className="form-input" type="text" value="Supabase PostgreSQL" disabled readOnly />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Storage</label>
+                <span className="form-label">Storage</span>
                 <input className="form-input" type="text" value="Supabase Storage" disabled readOnly />
               </div>
               <div className="form-group">
-                <label className="form-label">Locales</label>
+                <span className="form-label">Locales</span>
                 <input className="form-input" type="text" value={localeSummary} disabled readOnly />
               </div>
             </div>

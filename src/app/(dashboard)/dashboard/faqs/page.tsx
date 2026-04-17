@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { formatDate } from '@/lib/date'
+import type { Faq } from '@/payload-types'
 
 export const metadata = { title: 'FAQs' }
 
@@ -19,15 +21,6 @@ const CATEGORY_BADGE: Record<string, string> = {
   transport: 'badge-primary',
   accessibility: 'badge-success',
   documents: 'badge-warning',
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    })
-  } catch { return '—' }
 }
 
 function PlusIcon() {
@@ -69,7 +62,7 @@ export default async function FaqsPage({
   const statusFilter = params.status ?? ''
 
   const payload = await getPayloadClient()
-  let faqs: any[] = []
+  let faqs: Faq[] = []
 
   try {
     const result = await payload.find({
@@ -79,7 +72,7 @@ export default async function FaqsPage({
       sort: 'order',
       overrideAccess: true,
     })
-    faqs = result.docs as any[]
+    faqs = result.docs
   } catch (error) { logger.error('Failed to fetch FAQs', error, 'dashboard') }
 
   // Apply filters

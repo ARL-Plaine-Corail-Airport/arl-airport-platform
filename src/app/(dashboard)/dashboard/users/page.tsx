@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { formatDate } from '@/lib/date'
 import {
   getPrimaryRole,
   getRoleLabel,
@@ -10,17 +11,9 @@ import {
   getInitials,
 } from '@/lib/dashboard'
 import type { DashboardRole } from '@/lib/dashboard'
+import type { User } from '@/payload-types'
 
 export const metadata = { title: 'Users & Roles' }
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    })
-  } catch { return '—' }
-}
 
 function PlusIcon() {
   return (
@@ -79,6 +72,145 @@ const ROLE_COLS: { key: keyof Omit<PermRow, 'module'>; label: string }[] = [
   { key: 'viewer_auditor',    label: 'Viewer' },
 ]
 
+const STATS_GRID_STYLE: React.CSSProperties = {
+  gridTemplateColumns: 'repeat(4, 1fr)',
+  marginBottom: 20,
+}
+
+const TAB_BADGE_STYLE: React.CSSProperties = {
+  fontSize: 10,
+  padding: '1px 6px',
+}
+
+const USERS_CARD_STYLE: React.CSSProperties = {
+  marginBottom: 24,
+}
+
+const USER_CELL_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+}
+
+const USER_NAME_STYLE: React.CSSProperties = {
+  fontWeight: 500,
+}
+
+const ROLE_BADGES_STYLE: React.CSSProperties = {
+  display: 'flex',
+  gap: 4,
+  flexWrap: 'wrap',
+}
+
+const PERMISSIONS_CARD_BODY_STYLE: React.CSSProperties = {
+  padding: '16px 18px',
+  overflowX: 'auto',
+}
+
+const MODULE_HEADER_STYLE: React.CSSProperties = {
+  justifyContent: 'flex-start',
+}
+
+const ROLE_HEADER_STYLE: React.CSSProperties = {
+  justifyContent: 'center',
+  textAlign: 'center',
+}
+
+const AVATAR_STYLE_BASE: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 12,
+  fontWeight: 700,
+  color: '#fff',
+  flexShrink: 0,
+}
+
+const SUPER_AVATAR_STYLE: React.CSSProperties = {
+  ...AVATAR_STYLE_BASE,
+  background: 'hsl(var(--primary))',
+}
+
+const ACCENT_AVATAR_STYLE: React.CSSProperties = {
+  ...AVATAR_STYLE_BASE,
+  background: 'hsl(var(--accent))',
+}
+
+const PERMISSIONS_ROW_EVEN_STYLE: React.CSSProperties = {
+  background: 'hsl(var(--muted-bg))',
+  borderBottom: '1px solid hsl(var(--border))',
+}
+
+const PERMISSIONS_ROW_ODD_STYLE: React.CSSProperties = {
+  background: 'hsl(var(--card))',
+  borderBottom: '1px solid hsl(var(--border))',
+}
+
+const PERMISSIONS_ROW_EVEN_LAST_STYLE: React.CSSProperties = {
+  background: 'hsl(var(--muted-bg))',
+  borderBottom: 'none',
+}
+
+const PERMISSIONS_ROW_ODD_LAST_STYLE: React.CSSProperties = {
+  background: 'hsl(var(--card))',
+  borderBottom: 'none',
+}
+
+const CENTERED_PERMISSIONS_ROW_EVEN_STYLE: React.CSSProperties = {
+  ...PERMISSIONS_ROW_EVEN_STYLE,
+  justifyContent: 'center',
+}
+
+const CENTERED_PERMISSIONS_ROW_ODD_STYLE: React.CSSProperties = {
+  ...PERMISSIONS_ROW_ODD_STYLE,
+  justifyContent: 'center',
+}
+
+const CENTERED_PERMISSIONS_ROW_EVEN_LAST_STYLE: React.CSSProperties = {
+  ...PERMISSIONS_ROW_EVEN_LAST_STYLE,
+  justifyContent: 'center',
+}
+
+const CENTERED_PERMISSIONS_ROW_ODD_LAST_STYLE: React.CSSProperties = {
+  ...PERMISSIONS_ROW_ODD_LAST_STYLE,
+  justifyContent: 'center',
+}
+
+function getAvatarStyle(primaryRole: DashboardRole): React.CSSProperties {
+  return getRoleBadgeClass(primaryRole) === 'role-super'
+    ? SUPER_AVATAR_STYLE
+    : ACCENT_AVATAR_STYLE
+}
+
+function getPermissionsRowStyle(
+  rowIndex: number,
+  isLastRow: boolean,
+): React.CSSProperties {
+  if (isLastRow) {
+    return rowIndex % 2 === 0 ? PERMISSIONS_ROW_EVEN_LAST_STYLE : PERMISSIONS_ROW_ODD_LAST_STYLE
+  }
+
+  return rowIndex % 2 === 0 ? PERMISSIONS_ROW_EVEN_STYLE : PERMISSIONS_ROW_ODD_STYLE
+}
+
+function getCenteredPermissionsRowStyle(
+  rowIndex: number,
+  isLastRow: boolean,
+): React.CSSProperties {
+  if (isLastRow) {
+    return rowIndex % 2 === 0
+      ? CENTERED_PERMISSIONS_ROW_EVEN_LAST_STYLE
+      : CENTERED_PERMISSIONS_ROW_ODD_LAST_STYLE
+  }
+
+  return rowIndex % 2 === 0
+    ? CENTERED_PERMISSIONS_ROW_EVEN_STYLE
+    : CENTERED_PERMISSIONS_ROW_ODD_STYLE
+}
+
 export default async function UsersPage({
   searchParams,
 }: {
@@ -89,7 +221,7 @@ export default async function UsersPage({
   const activeTab = params.tab ?? 'all'
 
   const payload = await getPayloadClient()
-  let users: any[] = []
+  let users: User[] = []
 
   try {
     const result = await payload.find({
@@ -99,7 +231,7 @@ export default async function UsersPage({
       sort: 'fullName',
       overrideAccess: true,
     })
-    users = result.docs as any[]
+    users = result.docs
   } catch (error) { logger.error('Failed to fetch users', error, 'dashboard') }
 
   // Filter by tab
@@ -142,7 +274,7 @@ export default async function UsersPage({
       </div>
 
       {/* Stats */}
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
+      <div className="stats-grid" style={STATS_GRID_STYLE}>
         <div className="stat-card">
           <div className="stat-info">
             <div className="stat-label">Total Users</div>
@@ -173,24 +305,24 @@ export default async function UsersPage({
       <div className="tabs">
         <Link href="/dashboard/users?tab=all" className={`tab${activeTab === 'all' ? ' active' : ''}`}>
           All Users
-          <span className="badge badge-muted" style={{ fontSize: 10, padding: '1px 6px' }}>{users.length}</span>
+          <span className="badge badge-muted" style={TAB_BADGE_STYLE}>{users.length}</span>
         </Link>
         <Link href="/dashboard/users?tab=super_admin" className={`tab${activeTab === 'super_admin' ? ' active' : ''}`}>
           Super Admins
-          <span className="badge badge-muted" style={{ fontSize: 10, padding: '1px 6px' }}>{superCount}</span>
+          <span className="badge badge-muted" style={TAB_BADGE_STYLE}>{superCount}</span>
         </Link>
         <Link href="/dashboard/users?tab=editors" className={`tab${activeTab === 'editors' ? ' active' : ''}`}>
           Editors
-          <span className="badge badge-muted" style={{ fontSize: 10, padding: '1px 6px' }}>{editorCount}</span>
+          <span className="badge badge-muted" style={TAB_BADGE_STYLE}>{editorCount}</span>
         </Link>
         <Link href="/dashboard/users?tab=viewers" className={`tab${activeTab === 'viewers' ? ' active' : ''}`}>
           Viewers
-          <span className="badge badge-muted" style={{ fontSize: 10, padding: '1px 6px' }}>{viewerCount}</span>
+          <span className="badge badge-muted" style={TAB_BADGE_STYLE}>{viewerCount}</span>
         </Link>
       </div>
 
       {/* Users table */}
-      <div className="card" style={{ marginBottom: 24 }}>
+      <div className="card" style={USERS_CARD_STYLE}>
         <div className="card-header">
           <h2 className="card-title">
             {filtered.length} user{filtered.length !== 1 ? 's' : ''}
@@ -236,30 +368,18 @@ export default async function UsersPage({
                   return (
                     <tr key={user.id}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: '50%',
-                            background: `hsl(var(--${getRoleBadgeClass(primaryRole) === 'role-super' ? 'primary' : 'accent'}))`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: '#fff',
-                            flexShrink: 0,
-                          }}>
+                        <div style={USER_CELL_STYLE}>
+                          <div style={getAvatarStyle(primaryRole)}>
                             {initials}
                           </div>
-                          <span style={{ fontWeight: 500 }}>
+                          <span style={USER_NAME_STYLE}>
                             {user.fullName || 'No name'}
                           </span>
                         </div>
                       </td>
                       <td className="text-xs text-muted">{user.email}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        <div style={ROLE_BADGES_STYLE}>
                           {(user.roles ?? []).map((role: string) => (
                             <span
                               key={role}
@@ -311,12 +431,12 @@ export default async function UsersPage({
           <h2 className="card-title">Role Permissions Matrix</h2>
           <span className="badge badge-muted">6 roles · {PERM_MATRIX.length} modules</span>
         </div>
-        <div className="card-body" style={{ padding: '16px 18px', overflowX: 'auto' }}>
+        <div className="card-body" style={PERMISSIONS_CARD_BODY_STYLE}>
           <div className="perm-grid">
             {/* Header row */}
-            <div className="perm-cell header" style={{ justifyContent: 'flex-start' }}>Module</div>
+            <div className="perm-cell header" style={MODULE_HEADER_STYLE}>Module</div>
             {ROLE_COLS.map((col) => (
-              <div key={col.key} className="perm-cell header" style={{ justifyContent: 'center', textAlign: 'center' }}>
+              <div key={col.key} className="perm-cell header" style={ROLE_HEADER_STYLE}>
                 {col.label}
               </div>
             ))}
@@ -324,20 +444,24 @@ export default async function UsersPage({
             {/* Data rows */}
             {PERM_MATRIX.map((row, rowIdx) => (
               <React.Fragment key={row.module}>
-                <div className="perm-cell row-label"
-                  style={{
-                    background: rowIdx % 2 === 0 ? 'hsl(var(--muted-bg))' : 'hsl(var(--card))',
-                    borderBottom: rowIdx < PERM_MATRIX.length - 1 ? '1px solid hsl(var(--border))' : 'none',
-                  }}>
+                <div
+                  className="perm-cell row-label"
+                  style={getPermissionsRowStyle(
+                    rowIdx,
+                    rowIdx === PERM_MATRIX.length - 1,
+                  )}
+                >
                   {row.module}
                 </div>
                 {ROLE_COLS.map((col) => (
-                  <div key={col.key} className="perm-cell"
-                    style={{
-                      background: rowIdx % 2 === 0 ? 'hsl(var(--muted-bg))' : 'hsl(var(--card))',
-                      justifyContent: 'center',
-                      borderBottom: rowIdx < PERM_MATRIX.length - 1 ? '1px solid hsl(var(--border))' : 'none',
-                    }}>
+                  <div
+                    key={col.key}
+                    className="perm-cell"
+                    style={getCenteredPermissionsRowStyle(
+                      rowIdx,
+                      rowIdx === PERM_MATRIX.length - 1,
+                    )}
+                  >
                     {row[col.key] ? (
                       <span className="perm-check" aria-label="Allowed">✓</span>
                     ) : (

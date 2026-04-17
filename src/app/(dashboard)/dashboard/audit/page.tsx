@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { formatDateTime as formatDate } from '@/lib/date'
+import type { Notice, Page } from '@/payload-types'
 
 export const metadata = { title: 'Audit Log' }
 
@@ -13,17 +15,6 @@ type ActivityItem = {
   action: 'create' | 'update' | 'publish' | 'delete'
   updatedAt: string
   href?: string
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    const d = new Date(dateStr)
-    return d.toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-  } catch { return '—' }
 }
 
 function timeAgo(dateStr: string): string {
@@ -114,21 +105,21 @@ export default async function AuditPage() {
   await requireDashboardSectionAccess('audit')
   const payload = await getPayloadClient()
 
-  let recentNotices: any[] = []
-  let recentPages: any[] = []
+  let recentNotices: Notice[] = []
+  let recentPages: Page[] = []
 
   try {
     const r = await payload.find({
       collection: 'notices', depth: 0, limit: 10, sort: '-updatedAt', overrideAccess: true,
     })
-    recentNotices = r.docs as any[]
+    recentNotices = r.docs
   } catch (error) { logger.error('Failed to fetch notices for audit', error, 'dashboard') }
 
   try {
     const r = await payload.find({
       collection: 'pages', depth: 0, limit: 10, sort: '-updatedAt', overrideAccess: true,
     })
-    recentPages = r.docs as any[]
+    recentPages = r.docs
   } catch (error) { logger.error('Failed to fetch pages for audit', error, 'dashboard') }
 
   // Combine into activity timeline

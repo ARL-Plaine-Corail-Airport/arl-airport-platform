@@ -2,16 +2,17 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { formatDate } from '@/lib/date'
+import type { Page } from '@/payload-types'
 
 export const metadata = { title: 'Pages' }
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    })
-  } catch { return '—' }
+function getPageStatus(page: { status?: string | null; _status?: string | null }): string {
+  const primaryStatus = typeof page.status === 'string' ? page.status.trim() : ''
+  if (primaryStatus) return primaryStatus
+
+  const fallbackStatus = typeof page._status === 'string' ? page._status.trim() : ''
+  return fallbackStatus || 'draft'
 }
 
 function PlusIcon() {
@@ -55,7 +56,7 @@ function SearchIcon() {
 export default async function PagesCmsPage() {
   await requireDashboardSectionAccess('pages')
   const payload = await getPayloadClient()
-  let pages: any[] = []
+  let pages: Page[] = []
 
   try {
     const result = await payload.find({
@@ -65,7 +66,7 @@ export default async function PagesCmsPage() {
       sort: 'title',
       overrideAccess: true,
     })
-    pages = result.docs as any[]
+    pages = result.docs
   } catch (error) { logger.error('Failed to fetch CMS pages', error, 'dashboard') }
 
   const publishedCount = pages.filter((p) => p.status === 'published' || p._status === 'published').length
@@ -167,7 +168,7 @@ export default async function PagesCmsPage() {
               </thead>
               <tbody>
                 {pages.map((page) => {
-                  const status = page.status || page._status || 'draft'
+                  const status = getPageStatus(page)
                   const statusBadge =
                     status === 'published' ? 'badge-success' : 'badge-warning'
                   const route = `/${page.slug}`
@@ -199,7 +200,7 @@ export default async function PagesCmsPage() {
                       </td>
                       <td>
                         <span className={`badge ${statusBadge}`}>
-                          {String(status).replace('_', ' ')}
+                          {status.replace('_', ' ')}
                         </span>
                       </td>
                       <td className="text-xs text-muted">{formatDate(page.updatedAt)}</td>

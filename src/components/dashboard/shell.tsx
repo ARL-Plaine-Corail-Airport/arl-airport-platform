@@ -280,6 +280,7 @@ export function DashboardShell({ navSections, user, children }: DashboardShellPr
           <div className="top-header-left">
             {/* Mobile toggle */}
             <button
+              type="button"
               className="menu-toggle"
               onClick={() => setMenuOpen((v) => !v)}
               aria-label="Toggle navigation menu"

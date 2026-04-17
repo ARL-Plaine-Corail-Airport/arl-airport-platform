@@ -3,6 +3,8 @@ import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { getFlightBoard } from '@/lib/integrations/flights'
 import { logger } from '@/lib/logger'
+import { formatDate } from '@/lib/date'
+import type { Notice } from '@/payload-types'
 
 export const metadata = { title: 'Dashboard' }
 
@@ -37,23 +39,15 @@ const STATUS_BADGE: Record<string, string> = {
   archived: 'badge-muted',
 }
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-  } catch {
-    return '—'
-  }
+function countDelayed(records: Array<{ remarks?: string | null }>): number {
+  return records.filter((record) => {
+    const remarks = record?.remarks
+    return typeof remarks === 'string' && remarks.toLowerCase().includes('delay')
+  }).length
 }
 
-function countDelayed(records: { remarks: string }[]): number {
-  return records.filter((r) =>
-    r.remarks?.toLowerCase().includes('delay')
-  ).length
+function formatStatusLabel(status?: string | null): string {
+  return status ? status.replace('_', ' ') : '—'
 }
 
 // ---------------------------------------------------------------------------
@@ -108,17 +102,6 @@ function IconPlus() {
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  )
-}
-
-function IconDownload() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   )
 }
@@ -221,50 +204,72 @@ export default async function DashboardOverviewPage() {
   const payload = await getPayloadClient()
 
   // Fetch data with fallbacks
-  let recentNotices: any[] = []
-  let allNotices: any[] = []
+  let recentNotices: Notice[] = []
+  let allNotices: Notice[] = []
   let userCount = 0
 
-  try {
-    const noticesResult = await payload.find({
+  let arrivalsBoard = { configured: false, records: [] as Array<{ remarks?: string | null }> }
+  let departuresBoard = { configured: false, records: [] as Array<{ remarks?: string | null }> }
+
+  const [
+    recentNoticesResult,
+    allNoticesResult,
+    usersResult,
+    arrivalsResult,
+    departuresResult,
+  ] = await Promise.allSettled([
+    payload.find({
       collection: 'notices',
       depth: 0,
       limit: 5,
       sort: '-updatedAt',
       overrideAccess: true,
-    })
-    recentNotices = noticesResult.docs as any[]
-  } catch (error) { logger.error('Failed to fetch recent notices', error, 'dashboard') }
-
-  try {
-    const allNoticesResult = await payload.find({
+    }),
+    payload.find({
       collection: 'notices',
       depth: 0,
       limit: 1000,
       overrideAccess: true,
-    })
-    allNotices = allNoticesResult.docs as any[]
-  } catch (error) { logger.error('Failed to fetch all notices', error, 'dashboard') }
-
-  try {
-    const usersResult = await payload.find({
+    }),
+    payload.find({
       collection: 'users',
       depth: 0,
       limit: 1000,
       overrideAccess: true,
-    })
-    userCount = usersResult.totalDocs
-  } catch (error) { logger.error('Failed to fetch users count', error, 'dashboard') }
+    }),
+    getFlightBoard('arrivals'),
+    getFlightBoard('departures'),
+  ])
 
-  let arrivalsBoard = { configured: false, records: [] as { remarks: string }[] }
-  let departuresBoard = { configured: false, records: [] as { remarks: string }[] }
+  if (recentNoticesResult.status === 'fulfilled') {
+    recentNotices = recentNoticesResult.value.docs
+  } else {
+    logger.error('Failed to fetch recent notices', recentNoticesResult.reason, 'dashboard')
+  }
 
-  try {
-    arrivalsBoard = await getFlightBoard('arrivals')
-  } catch (error) { logger.error('Failed to fetch arrivals board', error, 'dashboard') }
-  try {
-    departuresBoard = await getFlightBoard('departures')
-  } catch (error) { logger.error('Failed to fetch departures board', error, 'dashboard') }
+  if (allNoticesResult.status === 'fulfilled') {
+    allNotices = allNoticesResult.value.docs
+  } else {
+    logger.error('Failed to fetch all notices', allNoticesResult.reason, 'dashboard')
+  }
+
+  if (usersResult.status === 'fulfilled') {
+    userCount = usersResult.value.totalDocs
+  } else {
+    logger.error('Failed to fetch users count', usersResult.reason, 'dashboard')
+  }
+
+  if (arrivalsResult.status === 'fulfilled') {
+    arrivalsBoard = arrivalsResult.value
+  } else {
+    logger.error('Failed to fetch arrivals board', arrivalsResult.reason, 'dashboard')
+  }
+
+  if (departuresResult.status === 'fulfilled') {
+    departuresBoard = departuresResult.value
+  } else {
+    logger.error('Failed to fetch departures board', departuresResult.reason, 'dashboard')
+  }
 
   // Compute stats
   const totalFlights = arrivalsBoard.records.length + departuresBoard.records.length
@@ -273,7 +278,7 @@ export default async function DashboardOverviewPage() {
     (n) => n.status === 'published' || n.status === 'approved'
   ).length
   const emergencyBanners = allNotices.filter(
-    (n) => n.urgent && (n as any).promoteToBanner && n.status === 'published'
+    (n) => n.urgent && n.promoteToBanner && n.status === 'published'
   ).length
 
   return (
@@ -285,10 +290,6 @@ export default async function DashboardOverviewPage() {
           <p className="page-subtitle">Welcome back — here is the Airport of Rodrigues overview</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline" type="button">
-            <IconDownload />
-            Export
-          </button>
           <Link href="/admin/collections/notices/create" className="btn btn-primary">
             <IconPlus />
             New Notice
@@ -439,7 +440,7 @@ export default async function DashboardOverviewPage() {
                       </td>
                       <td>
                         <span className={`badge ${STATUS_BADGE[notice.status] ?? 'badge-muted'}`}>
-                          {notice.status.replace('_', ' ')}
+                          {formatStatusLabel(notice.status)}
                         </span>
                       </td>
                       <td className="text-muted text-xs">{formatDate(notice.updatedAt)}</td>

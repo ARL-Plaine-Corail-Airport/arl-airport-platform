@@ -2,17 +2,10 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { formatDate } from '@/lib/date'
+import type { Airline } from '@/payload-types'
 
 export const metadata = { title: 'Airlines' }
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    })
-  } catch { return '—' }
-}
 
 function PlusIcon() {
   return (
@@ -56,7 +49,7 @@ function GlobeIcon() {
 export default async function AirlinesPage() {
   await requireDashboardSectionAccess('airlines')
   const payload = await getPayloadClient()
-  let airlines: any[] = []
+  let airlines: Airline[] = []
 
   try {
     const result = await payload.find({
@@ -66,7 +59,7 @@ export default async function AirlinesPage() {
       sort: 'displayOrder',
       overrideAccess: true,
     })
-    airlines = result.docs as any[]
+    airlines = result.docs
   } catch (error) { logger.error('Failed to fetch airlines', error, 'dashboard') }
 
   const activeCount = airlines.filter((a) => a.isActive).length

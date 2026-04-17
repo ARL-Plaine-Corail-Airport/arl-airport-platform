@@ -50,6 +50,13 @@ export default async function TransportPage() {
     })
   } catch (error) { logger.error('Failed to fetch transport settings', error, 'dashboard'); transport = null }
 
+  if (transport?.updatedAt) {
+    const updatedAt = new Date(transport.updatedAt)
+    if (Number.isNaN(updatedAt.getTime())) {
+      transport = { ...transport, updatedAt: null }
+    }
+  }
+
   return (
     <main className="page-content">
       <div className="page-title-row">
@@ -109,7 +116,7 @@ export default async function TransportPage() {
             {transport ? (
               <div>
                 <div className="form-group">
-                  <label className="form-label">Page Title</label>
+                  <span className="form-label">Page Title</span>
                   <input
                     className="form-input"
                     type="text"
@@ -119,7 +126,7 @@ export default async function TransportPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Introduction</label>
+                  <span className="form-label">Introduction</span>
                   <textarea
                     className="form-textarea"
                     value={transport.introSummary}
@@ -129,7 +136,7 @@ export default async function TransportPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Sections</label>
+                  <span className="form-label">Sections</span>
                   <input
                     className="form-input"
                     type="text"
@@ -140,7 +147,7 @@ export default async function TransportPage() {
                 </div>
                 {transport.mapEmbedURL && (
                   <div className="form-group">
-                    <label className="form-label">Map Embed</label>
+                    <span className="form-label">Map Embed</span>
                     <input
                       className="form-input"
                       type="url"

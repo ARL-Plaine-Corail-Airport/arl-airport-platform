@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
+import { formatDate } from '@/lib/date'
+import type { Notice } from '@/payload-types'
 
 export const metadata = { title: 'Notices' }
 
@@ -36,13 +38,8 @@ const STATUS_BADGE: Record<string, string> = {
   archived: 'badge-muted',
 }
 
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric', month: 'short', year: 'numeric',
-    })
-  } catch { return '—' }
+function formatStatusLabel(status?: string | null): string {
+  return status ? status.replace('_', ' ') : '—'
 }
 
 function SearchIcon() {
@@ -88,7 +85,7 @@ export default async function NoticesPage({
   const categoryFilter = params.category ?? ''
 
   const payload = await getPayloadClient()
-  let allNotices: any[] = []
+  let allNotices: Notice[] = []
 
   try {
     const result = await payload.find({
@@ -98,7 +95,7 @@ export default async function NoticesPage({
       sort: '-updatedAt',
       overrideAccess: true,
     })
-    allNotices = result.docs as any[]
+    allNotices = result.docs
   } catch (error) { logger.error('Failed to fetch notices', error, 'dashboard') }
 
   // Filter by tab
@@ -256,7 +253,7 @@ export default async function NoticesPage({
                     </td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[notice.status] ?? 'badge-muted'}`}>
-                        {notice.status.replace('_', ' ')}
+                        {formatStatusLabel(notice.status)}
                       </span>
                     </td>
                     <td>
@@ -267,7 +264,7 @@ export default async function NoticesPage({
                         {notice.pinned && (
                           <span className="badge badge-info">Pinned</span>
                         )}
-                        {(notice as any).promoteToBanner && (
+                        {notice.promoteToBanner && (
                           <span className="badge badge-warning">Banner</span>
                         )}
                       </div>

@@ -1,4 +1,4 @@
-export function statusBadgeClass(remarks: string): string {
+export function statusBadgeClass(remarks: string | null | undefined): string {
   const r = (remarks ?? '').toLowerCase()
   if (r.includes('on time')) return 'badge-on-time'
   if (r.includes('delayed')) return 'badge-delayed'
@@ -9,7 +9,7 @@ export function statusBadgeClass(remarks: string): string {
 }
 
 export function statusBadgeLabel(
-  remarks: string,
+  remarks: string | null | undefined,
   t: (key: string) => string,
 ): string {
   if (!remarks) return t('flights.scheduled')

@@ -5,7 +5,14 @@ import { cache } from 'react'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-import { canAccessAny, getInitials, getPrimaryRole, getRoleBadgeClass, getRoleLabel } from '@/lib/dashboard'
+import {
+  canAccessAny,
+  getInitials,
+  getPrimaryRole,
+  getRoleBadgeClass,
+  getRoleLabel,
+} from '@/lib/dashboard'
+import type { DashboardRole } from '@/lib/dashboard'
 import { getPayloadClient } from '@/lib/payload'
 
 type DashboardUser = {
@@ -27,7 +34,7 @@ function isDashboardUser(user: unknown): user is DashboardUser {
 export type DashboardSession = {
   user: DashboardUser
   roles: string[]
-  primaryRole: ReturnType<typeof getPrimaryRole>
+  primaryRole: DashboardRole
   fullName: string
   initials: string
   roleLabel: string
@@ -51,6 +58,9 @@ export const getDashboardSession = cache(async (): Promise<DashboardSession> => 
   }
 
   const primaryRole = getPrimaryRole(roles)
+  if (!primaryRole) {
+    redirect('/admin')
+  }
   const fullName = dashboardUser.fullName || dashboardUser.email || 'User'
 
   return {

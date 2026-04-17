@@ -8,13 +8,32 @@ import { getPayloadClient } from '@/lib/payload'
 // Payload's collection-level access control while still running in the
 // context of the logged-in admin user.
 
+export class PayloadAuthError extends Error {
+  status = 401
+
+  constructor(message = 'Unauthenticated dashboard access attempt') {
+    super(message)
+    this.name = 'PayloadAuthError'
+  }
+}
+
+export function isPayloadAuthError(error: unknown): error is PayloadAuthError {
+  return (
+    error instanceof PayloadAuthError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      'name' in error &&
+      error.name === 'PayloadAuthError')
+  )
+}
+
 export async function getAuthenticatedPayload() {
   const headers = await getHeaders()
   const payload = await getPayloadClient()
   const { user } = await payload.auth({ headers })
 
   if (!user) {
-    throw new Error('Unauthenticated dashboard access attempt')
+    throw new PayloadAuthError()
   }
 
   return { payload, user, headers }
@@ -30,6 +49,10 @@ export async function dashboardQuery<T>(
     const payload = await getPayloadClient()
     return await fn(payload)
   } catch (error) {
+    if (isPayloadAuthError(error)) {
+      throw error
+    }
+
     logger.error(`Dashboard query failed: ${label}`, error, 'dashboard')
     return fallback
   }

@@ -1,6 +1,9 @@
+import 'server-only'
+
 import { cache } from 'react'
 
-import { env, serverEnv } from '@/lib/env'
+import { env } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 import { logger } from '@/lib/logger'
 import type { WeatherResponse } from './types'
 

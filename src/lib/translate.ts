@@ -2,9 +2,15 @@ import { logger } from '@/lib/logger'
 
 const MYMEMORY_BASE = 'https://api.mymemory.translated.net/get'
 
+const MAX_TRANSLATION_LENGTH = 5000
+const TRANSLATION_RATE_LIMIT_MAX_REQUESTS = 20
+const TRANSLATION_RATE_LIMIT_WINDOW_MS = 60_000
 const CACHE_MAX_SIZE = 1000
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const TRANSLATE_BATCH_SIZE = 5
 const translationCache = new Map<string, { value: string; cachedAt: number }>()
+let translationWindowStart = 0
+let translationRequestsInWindow = 0
 
 type TranslateOptions = {
   text: string
@@ -51,13 +57,42 @@ function setCachedTranslation(key: string, value: string): void {
   translationCache.set(key, { value, cachedAt: now })
 }
 
+function canTranslate(now = Date.now()): boolean {
+  if (
+    translationWindowStart === 0 ||
+    now - translationWindowStart >= TRANSLATION_RATE_LIMIT_WINDOW_MS
+  ) {
+    translationWindowStart = now
+    translationRequestsInWindow = 0
+  }
+
+  if (translationRequestsInWindow >= TRANSLATION_RATE_LIMIT_MAX_REQUESTS) {
+    return false
+  }
+
+  translationRequestsInWindow++
+  return true
+}
+
 export async function translate({ text, from, to }: TranslateOptions): Promise<string> {
   if (!text.trim()) return text
   if (from === to) return text
+  if (text.length > MAX_TRANSLATION_LENGTH) {
+    logger.warn(
+      `Translation skipped: input exceeds ${MAX_TRANSLATION_LENGTH} characters`,
+      'translate',
+    )
+    return text
+  }
 
   const cacheKey = `${from}|${to}|${text}`
   const cached = getCachedTranslation(cacheKey)
   if (cached) return cached
+
+  if (!canTranslate()) {
+    logger.warn('Translation rate limit reached', 'translate')
+    return text
+  }
 
   const effectiveTo = to === 'mfe' ? 'fr' : to
   const effectiveFrom = from === 'mfe' ? 'fr' : from
@@ -109,5 +144,13 @@ export async function translateBatch(
 ): Promise<string[]> {
   if (from === to) return texts
 
-  return Promise.all(texts.map((text) => translate({ text, from, to })))
+  const results: string[] = []
+
+  for (let i = 0; i < texts.length; i += TRANSLATE_BATCH_SIZE) {
+    const batch = texts.slice(i, i + TRANSLATE_BATCH_SIZE)
+    const translated = await Promise.all(batch.map((text) => translate({ text, from, to })))
+    results.push(...translated)
+  }
+
+  return results
 }

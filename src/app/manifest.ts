@@ -1,14 +1,12 @@
 import type { MetadataRoute } from 'next'
 
-import { defaultLocale } from '@/i18n/config'
-
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Rodrigues Airport Passenger Information Platform',
     short_name: 'Rodrigues Airport',
     description:
       'Official passenger platform for notices, arrivals, departures, passenger guidance, accessibility, and transport information.',
-    start_url: `/${defaultLocale}`,
+    start_url: '/',
     display: 'standalone',
     background_color: '#114c7a',
     theme_color: '#114c7a',

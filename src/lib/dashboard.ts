@@ -101,11 +101,11 @@ function getAllowedSections(roles: string[]): string[] {
   return Array.from(sections)
 }
 
-export function getPrimaryRole(roles: string[]): DashboardRole {
+export function getPrimaryRole(roles: string[]): DashboardRole | null {
   for (const role of ROLE_PRIORITY) {
     if (roles.includes(role)) return role
   }
-  return 'viewer_auditor'
+  return null
 }
 
 export function getRoleLabel(role: DashboardRole): string {

@@ -30,7 +30,7 @@ export function localePath(path: string, locale: Locale = defaultLocale): string
   const stripped = stripLocalePrefix(path)
   const [pathname, query = ''] = stripped.split('?')
   const normalizedPathname = pathname === '/' ? '' : pathname
-  const localizedPath = `/${locale}${normalizedPathname}` || `/${locale}`
+  const localizedPath = `/${locale}${normalizedPathname}`
 
   return query ? `${localizedPath}?${query}` : localizedPath
 }

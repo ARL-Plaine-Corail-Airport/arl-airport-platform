@@ -1,8 +1,10 @@
+import 'server-only'
+
 import { cache } from 'react'
 
 import { isBuildTimeDbDisabledError, shouldSkipDbDuringBuild } from '@/lib/build-db'
 import { getMauritiusDayRange } from '@/lib/date'
-import { env, serverEnv } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
 import type { FlightBoardResponse, FlightBoardType, FlightRecord } from './types'
@@ -751,7 +753,7 @@ const getFlightBoardsSnapshot = cache(async (): Promise<FlightBoardsSnapshot> =>
 
   return {
     configured,
-    providerLabel: env.flightProviderLabel,
+    providerLabel: serverEnv.flightProviderLabel,
     fetchedAt: new Date().toISOString(),
     degraded: providerFailureCount > 0 || undefined,
     providerFailureCount,

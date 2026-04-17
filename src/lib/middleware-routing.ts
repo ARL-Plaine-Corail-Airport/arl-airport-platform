@@ -5,9 +5,12 @@ export type MiddlewarePathInfo = {
   normalizedPathname: string
 }
 
+const MAX_PATHNAME_LENGTH = 2048
+
 function normalizePathname(pathname: string): string {
   if (!pathname) return '/'
   if (pathname === '/') return '/'
+  if (pathname.length > MAX_PATHNAME_LENGTH) return '/'
 
   const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`
   return normalized.replace(/\/{2,}/g, '/').replace(/\/$/, '') || '/'

@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getMiddlewarePathInfo, matchesPathPrefix } from '@/lib/middleware-routing'
+import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
+import { trackEventSchema } from '@/lib/validation'
+
+const BLOCKED_PATH_PREFIXES = ['/admin', '/dashboard', '/api'] as const
+const IP_PATTERN =
+  /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$|^[a-f0-9:]{3,39}$/i
+
+function normalizeTrackEventPayload(body: unknown): unknown {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return body
+
+  const normalized = { ...body } as Record<string, unknown>
+
+  // Accept older beacons that omitted type or serialized empty referrers as null.
+  if (normalized.type == null) normalized.type = 'pageview'
+  if (normalized.referrer == null) delete normalized.referrer
+
+  return normalized
+}
 
 // Simple device detection from User-Agent
 function detectDevice(ua: string): 'mobile' | 'tablet' | 'desktop' {
@@ -39,33 +58,51 @@ async function hashVisitor(ip: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+function isBlockedPath(path: string): boolean {
+  const { normalizedPathname } = getMiddlewarePathInfo(path)
+  return BLOCKED_PATH_PREFIXES.some((prefix) => matchesPathPrefix(normalizedPathname, prefix))
+}
+
+function getClientIp(request: NextRequest): string {
+  const forwardedIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const realIp = request.headers.get('x-real-ip')?.trim()
+
+  for (const candidate of [forwardedIp, realIp]) {
+    if (candidate && IP_PATTERN.test(candidate)) {
+      return candidate
+    }
+  }
+
+  return 'unknown'
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const path = typeof body.path === 'string' ? body.path : null
+    const body = await request.json().catch(() => null)
+    const result = trackEventSchema.safeParse(normalizeTrackEventPayload(body))
 
-    if (!path || path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/api')) {
-      return NextResponse.json({ ok: false }, { status: 400 })
+    if (!result.success) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-      request.headers.get('x-real-ip') ??
-      '127.0.0.1'
+    const { path, referrer } = result.data
+
+    if (isBlockedPath(path)) {
+      return new Response(null, { status: 204 })
+    }
 
     const ua = request.headers.get('user-agent') ?? ''
     const acceptLang = request.headers.get('accept-language')
-    const referrer = typeof body.referrer === 'string' ? body.referrer : null
     const siteHost = request.nextUrl.hostname
 
-    const [visitorHash] = await Promise.all([hashVisitor(ip)])
+    const visitorHash = await hashVisitor(getClientIp(request))
 
     const payload = await getPayloadClient()
     await payload.create({
       collection: 'page-views',
       data: {
         path,
-        referrer: extractReferrerDomain(referrer, siteHost),
+        referrer: extractReferrerDomain(referrer ?? null, siteHost),
         device: detectDevice(ua),
         language: extractLanguage(acceptLang),
         visitorHash,
@@ -73,7 +110,8 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ ok: true }, { status: 201 })
-  } catch {
+  } catch (error) {
+    logger.error('Failed to record page view', error, 'track')
     return NextResponse.json({ ok: false }, { status: 500 })
   }
 }

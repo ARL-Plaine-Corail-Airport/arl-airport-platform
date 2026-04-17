@@ -1,11 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getFlightBoard } from '@/lib/integrations/flights'
-import type { FlightBoardType } from '@/lib/integrations/flights/types'
+import { cachedFetch } from '@/lib/cache'
+import { getFlightBoards } from '@/lib/integrations/flights'
+import { logger } from '@/lib/logger'
+import { flightBoardQuerySchema } from '@/lib/validation'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const boardType = (request.nextUrl.searchParams.get('type') || 'arrivals') as FlightBoardType
-  const payload = await getFlightBoard(boardType === 'departures' ? 'departures' : 'arrivals')
+  const result = flightBoardQuerySchema.safeParse({
+    type: request.nextUrl.searchParams.get('type') ?? undefined,
+  })
 
-  return NextResponse.json(payload)
+  if (!result.success) {
+    logger.warn(
+      `Invalid flight board request: ${JSON.stringify(result.error.flatten())}`,
+      'flight-board',
+    )
+    return NextResponse.json(
+      { error: 'Invalid request' },
+      {
+        status: 400,
+        headers: { 'Cache-Control': 'no-store' },
+      },
+    )
+  }
+
+  const { type: boardType } = result.data
+
+  try {
+    const boards = await cachedFetch('flights:rotations', 2600, getFlightBoards, {
+      shouldCache: (data) => !data.degraded,
+    })
+    const payload = boards[boardType]
+
+    return NextResponse.json(payload, {
+      headers: {
+        'Cache-Control': boards.degraded
+          ? 'no-store'
+          : 'public, s-maxage=2600, stale-while-revalidate=7200',
+      },
+    })
+  } catch (error) {
+    logger.error('Failed to fetch flight board', error, 'flight-board')
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      },
+    )
+  }
 }

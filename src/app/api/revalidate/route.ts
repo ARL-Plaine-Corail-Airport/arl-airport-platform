@@ -4,21 +4,37 @@ import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 import { serverEnv } from '@/lib/env'
+import { revalidateSchema } from '@/lib/validation'
 
 function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  const maxLen = Math.max(a.length, b.length)
+  const bufA = Buffer.alloc(maxLen)
+  const bufB = Buffer.alloc(maxLen)
+  bufA.write(a)
+  bufB.write(b)
+  return a.length === b.length && timingSafeEqual(bufA, bufB)
 }
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-revalidate-secret') ?? ''
+  const configuredSecret = serverEnv.revalidateSecret
 
-  if (!serverEnv.revalidateSecret || !safeCompare(secret, serverEnv.revalidateSecret)) {
+  if (
+    !configuredSecret ||
+    configuredSecret.length < 16 ||
+    !safeCompare(secret, configuredSecret)
+  ) {
     return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json().catch(() => ({}))
-  const paths = Array.isArray(body?.paths) ? body.paths : ['/']
+  const body = await request.json().catch(() => null)
+  const result = revalidateSchema.safeParse(body)
+
+  if (!result.success) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
+
+  const { paths } = result.data
 
   for (const path of paths) {
     revalidatePath(path)

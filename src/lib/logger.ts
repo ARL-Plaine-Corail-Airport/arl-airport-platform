@@ -4,6 +4,8 @@
 
 import * as Sentry from '@sentry/nextjs'
 
+import { redactSensitiveText } from '@/lib/redaction'
+
 type LogLevel = 'error' | 'warn' | 'info'
 
 interface LogEntry {
@@ -15,17 +17,22 @@ interface LogEntry {
 }
 
 function formatError(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
+  if (error instanceof Error) return redactSensitiveText(error.message)
+  if (typeof error === 'string') return redactSensitiveText(error)
   return 'Unknown error'
 }
 
 function output(entry: LogEntry) {
   const prefix = `[${entry.level.toUpperCase()}]${entry.context ? ` [${entry.context}]` : ''}`
-  const msg = `${prefix} ${entry.message}`
+  const msg = redactSensitiveText(`${prefix} ${entry.message}`)
 
   if (entry.level === 'error') {
-    console.error(msg, entry.error instanceof Error ? entry.error.stack : '')
+    console.error(
+      msg,
+      entry.error instanceof Error && entry.error.stack
+        ? redactSensitiveText(entry.error.stack)
+        : '',
+    )
   } else if (entry.level === 'warn') {
     console.warn(msg)
   } else {
@@ -48,7 +55,7 @@ export const logger = {
         tags: context ? { context } : undefined,
       })
     } else if (error !== undefined) {
-      Sentry.captureMessage(String(error), {
+      Sentry.captureMessage(redactSensitiveText(String(error)), {
         level: 'error',
         tags: context ? { context } : undefined,
       })

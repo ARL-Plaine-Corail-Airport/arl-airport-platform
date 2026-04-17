@@ -11,6 +11,7 @@ out/
 build/
 dist/
 backups/
+certbot/
 
 # environment variables (real secrets)
 .env
@@ -22,6 +23,7 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+deploy.log
 
 # OS files
 .DS_Store

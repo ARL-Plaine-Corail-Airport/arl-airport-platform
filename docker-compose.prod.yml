@@ -17,18 +17,31 @@ services:
     container_name: arl-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    command: >
+      /bin/sh -c "if [ -n \"$${DOMAIN:-}\" ]; then
+        envsubst '$${DOMAIN}' < /etc/nginx/templates/default.conf.template > /etc/nginx/nginx.conf;
+      else
+        cp /etc/nginx/nginx-fallback.conf /etc/nginx/nginx.conf;
+      fi;
+      while :; do sleep 6h & wait $$!; nginx -s reload; done &
+      nginx -g 'daemon off;'"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx-fallback.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./nginx/conf.d:/etc/nginx/templates:ro
     depends_on:
       app:
         condition: service_healthy
     networks:
       - arl-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1/api/health || exit 1"]
+      test: ['CMD-SHELL', 'wget --no-check-certificate -qO- https://127.0.0.1/api/health || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -36,6 +49,7 @@ services:
 
   # ── Application (Next.js + Payload CMS) — scaled to 10 replicas ───────────
   app:
+    image: ${APP_IMAGE:-ghcr.io/arl-plaine-corail-airport/arl-airport-platform:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -45,20 +59,24 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_TELEMETRY_DISABLED: '1'
     deploy:
-      replicas: 4  # Local/staging. Set to 10+ for production (40K concurrent users).
+      replicas: 4 # Local/staging. Set to 10+ for production (40K concurrent users).
       resources:
         limits:
           memory: 512M
         reservations:
           memory: 256M
     expose:
-      - "3000"
+      - '3000'
     networks:
       - arl-network
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://localhost:3000/api/health'').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))"',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -67,18 +85,73 @@ services:
   # ── Redis (local/staging only — use Upstash in production) ─────────────────
   # For local staging tests. In cloud production, set UPSTASH_REDIS_REST_URL
   # and UPSTASH_REDIS_REST_TOKEN in .env and remove this service.
+  # Certbot (Let's Encrypt certificate renewal)
+  certbot:
+    image: certbot/certbot
+    container_name: arl-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $$!; done;'"
+    networks:
+      - arl-network
+    restart: unless-stopped
+
+  # Automated database backups
+  backup:
+    image: postgres:16-alpine
+    container_name: arl-backup
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/app/backups
+    environment:
+      DATABASE_DIRECT_URL: ${DATABASE_DIRECT_URL}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_DIR: /app/backups
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+    entrypoint: >
+      /bin/sh -c '
+        apk add --no-cache gzip > /dev/null 2>&1
+        echo "0 2 * * * cd /app && sh /scripts/backup-cron.sh" > /etc/crontabs/root
+        echo "Backup service started. Running daily at 02:00 UTC."
+        crond -f -l 8
+      '
+    networks:
+      - arl-network
+    restart: unless-stopped
+
+  # Automated analytics retention purge
+  page-view-retention:
+    image: postgres:16-alpine
+    container_name: arl-page-view-retention
+    volumes:
+      - ./scripts:/scripts:ro
+    environment:
+      DATABASE_DIRECT_URL: ${DATABASE_DIRECT_URL}
+      PAGE_VIEW_RETENTION_DAYS: ${PAGE_VIEW_RETENTION_DAYS:-90}
+      PAGE_VIEW_RETENTION_BATCH_SIZE: ${PAGE_VIEW_RETENTION_BATCH_SIZE:-10000}
+    entrypoint: >
+      /bin/sh -c '
+        echo "0 3 * * * sh /scripts/purge-page-views.sh" > /etc/crontabs/root
+        echo "Page-view retention service started. Running daily at 03:00 UTC."
+        crond -f -l 8
+      '
+    networks:
+      - arl-network
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: arl-redis
     restart: unless-stopped
     expose:
-      - "6379"
+      - '6379'
     volumes:
       - arl_redis_data:/data
     networks:
       - arl-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5

@@ -7,6 +7,8 @@ node_modules
 
 # Local media uploads (storage is Supabase, not local disk in production)
 media/
+backups/
+certbot/
 
 # Environment files — injected at runtime, never baked into image
 .env

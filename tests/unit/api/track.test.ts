@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const { createMock, getPayloadClient, loggerError } = vi.hoisted(() => {
-  process.env.VISITOR_HASH_SALT ??= 'test-visitor-hash-salt'
-  process.env.NEXT_PUBLIC_SITE_URL ??= 'http://localhost:3000'
+  process.env.VISITOR_HASH_SALT = 'test-visitor-hash-salt'
+  process.env.NEXT_PUBLIC_SITE_URL = 'http://localhost:3000'
 
   return {
     createMock: vi.fn(),
@@ -46,6 +46,7 @@ describe('track route', () => {
       }),
       headers: {
         'content-type': 'application/json',
+        'sec-fetch-site': 'same-origin',
         'accept-language': 'fr-FR,fr;q=0.9',
         'user-agent':
           'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
@@ -64,6 +65,7 @@ describe('track route', () => {
       data: expect.objectContaining({
         path: '/en/contact',
         referrer: 'direct',
+        locale: 'en',
         device: 'mobile',
         language: 'fr',
         visitorHash: expect.stringMatching(/^[a-f0-9]{64}$/),
@@ -95,6 +97,52 @@ describe('track route', () => {
     expect(createMock).not.toHaveBeenCalled()
   })
 
+  it('rejects missing-Origin requests without same-origin fetch metadata or a matching referer', async () => {
+    const request = new NextRequest('http://localhost/api/track', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'pageview',
+        path: '/en/contact',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(403)
+    expect(getPayloadClient).not.toHaveBeenCalled()
+    expect(createMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts missing-Origin requests with a matching referer host', async () => {
+    getPayloadClient.mockResolvedValue({ create: createMock })
+
+    const request = new NextRequest('http://localhost/api/track', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'pageview',
+        path: '/fr/contact',
+      }),
+      headers: {
+        'content-type': 'application/json',
+        referer: 'http://localhost:3000/fr',
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(201)
+    expect(createMock).toHaveBeenCalledWith({
+      collection: 'page-views',
+      data: expect.objectContaining({
+        path: '/fr/contact',
+        locale: 'fr',
+      }),
+    })
+  })
+
   it('rejects admin, dashboard, and api paths', async () => {
     for (const path of ['/admin/login', '/dashboard', '/api/health']) {
       const request = new NextRequest('http://localhost/api/track', {
@@ -105,6 +153,7 @@ describe('track route', () => {
         }),
         headers: {
           'content-type': 'application/json',
+          'sec-fetch-site': 'same-origin',
         },
       })
 
@@ -128,6 +177,7 @@ describe('track route', () => {
         }),
         headers: {
           'content-type': 'application/json',
+          'sec-fetch-site': 'same-origin',
         },
       })
 
@@ -147,6 +197,7 @@ describe('track route', () => {
       body: JSON.stringify({ type: 'pageview' }),
       headers: {
         'content-type': 'application/json',
+        'sec-fetch-site': 'same-origin',
       },
     })
 
@@ -169,6 +220,7 @@ describe('track route', () => {
       }),
       headers: {
         'content-type': 'application/json',
+        'sec-fetch-site': 'same-origin',
         'x-forwarded-for': '999.999.999.999',
         'x-real-ip': '198.51.100.8',
       },
@@ -182,6 +234,7 @@ describe('track route', () => {
       }),
       headers: {
         'content-type': 'application/json',
+        'sec-fetch-site': 'same-origin',
         'x-real-ip': '198.51.100.8',
       },
     })
@@ -209,6 +262,7 @@ describe('track route', () => {
       }),
       headers: {
         'content-type': 'application/json',
+        'sec-fetch-site': 'same-origin',
         'x-forwarded-for': '2001:db8:::1',
       },
     })
@@ -236,6 +290,7 @@ describe('track route', () => {
       }),
       headers: {
         'content-type': 'application/json',
+        'sec-fetch-site': 'same-origin',
       },
     })
 

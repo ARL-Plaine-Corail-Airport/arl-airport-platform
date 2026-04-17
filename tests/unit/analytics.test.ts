@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const findMock = vi.fn()
-const { loggerError, loggerWarn } = vi.hoisted(() => ({
+const { drizzleExecuteMock, findMock, getPayloadClientMock, loggerError, loggerWarn } = vi.hoisted(() => ({
+  drizzleExecuteMock: vi.fn(),
+  findMock: vi.fn(),
+  getPayloadClientMock: vi.fn(),
   loggerError: vi.fn(),
   loggerWarn: vi.fn(),
 }))
@@ -14,9 +16,7 @@ vi.mock('@/lib/logger', () => ({
 }))
 
 vi.mock('@/lib/payload', () => ({
-  getPayloadClient: vi.fn(async () => ({
-    find: findMock,
-  })),
+  getPayloadClient: getPayloadClientMock,
 }))
 
 import { getAnalytics } from '@/lib/analytics'
@@ -24,8 +24,61 @@ import { getAnalytics } from '@/lib/analytics'
 describe('getAnalytics', () => {
   beforeEach(() => {
     findMock.mockReset()
+    drizzleExecuteMock.mockReset()
+    getPayloadClientMock.mockReset()
+    getPayloadClientMock.mockResolvedValue({
+      find: findMock,
+    })
     loggerError.mockReset()
     loggerWarn.mockReset()
+  })
+
+  it('uses DB-side aggregation when Payload exposes a Drizzle executor', async () => {
+    getPayloadClientMock.mockResolvedValue({
+      db: {
+        drizzle: {
+          execute: drizzleExecuteMock,
+        },
+      },
+    })
+    drizzleExecuteMock
+      .mockResolvedValueOnce({ rows: [{ total_views: '4' }] })
+      .mockResolvedValueOnce({ rows: [{ daily_unique_visitors: 2 }] })
+      .mockResolvedValueOnce({
+        rows: [{ path: '/en/contact', views: '3', unique: '2' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          { source: 'direct', sessions: '3' },
+          { source: 'google.com', sessions: '1' },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ label: 'mobile', count: '4' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ label: 'fr', count: '4' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ date: '2026-04-17', views: '4' }],
+      })
+
+    const analytics = await getAnalytics('7d')
+
+    expect(drizzleExecuteMock).toHaveBeenCalledTimes(7)
+    expect(findMock).not.toHaveBeenCalled()
+    expect(analytics).toMatchObject({
+      dailyUniqueVisitors: 2,
+      pageViews: 4,
+      topPages: [{ path: '/en/contact', views: 3, unique: 2 }],
+      referrers: [
+        { source: 'Direct / Bookmark', sessions: 3, percentage: 75 },
+        { source: 'Google Search', sessions: 1, percentage: 25 },
+      ],
+      devices: [{ label: 'Mobile', value: 100 }],
+      languages: [{ label: 'French', value: 100 }],
+      truncated: false,
+    })
   })
 
   it('averages daily unique visitors across the days that have data', async () => {

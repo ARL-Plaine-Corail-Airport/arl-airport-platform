@@ -62,6 +62,27 @@ describe('logger', () => {
     )
   })
 
+  it('redacts token-like query parameters before console and Sentry output', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    logger.error(
+      'Fetch failed for https://airlabs.example/schedules?api_key=secret-key',
+      'token=temporary-token',
+      'flights',
+    )
+
+    const msg = spy.mock.calls[0][0] as string
+    expect(msg).toContain('api_key=[REDACTED]')
+    expect(msg).not.toContain('secret-key')
+    expect(captureMessage).toHaveBeenCalledWith(
+      'token=[REDACTED]',
+      expect.objectContaining({
+        level: 'error',
+        tags: { context: 'flights' },
+      }),
+    )
+  })
+
   it('logs warnings', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     logger.warn('Watch out', 'auth')

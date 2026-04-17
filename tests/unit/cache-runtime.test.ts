@@ -89,17 +89,26 @@ describe('cachedFetch runtime behavior', () => {
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
 
-  it('evicts the oldest dev cache entry when the max size is exceeded', async () => {
+  it('evicts the least recently used dev cache entry when the max size is exceeded', async () => {
     const { cachedFetch, DEV_MEM_CACHE_MAX_ENTRIES } = await loadCacheModule()
 
     for (let i = 0; i < DEV_MEM_CACHE_MAX_ENTRIES; i++) {
       await cachedFetch(`runtime-cache-${i}`, 60, async () => ({ value: i }))
     }
 
-    const fetcher = vi.fn().mockResolvedValue({ value: 'refetched' })
+    const hotFetcher = vi.fn().mockResolvedValue({ value: 'unexpected' })
+    const hotResult = await cachedFetch('runtime-cache-0', 60, hotFetcher)
+    expect(hotResult).toEqual({ value: 0 })
+    expect(hotFetcher).not.toHaveBeenCalled()
 
     await cachedFetch('runtime-cache-overflow', 60, async () => ({ value: 'overflow' }))
-    const result = await cachedFetch('runtime-cache-0', 60, fetcher)
+
+    const stillHotResult = await cachedFetch('runtime-cache-0', 60, hotFetcher)
+    expect(stillHotResult).toEqual({ value: 0 })
+    expect(hotFetcher).not.toHaveBeenCalled()
+
+    const fetcher = vi.fn().mockResolvedValue({ value: 'refetched' })
+    const result = await cachedFetch('runtime-cache-1', 60, fetcher)
 
     expect(result).toEqual({ value: 'refetched' })
     expect(fetcher).toHaveBeenCalledOnce()

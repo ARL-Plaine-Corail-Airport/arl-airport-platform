@@ -1,66 +1,114 @@
-import { describe, expect, it } from 'vitest'
+import type { CollectionConfig } from 'payload'
+import { describe, expect, it, vi } from 'vitest'
 
-/**
- * Extract the beforeChange hook logic from each collection to test it in
- * isolation. The hooks are inline lambdas, so we replicate the logic here
- * and verify that the fix (status !== 'published' instead of === 'draft')
- * works for all intermediate states.
- */
+import { NewsEvents } from '@/collections/NewsEvents'
+import { Notices } from '@/collections/Notices'
+import { Pages } from '@/collections/Pages'
 
-function syncStatus(data: Record<string, unknown>): Record<string, unknown> {
-  // This mirrors the corrected hook logic shared by Notices, NewsEvents, AirportProject
-  if (data._status === 'published' && data.status !== 'published') {
-    data.status = 'published'
-  }
-  if (data._status === 'draft' && data.status === 'published') {
-    data.status = 'draft'
-  }
-  if (data.status === 'published' && !data.publishedAt) {
-    data.publishedAt = new Date().toISOString()
-  }
-  return data
+type FindByIDMock = (...args: unknown[]) => unknown
+
+function getHook(collection: CollectionConfig) {
+  const hook = collection.hooks?.beforeChange?.[0]
+  expect(typeof hook).toBe('function')
+  return hook as NonNullable<typeof hook>
 }
 
-describe('status sync hook logic', () => {
-  it('forces status to published when _status is published and status is draft', () => {
-    const data = syncStatus({ _status: 'published', status: 'draft' })
+function buildReq(roles: string[], findByID: FindByIDMock = vi.fn()) {
+  return {
+    user: {
+      id: 42,
+      roles,
+    },
+    payload: {
+      findByID,
+    },
+  } as any
+}
+
+async function runBeforeChange(
+  collection: CollectionConfig,
+  input: {
+    data: Record<string, unknown>
+    roles?: string[]
+    originalDoc?: Record<string, unknown>
+    findByID?: FindByIDMock
+  },
+) {
+  return getHook(collection)({
+    data: { ...input.data },
+    operation: 'update',
+    originalDoc: input.originalDoc,
+    req: buildReq(input.roles ?? ['approver'], input.findByID),
+  } as any) as Promise<Record<string, unknown>>
+}
+
+describe('status sync hooks', () => {
+  it('lets approvers publish NewsEvents with Payload Publish and auto-promotes the workflow status', async () => {
+    const data = await runBeforeChange(NewsEvents, {
+      data: { _status: 'published', status: 'draft' },
+      roles: ['approver'],
+    })
+
+    expect(data.status).toBe('published')
+    expect(data.publishedAt).toEqual(expect.any(String))
+  })
+
+  it('keeps the existing NewsEvents publish gate for non-approvers', async () => {
+    await expect(
+      runBeforeChange(NewsEvents, {
+        data: { _status: 'published', status: 'draft' },
+        roles: ['operations_editor'],
+      }),
+    ).rejects.toThrow('Set status to Published before using Publish.')
+  })
+
+  it('reads the previous Pages status on partial publish updates', async () => {
+    const findByID = vi.fn().mockResolvedValue({ id: 7, status: 'published' })
+
+    const data = await runBeforeChange(Pages, {
+      data: { id: 7, _status: 'published' },
+      roles: ['operations_editor'],
+      findByID,
+    })
+
+    expect(findByID).toHaveBeenCalledWith({
+      collection: 'pages',
+      id: 7,
+      depth: 0,
+      overrideAccess: true,
+    })
     expect(data.status).toBe('published')
   })
 
-  it('forces status to published when _status is published and status is in_review', () => {
-    const data = syncStatus({ _status: 'published', status: 'in_review' })
+  it('rejects partial Pages publish updates when the previous status is not publishable', async () => {
+    const findByID = vi.fn().mockResolvedValue({ id: 7, status: 'draft' })
+
+    await expect(
+      runBeforeChange(Pages, {
+        data: { id: 7, _status: 'published' },
+        roles: ['operations_editor'],
+        findByID,
+      }),
+    ).rejects.toThrow('Set status to Published before using Publish.')
+  })
+
+  it('lets approvers publish Notices from Payload Publish and records approval metadata', async () => {
+    const data = await runBeforeChange(Notices, {
+      data: { _status: 'published', status: 'draft' },
+      roles: ['approver'],
+    })
+
     expect(data.status).toBe('published')
+    expect(data.publishedAt).toEqual(expect.any(String))
+    expect(data.lastApprovedBy).toBe(42)
   })
 
-  it('forces status to published when _status is published and status is approved', () => {
-    const data = syncStatus({ _status: 'published', status: 'approved' })
-    expect(data.status).toBe('published')
-  })
-
-  it('does not change status when both _status and status are published', () => {
-    const data = syncStatus({ _status: 'published', status: 'published', publishedAt: '2026-01-01' })
-    expect(data.status).toBe('published')
-  })
-
-  it('reverts status to draft when _status is draft but status is published', () => {
-    const data = syncStatus({ _status: 'draft', status: 'published' })
-    expect(data.status).toBe('draft')
-  })
-
-  it('does not touch non-published statuses when _status is draft', () => {
-    const data = syncStatus({ _status: 'draft', status: 'in_review' })
-    expect(data.status).toBe('in_review')
-  })
-
-  it('sets publishedAt when status becomes published and publishedAt is empty', () => {
-    const data = syncStatus({ _status: 'published', status: 'in_review' })
-    expect(data.status).toBe('published')
-    expect(data.publishedAt).toBeTruthy()
-  })
-
-  it('does not overwrite an existing publishedAt', () => {
-    const existing = '2025-06-01T00:00:00.000Z'
-    const data = syncStatus({ _status: 'published', status: 'draft', publishedAt: existing })
-    expect(data.publishedAt).toBe(existing)
+  it('keeps the existing Notices publish gate for non-approvers', async () => {
+    await expect(
+      runBeforeChange(Notices, {
+        data: { _status: 'published', status: 'draft' },
+        roles: ['translator'],
+      }),
+    ).rejects.toThrow('Set status to Approved before publishing this notice.')
   })
 })

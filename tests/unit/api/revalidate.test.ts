@@ -57,6 +57,24 @@ describe('revalidate route', () => {
     expect(revalidatePath).not.toHaveBeenCalled()
   })
 
+  it('returns 401 when the secret has the wrong length', async () => {
+    const request = new NextRequest('http://localhost/api/revalidate', {
+      method: 'POST',
+      body: JSON.stringify({ paths: ['/contact'] }),
+      headers: {
+        'content-type': 'application/json',
+        'x-revalidate-secret': 'supersecret-12345-extra',
+      },
+    })
+
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body).toEqual({ ok: false, message: 'Unauthorized' })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
   it('revalidates each provided path when the secret is valid', async () => {
     const request = new NextRequest('http://localhost/api/revalidate', {
       method: 'POST',

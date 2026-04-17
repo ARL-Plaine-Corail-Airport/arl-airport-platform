@@ -3,13 +3,44 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const originalNodeEnv = process.env.NODE_ENV
 const originalUpstashUrl = process.env.UPSTASH_REDIS_REST_URL
 const originalUpstashToken = process.env.UPSTASH_REDIS_REST_TOKEN
+const originalPayloadSecret = process.env.PAYLOAD_SECRET
+const testPayloadSecret = 'middleware-test-payload-secret-min-32-characters'
 const loggerError = vi.fn()
 
-function buildExpiredJwt(expirationSecondsAgo = 60) {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
-  const payload = Buffer.from(JSON.stringify({
+function base64UrlEncode(value: string | Uint8Array): string {
+  return Buffer.from(value).toString('base64url')
+}
+
+async function buildSignedJwt(
+  payloadData: Record<string, unknown>,
+  secret = testPayloadSecret,
+): Promise<string> {
+  const header = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = base64UrlEncode(JSON.stringify(payloadData))
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const signature = new Uint8Array(
+    await crypto.subtle.sign('HMAC', key, encoder.encode(`${header}.${payload}`)),
+  )
+
+  return `${header}.${payload}.${base64UrlEncode(signature)}`
+}
+
+async function buildExpiredJwt(expirationSecondsAgo = 60) {
+  return await buildSignedJwt({
     exp: Math.floor(Date.now() / 1000) - expirationSecondsAgo,
-  })).toString('base64url')
+  })
+}
+
+function buildForgedJwt(payloadData: Record<string, unknown>) {
+  const header = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = base64UrlEncode(JSON.stringify(payloadData))
 
   return `${header}.${payload}.signature`
 }
@@ -30,6 +61,7 @@ async function loadProductionSecurityModules() {
   ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
   restoreEnv('UPSTASH_REDIS_REST_URL', undefined)
   restoreEnv('UPSTASH_REDIS_REST_TOKEN', undefined)
+  restoreEnv('PAYLOAD_SECRET', testPayloadSecret)
   vi.resetModules()
   vi.doMock('@/lib/logger', () => ({
     logger: {
@@ -51,6 +83,7 @@ describe('middleware security', () => {
     restoreEnv('NODE_ENV', originalNodeEnv)
     restoreEnv('UPSTASH_REDIS_REST_URL', originalUpstashUrl)
     restoreEnv('UPSTASH_REDIS_REST_TOKEN', originalUpstashToken)
+    restoreEnv('PAYLOAD_SECRET', originalPayloadSecret)
     vi.resetModules()
     vi.restoreAllMocks()
     loggerError.mockReset()
@@ -64,7 +97,15 @@ describe('middleware security', () => {
     expect(response.headers.get('Content-Security-Policy')).toContain(
       "script-src 'self' 'nonce-",
     )
-    expect(response.headers.get('x-nonce')).toBeNull()
+  })
+
+  it('sets production locale cookies with the secure flag', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+
+    const response = await middleware(new NextRequest('http://localhost/en/contact'))
+
+    expect(response.headers.get('set-cookie')).toContain('locale=en')
+    expect(response.headers.get('set-cookie')).toContain('Secure')
   })
 
   it('sets HSTS and SAMEORIGIN frame protection in production headers', async () => {
@@ -140,12 +181,43 @@ describe('middleware security', () => {
 
     const response = await middleware(new NextRequest('http://localhost/dashboard', {
       headers: {
-        cookie: `payload-token=${buildExpiredJwt()}`,
+        cookie: `payload-token=${await buildExpiredJwt()}`,
       },
     }))
 
     expect(response.status).toBe(307)
     expect(response.headers.get('location')).toContain('/admin/login?redirect=%2Fdashboard')
+  })
+
+  it('redirects forged future dashboard JWT cookies before server-side auth', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+
+    const response = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${buildForgedJwt({
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        })}`,
+      },
+    }))
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toContain('/admin/login?redirect=%2Fdashboard')
+  })
+
+  it('allows signed unexpired dashboard JWT cookies to reach dashboard handoff', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+
+    const response = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${await buildSignedJwt({
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        })}`,
+      },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('location')).toBeNull()
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
   })
 
   it('fails open when the Upstash rate limiter throws', async () => {
@@ -194,7 +266,7 @@ describe('middleware security', () => {
     )
   })
 
-  it('derives a per-request fallback fingerprint when IP headers are missing', async () => {
+  it('derives a stable fallback fingerprint when IP headers are missing', async () => {
     ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
     ;(process.env as Record<string, string | undefined>).UPSTASH_REDIS_REST_URL = 'https://redis.example'
     ;(process.env as Record<string, string | undefined>).UPSTASH_REDIS_REST_TOKEN = 'token'

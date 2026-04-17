@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isAdmin,
   isApprover,
+  isDocumentReader,
   isEditor,
   publishedOrAdmin,
   publishedVersionOrAdmin,
@@ -30,6 +31,15 @@ describe('access roles', () => {
 
   it('allows approvers through approver access', () => {
     expect(isApprover(buildAccessArgs(['approver']))).toBe(true)
+  })
+
+  it('restricts protected document reads to admins, approvers, and operations editors', () => {
+    expect(isDocumentReader(buildAccessArgs(['super_admin']))).toBe(true)
+    expect(isDocumentReader(buildAccessArgs(['content_admin']))).toBe(true)
+    expect(isDocumentReader(buildAccessArgs(['approver']))).toBe(true)
+    expect(isDocumentReader(buildAccessArgs(['operations_editor']))).toBe(true)
+    expect(isDocumentReader(buildAccessArgs(['translator']))).toBe(false)
+    expect(isDocumentReader(buildAccessArgs(['viewer_auditor']))).toBe(false)
   })
 
   it('allows published content for anonymous users and drafts for admins only', () => {

@@ -60,6 +60,8 @@ function setupFlightRuntime(options: SetupOptions = {}) {
       docs: boardTypeFilter === 'arrival' ? manualArrivals : manualDepartures,
     }
   })
+  const loggerError = vi.fn()
+  const loggerWarn = vi.fn()
 
   vi.doMock('@/lib/build-db', () => ({
     shouldSkipDbDuringBuild: () => false,
@@ -87,8 +89,8 @@ function setupFlightRuntime(options: SetupOptions = {}) {
 
   vi.doMock('@/lib/logger', () => ({
     logger: {
-      error: vi.fn(),
-      warn: vi.fn(),
+      error: loggerError,
+      warn: loggerWarn,
     },
   }))
 
@@ -100,7 +102,7 @@ function setupFlightRuntime(options: SetupOptions = {}) {
 
   vi.stubGlobal('fetch', fetchMock)
 
-  return { fetchMock, findMock }
+  return { fetchMock, findMock, loggerError, loggerWarn }
 }
 
 describe('flight board runtime reconciliation', () => {
@@ -315,6 +317,31 @@ describe('flight board runtime reconciliation', () => {
     expect(departuresRequest?.searchParams.get('airline_iata')).toBe('MK&override=no')
     expect(arrivalsRequest?.searchParams.get('api_key')).toBe('key&special=value')
     expect(departuresRequest?.searchParams.get('api_key')).toBe('key&special=value')
+  })
+
+  it('redacts AirLabs query secrets from provider warning logs and public board messages', async () => {
+    const secret = 'super-secret-key'
+    const { loggerWarn } = setupFlightRuntime({
+      envOverrides: {
+        flightProviderApiKey: secret,
+      },
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        throw new Error(`failed upstream ${input}&token=temporary-token`)
+      }),
+    )
+
+    const { getFlightBoards } = await import('@/lib/integrations/flights')
+    const boards = await getFlightBoards()
+
+    const warning = String(loggerWarn.mock.calls[0]?.[0] ?? '')
+    expect(warning).toContain('api_key=[REDACTED]')
+    expect(warning).toContain('token=[REDACTED]')
+    expect(warning).not.toContain(secret)
+    expect(boards.arrivals.message).toContain('api_key=[REDACTED]')
+    expect(boards.arrivals.message).not.toContain(secret)
   })
 
   it('falls back to a real-time window when the Mauritius day range cannot be parsed', async () => {

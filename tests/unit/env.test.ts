@@ -21,6 +21,7 @@ describe('serverEnv', () => {
     expect(serverEnv.flightProviderMode).toBe('airlabs')
     expect(serverEnv.flightProviderLabel).toBe('AirLabs')
     expect(serverEnv.flightProviderIataCode).toBe('RRG')
+    expect(serverEnv.weatherProviderLabel).toBe('Open-Meteo Forecast API')
     expect(serverEnv.s3Region).toBe('eu-west-1')
     expect(serverEnv.mediaBucket).toBe('arl-public-media')
   })

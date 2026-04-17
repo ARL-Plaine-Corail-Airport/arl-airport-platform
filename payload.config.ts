@@ -62,7 +62,9 @@ const dirname  = path.dirname(filename)
 
 function requireEnv(name: string): string {
   const val = process.env[name]
-  if (!val && process.env.NODE_ENV === 'production') {
+  if (!val && process.env.NODE_ENV === 'production' && !process.env.NEXT_OUTPUT_MODE) {
+    // Only throw at runtime. During `next build` (NEXT_OUTPUT_MODE=standalone),
+    // placeholder values are acceptable — real secrets are injected at runtime.
     throw new Error(`[payload.config] Required env var "${name}" is not set.`)
   }
   return val ?? ''

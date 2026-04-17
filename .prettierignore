@@ -1,0 +1,12 @@
+.next
+.next-dev
+coverage
+node_modules
+playwright-report
+test-results
+.tmp
+.claude
+.codex
+tsconfig.tsbuildinfo
+tmp-start.err
+tmp-start.log

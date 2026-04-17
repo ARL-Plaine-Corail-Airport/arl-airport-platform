@@ -8,9 +8,12 @@
   },
   "scripts": {
     "dev": "next dev --experimental-https --experimental-https-key certificates/localhost-key.pem --experimental-https-cert certificates/localhost.pem",
-    "build": "next build",
+    "build": "node scripts/build.mjs",
+    "analyze": "node scripts/build.mjs --analyze",
     "start": "next start",
     "lint": "next lint",
+    "format": "prettier --write --no-error-on-unmatched-pattern \"package.json\" \".prettierrc\" \".github/workflows/*.{yml,yaml}\" \"playwright.config.ts\" \"vitest.config.ts\" \"tests/setup.ts\" \"instrumentation*.ts\" \"sentry*.config.ts\"",
+    "format:check": "prettier --check --no-error-on-unmatched-pattern \"package.json\" \".prettierrc\" \".github/workflows/*.{yml,yaml}\" \"playwright.config.ts\" \"vitest.config.ts\" \"tests/setup.ts\" \"instrumentation*.ts\" \"sentry*.config.ts\"",
     "generate:types": "payload generate:types",
     "seed": "tsx scripts/seed.ts",
     "test": "vitest run",
@@ -23,14 +26,19 @@
     "@payloadcms/next": "3.79.1",
     "@payloadcms/richtext-lexical": "3.79.1",
     "@payloadcms/storage-s3": "3.79.1",
+    "@sentry/nextjs": "^10.47.0",
     "@supabase/supabase-js": "^2.49.4",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
     "leaflet": "^1.9.4",
     "next": "15.4.11",
     "payload": "3.79.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-leaflet": "^5.0.0",
-    "sharp": "^0.34.0"
+    "server-only": "^0.0.1",
+    "sharp": "^0.34.0",
+    "zod": "^4.3.6"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -39,6 +47,7 @@
     ]
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.2",
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -47,9 +56,13 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.4.11",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "jsdom": "^29.0.1",
+    "prettier": "^3.8.1",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vitest": "^4.1.1"

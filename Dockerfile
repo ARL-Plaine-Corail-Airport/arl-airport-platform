@@ -24,15 +24,38 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build-time env: only non-secret, NEXT_PUBLIC_ values are baked in.
-# All secrets (DATABASE_URL, PAYLOAD_SECRET, Supabase keys) are
-# injected at runtime via docker-compose or your orchestrator.
+# Build-time env: NEXT_PUBLIC_ values are baked into the JS bundle at build time.
+# Secrets are injected at runtime via docker-compose — they only need placeholder
+# values here so Next.js/Payload config evaluation doesn't throw during build.
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV NEXT_OUTPUT_MODE=standalone
+ENV ARL_SKIP_DB_DURING_BUILD=1
 
-# Generate Payload types then build Next.js (standalone mode)
-RUN pnpm run generate:types && pnpm run build
+# Placeholder values so payload.config.ts and env.ts don't throw during build.
+# ARL_SKIP_DB_DURING_BUILD keeps Next/Payload from attempting live DB access
+# while image artifacts are being compiled.
+# These are NOT used at runtime — real values come from .env / docker-compose.
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
+ARG PAYLOAD_SECRET=build-time-placeholder-secret-min-32-chars
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ARG SUPABASE_S3_ACCESS_KEY_ID=placeholder
+ARG SUPABASE_S3_SECRET_ACCESS_KEY=placeholder
+ARG SUPABASE_S3_ENDPOINT=https://placeholder.supabase.co/storage/v1/s3
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV PAYLOAD_SECRET=$PAYLOAD_SECRET
+ENV DATABASE_URL=$DATABASE_URL
+ENV SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID
+ENV SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY
+ENV SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT
+
+# payload-types.ts is already committed — skip generate:types (needs DB connection).
+# Just build Next.js in standalone mode.
+RUN pnpm run build
 
 # ── Stage 4: runner (minimal production image) ────────────────────────────────
 FROM node:20-alpine AS runner
@@ -56,8 +79,8 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Healthcheck — Payload admin endpoint confirms full stack readiness
+# Healthcheck — lightweight liveness check (no DB dependency)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/health || exit 1
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]

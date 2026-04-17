@@ -10,6 +10,7 @@ out/
 # production build
 build/
 dist/
+backups/
 
 # environment variables (real secrets)
 .env
@@ -43,11 +44,20 @@ media/
 # misc
 *.pem
 certificates/
+nginx/ssl/
 
 # test output
 playwright-report/
 test-results/
+coverage/
+reports/
 tmp-start.*
+tmp-next-dev.*
 
 # root CA (local dev only — never commit)
 public/rootCA.pem
+
+# dev artifacts
+.claude/
+.codex/
+.tmp/

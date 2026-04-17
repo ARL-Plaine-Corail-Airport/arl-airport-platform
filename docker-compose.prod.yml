@@ -1,0 +1,93 @@
+# =============================================================================
+# ARL Airport Platform — Production Docker Compose
+# Horizontal scaling with Nginx load balancer + multiple app replicas
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up --build -d
+#
+# Requires:
+#   - .env file with all production secrets
+#   - Built Docker image (uses the "runner" stage from Dockerfile)
+# =============================================================================
+
+services:
+  # ── Nginx Reverse Proxy / Load Balancer ────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: arl-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - arl-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -qO- https://127.0.0.1/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── Application (Next.js + Payload CMS) — scaled to 10 replicas ───────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Uses the production "runner" stage (standalone output)
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    deploy:
+      replicas: 4  # Local/staging. Set to 10+ for production (40K concurrent users).
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    expose:
+      - "3000"
+    networks:
+      - arl-network
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Redis (local/staging only — use Upstash in production) ─────────────────
+  # For local staging tests. In cloud production, set UPSTASH_REDIS_REST_URL
+  # and UPSTASH_REDIS_REST_TOKEN in .env and remove this service.
+  redis:
+    image: redis:7-alpine
+    container_name: arl-redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - arl_redis_data:/data
+    networks:
+      - arl-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  arl_redis_data:
+    name: arl_redis_data
+
+networks:
+  arl-network:
+    name: arl-network
+    driver: bridge

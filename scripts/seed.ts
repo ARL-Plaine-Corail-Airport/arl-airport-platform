@@ -34,6 +34,36 @@ const pageSections = [
 ]
 
 async function upsertBySlug(payload: any, collection: string, slug: string, data: Record<string, unknown>) {
+  try {
+    const existing = await payload.find({
+      collection,
+      limit: 1,
+      where: {
+        slug: {
+          equals: slug,
+        },
+      },
+    })
+
+    if (existing.docs[0]) {
+      return await payload.update({
+        collection,
+        id: existing.docs[0].id,
+        data,
+      })
+    }
+
+    return await payload.create({
+      collection,
+      data,
+    })
+  } catch (error) {
+    console.error(`[seed] Failed to upsert ${collection} slug="${slug}":`, error)
+    throw error
+  }
+}
+
+async function deleteBySlug(payload: any, collection: string, slug: string) {
   const existing = await payload.find({
     collection,
     limit: 1,
@@ -44,44 +74,53 @@ async function upsertBySlug(payload: any, collection: string, slug: string, data
     },
   })
 
-  if (existing.docs[0]) {
-    return payload.update({
-      collection,
-      id: existing.docs[0].id,
+  if (!existing.docs[0]) return null
+
+  return payload.delete({
+    collection,
+    id: existing.docs[0].id,
+  })
+}
+
+async function updateGlobalWithLogging(
+  payload: any,
+  slug: string,
+  data: Record<string, unknown>,
+  failures: string[],
+) {
+  try {
+    await payload.updateGlobal({
+      slug,
       data,
     })
+    console.log(`[seed] Updated global: ${slug}`)
+  } catch (error) {
+    failures.push(slug)
+    console.error(`[seed] Failed to update global: ${slug}`, error)
   }
-
-  return payload.create({
-    collection,
-    data,
-  })
 }
 
 async function main() {
   const payload = await getPayload({ config })
+  const failedGlobalUpdates: string[] = []
 
-  await payload.updateGlobal({
-    slug: 'site-settings',
-    data: {
+  await updateGlobalWithLogging(payload, 'site-settings', {
       siteName: 'Airport of Rodrigues Ltd',
       airportName: 'Plaine Corail Airport',
       tagline:
         'Official passenger information platform for operational notices, flight information, passenger guidance, and mobile-first access.',
       primaryPhone: '+230 832 78 88',
       primaryEmail: 'info@arl.aero',
-      physicalAddress: 'Sir Gaetan Duval Airport, Rodrigues Island, Republic of Mauritius',
+      physicalAddress: 'Plaine Corail Airport, Rodrigues Island, Republic of Mauritius',
       workingHours: 'Consult official notices and airline information for operational variations.',
       usefulLinks: [
         { label: 'Airline information', url: '/airlines' },
         { label: 'Transport and parking', url: '/transport-parking' },
       ],
     },
-  })
+  failedGlobalUpdates)
 
-  await payload.updateGlobal({
-    slug: 'home-page',
-    data: {
+  await updateGlobalWithLogging(payload, 'home-page', {
       heroTitle: 'Official passenger information for Plaine Corail Airport',
       heroSummary:
         'Check arrivals and departures, read official communiqués, prepare your journey, and access transport, accessibility, and contact information from one mobile-first platform.',
@@ -91,11 +130,9 @@ async function main() {
         { title: 'Transport and parking', summary: 'Pickup, drop-off, direction, and access information.' },
       ],
     },
-  })
+  failedGlobalUpdates)
 
-  await payload.updateGlobal({
-    slug: 'passenger-guide',
-    data: {
+  await updateGlobalWithLogging(payload, 'passenger-guide', {
       introTitle: 'Prepare for your journey',
       introSummary:
         'Use this guide to review check-in, baggage, security, and airport support information before travelling.',
@@ -122,11 +159,9 @@ async function main() {
         { label: 'General email', value: 'info@arl.aero' },
       ],
     },
-  })
+  failedGlobalUpdates)
 
-  await payload.updateGlobal({
-    slug: 'transport-parking',
-    data: {
+  await updateGlobalWithLogging(payload, 'transport-parking', {
       introTitle: 'Transport and parking information',
       introSummary:
         'Plan your journey to and from Plaine Corail Airport. Review taxi, bus, drop-off, pickup, and parking information.',
@@ -200,11 +235,9 @@ async function main() {
         },
       ],
     },
-  })
+  failedGlobalUpdates)
 
-  await payload.updateGlobal({
-    slug: 'accessibility-info',
-    data: {
+  await updateGlobalWithLogging(payload, 'accessibility-info', {
       introTitle: 'Accessibility support',
       introSummary:
         'Passengers requiring assistance should coordinate with their airline and the airport help desk ahead of travel when possible.',
@@ -218,11 +251,9 @@ async function main() {
       ],
       assistanceContact: 'Contact the airport help desk and your airline before travel where possible.',
     },
-  })
+  failedGlobalUpdates)
 
-  await payload.updateGlobal({
-    slug: 'airport-map',
-    data: {
+  await updateGlobalWithLogging(payload, 'airport-map', {
       introTitle: 'Airport map and key points',
       introSummary:
         'Locate the terminal building, car park, pickup and drop-off zones, and other essential wayfinding points at Plaine Corail Airport.',
@@ -334,11 +365,9 @@ async function main() {
         },
       ],
     },
-  })
+  failedGlobalUpdates)
 
-  await payload.updateGlobal({
-    slug: 'contact-info',
-    data: {
+  await updateGlobalWithLogging(payload, 'contact-info', {
       helpDeskTitle: 'Contact and help desk',
       helpDeskSummary: 'Use the official contact details below for passenger support and airport enquiries.',
       cards: [
@@ -346,7 +375,7 @@ async function main() {
         { title: 'Email', value: 'info@arl.aero', link: 'mailto:info@arl.aero' },
       ],
     },
-  })
+  failedGlobalUpdates)
 
   await upsertBySlug(payload, 'pages', 'about-us', {
     title: 'About Us',
@@ -443,13 +472,25 @@ async function main() {
     ],
   })
 
-  await upsertBySlug(payload, 'pages', 'airport-vip-lounge', {
-    title: 'Airport VIP Lounge',
-    slug: 'airport-vip-lounge',
-    summary: 'Official VIP lounge information.',
-    status: 'published',
-    sections: pageSections,
-  })
+  await updateGlobalWithLogging(payload, 'vip-lounge', {
+      pageTitle: 'Airport VIP Lounge',
+      introduction:
+        'Find official information about VIP lounge access, amenities, and contact details for Plaine Corail Airport.',
+      amenities: [
+        { item: 'Comfortable seating for eligible passengers' },
+        { item: 'Refreshments aligned with operating hours' },
+        { item: 'A quieter waiting area before departure' },
+      ],
+      eligibility:
+        'Access is subject to airline arrangements, approved passenger categories, or operational authorisation from Airport of Rodrigues Ltd.',
+      bookingInformation:
+        'Passengers should confirm lounge availability and any access conditions with their airline or the airport help desk before travel.',
+      operatingHours: 'Opening hours follow the published flight schedule.',
+      contactPhone: '+230 832 78 88',
+      contactEmail: 'info@arl.aero',
+    },
+  failedGlobalUpdates)
+  await deleteBySlug(payload, 'pages', 'airport-vip-lounge')
 
   await upsertBySlug(payload, 'pages', 'airport-regulations', {
     title: 'Airport Regulations',
@@ -467,16 +508,27 @@ async function main() {
     sections: pageSections,
   })
 
-  await payload.create({
-    collection: 'faqs',
-    data: {
-      question: 'How should I verify my flight information?',
-      answer: 'Always verify your flight details using the official airport platform and your airline before travelling.',
-      category: 'flights',
-      order: 1,
-      status: 'published',
-    },
-  }).catch(() => null)
+  try {
+    await payload.create({
+      collection: 'faqs',
+      data: {
+        question: 'How should I verify my flight information?',
+        answer: 'Always verify your flight details using the official airport platform and your airline before travelling.',
+        category: 'flights',
+        order: 1,
+        status: 'published',
+      },
+    })
+  } catch (error) {
+    failedGlobalUpdates.push('faqs')
+    console.error('[seed] Failed to seed FAQ entry:', error)
+  }
+
+  if (failedGlobalUpdates.length > 0) {
+    throw new Error(
+      `[seed] Global updates failed: ${failedGlobalUpdates.join(', ')}`,
+    )
+  }
 
   console.log('Seed completed.')
 }

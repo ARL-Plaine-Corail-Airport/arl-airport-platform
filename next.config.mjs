@@ -1,7 +1,10 @@
 import path from 'node:path'
+import withBundleAnalyzer from '@next/bundle-analyzer'
 import { withPayload } from '@payloadcms/next/withPayload'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const isDev = process.env.NODE_ENV === 'development'
+const withAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -76,4 +79,18 @@ const nextConfig = {
   },
 }
 
-export default withPayload(nextConfig)
+const sentryWebpackPluginOptions = {
+  silent: true,
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+  widenClientFileUpload: true,
+  tunnelRoute: '/monitoring',
+  hideSourceMaps: true,
+}
+
+export default withAnalyzer(
+  withSentryConfig(withPayload(nextConfig), sentryWebpackPluginOptions),
+)

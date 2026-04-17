@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  NODE_ENV: production
+  NEXT_OUTPUT_MODE: standalone
+  ARL_SKIP_DB_DURING_BUILD: '1'
+  NEXT_PUBLIC_SITE_URL: http://localhost:3000
+  PAYLOAD_SECRET: ci-placeholder-secret-min-32-characters
+  DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+  DATABASE_DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+  SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+  SUPABASE_S3_ACCESS_KEY_ID: placeholder-access-key
+  SUPABASE_S3_SECRET_ACCESS_KEY: placeholder-secret-key
+  SUPABASE_S3_ENDPOINT: https://placeholder.supabase.co/storage/v1/s3
+  SUPABASE_S3_REGION: eu-west-1
+  SUPABASE_STORAGE_BUCKET_MEDIA: arl-public-media
+  SUPABASE_STORAGE_BUCKET_DOCUMENTS: arl-protected-docs
+  REVALIDATE_SECRET: placeholder-revalidate-secret
+  UPSTASH_REDIS_REST_URL: https://placeholder.upstash.io
+  UPSTASH_REDIS_REST_TOKEN: placeholder-upstash-token
+  FLIGHT_PROVIDER_MODE: airlabs
+  FLIGHT_PROVIDER_LABEL: AirLabs
+  FLIGHT_PROVIDER_ENDPOINT: https://airlabs.co/api/v9
+  FLIGHT_PROVIDER_API_KEY: placeholder-airlabs-key
+  FLIGHT_PROVIDER_IATA_CODE: RRG
+  FLIGHT_PROVIDER_AIRLINE_FILTER: MK
+  WEATHER_PROVIDER_ENDPOINT: https://api.open-meteo.com/v1/forecast
+  WEATHER_PROVIDER_LATITUDE: '-19.757778'
+  WEATHER_PROVIDER_LONGITUDE: '63.361389'
+  WEATHER_PROVIDER_TIMEZONE: Indian/Mauritius
+  NEXT_PUBLIC_SENTRY_DSN: https://examplePublicKey@o0.ingest.sentry.io/0
+  SENTRY_DSN: https://examplePublicKey@o0.ingest.sentry.io/0
+  SENTRY_AUTH_TOKEN: placeholder-sentry-token
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run TypeScript checks
+        run: pnpm exec tsc --noEmit
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: pnpm test
+
+  build-and-e2e:
+    runs-on: ubuntu-latest
+    needs:
+      - format-check
+      - lint
+      - typecheck
+      - test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app
+        run: pnpm build
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: pnpm test:e2e

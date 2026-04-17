@@ -149,7 +149,7 @@ The `main` branch is protected:
 ## Production Notes
 
 ### Flight data
-The flight board uses AirLabs API (free tier: 1,000 requests/month). Cache TTL is set to ~87 minutes across all layers to stay within budget. Airlines filtered: MK (Air Mauritius), UU (Air Austral). Manual flight entries can be added via the CMS admin.
+The flight board uses AirLabs API (free tier: 1,000 requests/month). Cache TTL is set to ~43 minutes across all layers to stay within budget. Airlines filtered: MK (Air Mauritius), UU (Air Austral). Manual flight entries can be added via the CMS admin.
 
 ### Weather data
 Uses Open-Meteo with Plaine Corail Airport coordinates. For operational aviation weather, rely on official METAR/TAF sources from the Mauritius Meteorological Services.

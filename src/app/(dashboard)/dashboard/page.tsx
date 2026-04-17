@@ -205,7 +205,9 @@ export default async function DashboardOverviewPage() {
 
   // Fetch data with fallbacks
   let recentNotices: Notice[] = []
-  let allNotices: Notice[] = []
+  let totalNotices = 0
+  let activeNotices = 0
+  let emergencyBanners = 0
   let userCount = 0
 
   let arrivalsBoard = { configured: false, records: [] as Array<{ remarks?: string | null }> }
@@ -213,7 +215,9 @@ export default async function DashboardOverviewPage() {
 
   const [
     recentNoticesResult,
-    allNoticesResult,
+    totalNoticesResult,
+    activeNoticesResult,
+    emergencyBannersResult,
     usersResult,
     arrivalsResult,
     departuresResult,
@@ -225,16 +229,33 @@ export default async function DashboardOverviewPage() {
       sort: '-updatedAt',
       overrideAccess: true,
     }),
-    payload.find({
+    payload.count({
       collection: 'notices',
-      depth: 0,
-      limit: 1000,
       overrideAccess: true,
     }),
-    payload.find({
+    payload.count({
+      collection: 'notices',
+      overrideAccess: true,
+      where: {
+        or: [
+          { status: { equals: 'published' } },
+          { status: { equals: 'approved' } },
+        ],
+      },
+    }),
+    payload.count({
+      collection: 'notices',
+      overrideAccess: true,
+      where: {
+        and: [
+          { urgent: { equals: true } },
+          { promoteToBanner: { equals: true } },
+          { status: { equals: 'published' } },
+        ],
+      },
+    }),
+    payload.count({
       collection: 'users',
-      depth: 0,
-      limit: 1000,
       overrideAccess: true,
     }),
     getFlightBoard('arrivals'),
@@ -247,10 +268,26 @@ export default async function DashboardOverviewPage() {
     logger.error('Failed to fetch recent notices', recentNoticesResult.reason, 'dashboard')
   }
 
-  if (allNoticesResult.status === 'fulfilled') {
-    allNotices = allNoticesResult.value.docs
+  if (totalNoticesResult.status === 'fulfilled') {
+    totalNotices = totalNoticesResult.value.totalDocs
   } else {
-    logger.error('Failed to fetch all notices', allNoticesResult.reason, 'dashboard')
+    logger.error('Failed to fetch total notices count', totalNoticesResult.reason, 'dashboard')
+  }
+
+  if (activeNoticesResult.status === 'fulfilled') {
+    activeNotices = activeNoticesResult.value.totalDocs
+  } else {
+    logger.error('Failed to fetch active notices count', activeNoticesResult.reason, 'dashboard')
+  }
+
+  if (emergencyBannersResult.status === 'fulfilled') {
+    emergencyBanners = emergencyBannersResult.value.totalDocs
+  } else {
+    logger.error(
+      'Failed to fetch emergency banner count',
+      emergencyBannersResult.reason,
+      'dashboard',
+    )
   }
 
   if (usersResult.status === 'fulfilled') {
@@ -274,12 +311,6 @@ export default async function DashboardOverviewPage() {
   // Compute stats
   const totalFlights = arrivalsBoard.records.length + departuresBoard.records.length
   const delayedCount = countDelayed(arrivalsBoard.records) + countDelayed(departuresBoard.records)
-  const activeNotices = allNotices.filter(
-    (n) => n.status === 'published' || n.status === 'approved'
-  ).length
-  const emergencyBanners = allNotices.filter(
-    (n) => n.urgent && n.promoteToBanner && n.status === 'published'
-  ).length
 
   return (
     <main className="page-content">
@@ -357,7 +388,7 @@ export default async function DashboardOverviewPage() {
           <div className="stat-info">
             <div className="stat-label">Active Notices</div>
             <div className="stat-value">{activeNotices}</div>
-            <div className="stat-change">{allNotices.length} total notices</div>
+            <div className="stat-change">{totalNotices} total notices</div>
           </div>
         </div>
 

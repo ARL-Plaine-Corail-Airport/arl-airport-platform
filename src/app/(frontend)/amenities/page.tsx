@@ -9,14 +9,18 @@ import { buildFrontendMetadata } from '@/lib/metadata'
 export const revalidate = 300
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.amenities_title} - ${dict.common.airport_location}`,
-    description: dict.pages.amenities_summary,
-    path: '/amenities',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.amenities_title} - ${dict.common.airport_location}`,
+      description: dict.pages.amenities_summary,
+      path: '/amenities',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 export default async function AmenitiesPage() {

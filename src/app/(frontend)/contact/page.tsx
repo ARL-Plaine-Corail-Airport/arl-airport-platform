@@ -23,14 +23,18 @@ function normalizeEmail(value?: string | null) {
 }
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.contact_title} - ${dict.common.airport_location}`,
-    description: dict.pages.contact_summary,
-    path: '/contact',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.contact_title} - ${dict.common.airport_location}`,
+      description: dict.pages.contact_summary,
+      path: '/contact',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 export default async function ContactPage() {
@@ -64,9 +68,13 @@ export default async function ContactPage() {
     : false
 
   const cards = [
-    ...contactCards,
+    ...contactCards.map((card) => ({
+      ...card,
+      id: card.id ?? `contact-${card.title}-${card.value}`,
+    })),
     ...(!hasPrimaryPhoneCard && site.primaryPhone
       ? [{
+          id: 'site-primary-phone',
           title: dict.pages.primary_phone,
           value: site.primaryPhone,
           link: `tel:${site.primaryPhone.replace(/\s/g, '')}`,
@@ -74,6 +82,7 @@ export default async function ContactPage() {
       : []),
     ...(!hasPrimaryEmailCard && site.primaryEmail
       ? [{
+          id: 'site-primary-email',
           title: dict.pages.primary_email,
           value: site.primaryEmail,
           link: `mailto:${site.primaryEmail}`,
@@ -81,6 +90,7 @@ export default async function ContactPage() {
       : []),
     ...(!hasAddressCard && site.physicalAddress
       ? [{
+          id: 'site-physical-address',
           title: dict.pages.address,
           value: site.physicalAddress,
           link: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.physicalAddress)}`,

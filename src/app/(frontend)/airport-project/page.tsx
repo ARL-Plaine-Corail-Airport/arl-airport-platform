@@ -13,14 +13,22 @@ import { buildFrontendMetadata } from '@/lib/metadata'
 export const revalidate = 60
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.airport_project_title} - ${dict.common.airport_location}`,
-    description: dict.pages.airport_project_summary,
-    path: '/airport-project',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.airport_project_title} - ${dict.common.airport_location}`,
+      description: dict.pages.airport_project_summary,
+      path: '/airport-project',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
+}
+
+function FilterChipsSkeleton() {
+  return <div className="filter-chips-skeleton" aria-hidden />
 }
 
 function formatDay(dateStr: string) {
@@ -75,7 +83,7 @@ export default async function AirportProjectPage({
       <section className="page-section">
         <div className="container">
           {catOptions.length > 1 && (
-            <Suspense fallback={null}>
+            <Suspense fallback={<FilterChipsSkeleton />}>
               <FilterChips paramName="category" basePath={localizedBasePath} options={catOptions} />
             </Suspense>
           )}

@@ -8,14 +8,18 @@ import { buildFrontendMetadata } from '@/lib/metadata'
 export const revalidate = 300
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.vip_title} - ${dict.common.airport_location}`,
-    description: dict.pages.vip_summary,
-    path: '/vip-lounge',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.vip_title} - ${dict.common.airport_location}`,
+      description: dict.pages.vip_summary,
+      path: '/vip-lounge',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 export default async function VIPLoungePage() {

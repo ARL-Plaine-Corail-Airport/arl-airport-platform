@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { createHash } from 'crypto'
+
 import { cache } from 'react'
 
 import { isBuildTimeDbDisabledError, shouldSkipDbDuringBuild } from '@/lib/build-db'
@@ -7,6 +9,8 @@ import { getMauritiusDayRange } from '@/lib/date'
 import { serverEnv } from '@/lib/env.server'
 import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
+import { redactSensitiveText } from '@/lib/redaction'
+import type { Flight } from '@/payload-types'
 import type { FlightBoardResponse, FlightBoardType, FlightRecord } from './types'
 
 const CROSS_MIDNIGHT_WINDOW_MS = 2 * 60 * 60 * 1000
@@ -282,7 +286,17 @@ async function fetchFromAirLabs(
   if (airlineFilters.length > 0) {
     url.searchParams.set('airline_iata', airlineFilters.join(','))
   }
-  url.searchParams.set('api_key', apiKey)
+
+  const apiId = serverEnv.flightProviderApiId
+  if (apiId) {
+    // Time-bound signature — expires quickly, so leakage in upstream logs is low-risk.
+    // Format per AirLabs docs: api_id:timestamp:md5(timestamp:api_key)
+    const timestamp = Math.floor(Date.now() / 1000).toString()
+    const digest = createHash('md5').update(`${timestamp}:${apiKey}`).digest('hex')
+    url.searchParams.set('signature', `${apiId}:${timestamp}:${digest}`)
+  } else {
+    url.searchParams.set('api_key', apiKey)
+  }
 
   const response = await fetch(url.toString(), {
     headers: { Accept: 'application/json' },
@@ -348,7 +362,7 @@ async function fetchManualFlights(
       sort: 'scheduledTime',
     })
 
-    return result.docs.map((doc: any) =>
+    return (result.docs as Flight[]).map((doc) =>
       toInternalRecord({
         id: `manual-${doc.id}`,
         airline: doc.airline,
@@ -711,14 +725,20 @@ const getFlightBoardsSnapshot = cache(async (): Promise<FlightBoardsSnapshot> =>
 
   if (providerArrivalsResult.status === 'rejected') {
     logger.warn(
-      `Flight API arrivals fetch failed: ${providerArrivalsResult.reason}`,
+      redactSensitiveText(
+        `Flight API arrivals fetch failed: ${providerArrivalsResult.reason}`,
+        [serverEnv.flightProviderApiKey],
+      ),
       'flights',
     )
   }
 
   if (providerDeparturesResult.status === 'rejected') {
     logger.warn(
-      `Flight API departures fetch failed: ${providerDeparturesResult.reason}`,
+      redactSensitiveText(
+        `Flight API departures fetch failed: ${providerDeparturesResult.reason}`,
+        [serverEnv.flightProviderApiKey],
+      ),
       'flights',
     )
   }
@@ -743,11 +763,15 @@ const getFlightBoardsSnapshot = cache(async (): Promise<FlightBoardsSnapshot> =>
   const errorMessage =
     providerArrivalsResult.status === 'rejected'
       ? providerArrivalsResult.reason instanceof Error
-        ? providerArrivalsResult.reason.message
+        ? redactSensitiveText(providerArrivalsResult.reason.message, [
+            serverEnv.flightProviderApiKey,
+          ])
         : 'Unknown error'
       : providerDeparturesResult.status === 'rejected'
         ? providerDeparturesResult.reason instanceof Error
-          ? providerDeparturesResult.reason.message
+          ? redactSensitiveText(providerDeparturesResult.reason.message, [
+              serverEnv.flightProviderApiKey,
+            ])
           : 'Unknown error'
         : undefined
 

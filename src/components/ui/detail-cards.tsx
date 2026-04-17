@@ -18,7 +18,7 @@ function getLinkAriaLabel(href: string, t: (key: string) => string): string {
 export function DetailCards({
   items = [],
 }: {
-  items?: Array<{ title?: string | null; value?: string | null; link?: string | null }>
+  items?: Array<{ id: string; title?: string | null; value?: string | null; link?: string | null }>
 }) {
   const { t } = useI18n()
 
@@ -32,8 +32,8 @@ export function DetailCards({
 
   return (
     <section className="card-grid">
-      {items.map((item, index) => (
-        <article className="detail-card" key={`${item.title}-${index}`}>
+      {items.map((item) => (
+        <article className="detail-card" key={item.id}>
           <p className="detail-card__label">{item.title ?? ''}</p>
           <p className="detail-card__value">{item.value ?? ''}</p>
           {item.link ? (

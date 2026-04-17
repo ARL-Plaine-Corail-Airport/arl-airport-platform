@@ -5,18 +5,23 @@ import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { getPassengerGuide } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
+import type { PassengerGuide } from '@/payload-types'
 
 export const revalidate = 300
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.passenger_guide_title} - ${dict.common.airport_location}`,
-    description: dict.pages.passenger_guide_summary,
-    path: '/passenger-guide',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.passenger_guide_title} - ${dict.common.airport_location}`,
+      description: dict.pages.passenger_guide_summary,
+      path: '/passenger-guide',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 export default async function PassengerGuidePage() {
@@ -32,7 +37,8 @@ export default async function PassengerGuidePage() {
           <section className="stack-sm">
             <h2>{dict.pages.useful_contacts}</h2>
             <DetailCards
-              items={(guide.importantContacts || []).map((item: any) => ({
+              items={((guide.importantContacts || []) as NonNullable<PassengerGuide['importantContacts']>).map((item) => ({
+                id: item.id ?? `important-${item.label}-${item.value}`,
                 title: item.label,
                 value: item.value,
               }))}

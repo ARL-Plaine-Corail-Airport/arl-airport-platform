@@ -9,8 +9,7 @@
    Loaded once here so individual CSS files don't double-load.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
-
+/* Fonts loaded via next/font/google in the frontend layout (self-hosted). */
 
 /* ============================================================
    BASE TYPOGRAPHIC STYLES

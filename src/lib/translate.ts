@@ -7,8 +7,10 @@ const TRANSLATION_RATE_LIMIT_MAX_REQUESTS = 20
 const TRANSLATION_RATE_LIMIT_WINDOW_MS = 60_000
 const CACHE_MAX_SIZE = 1000
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const CLEANUP_INTERVAL_MS = 300_000
 const TRANSLATE_BATCH_SIZE = 5
 const translationCache = new Map<string, { value: string; cachedAt: number }>()
+let lastTranslationCacheCleanup = 0
 let translationWindowStart = 0
 let translationRequestsInWindow = 0
 
@@ -40,15 +42,16 @@ function getCachedTranslation(key: string): string | undefined {
 
 function setCachedTranslation(key: string, value: string): void {
   const now = Date.now()
-  const staleKeys: string[] = []
-  for (const [k, entry] of translationCache) {
-    if (now - entry.cachedAt > CACHE_TTL_MS) {
-      staleKeys.push(k)
+
+  if (now - lastTranslationCacheCleanup > CLEANUP_INTERVAL_MS) {
+    lastTranslationCacheCleanup = now
+    for (const [k, entry] of translationCache) {
+      if (now - entry.cachedAt > CACHE_TTL_MS) {
+        translationCache.delete(k)
+      }
     }
   }
-  for (const staleKey of staleKeys) {
-    translationCache.delete(staleKey)
-  }
+
   if (translationCache.size >= CACHE_MAX_SIZE) {
     const oldestKey = translationCache.keys().next().value
     if (oldestKey !== undefined) translationCache.delete(oldestKey)
@@ -94,6 +97,9 @@ export async function translate({ text, from, to }: TranslateOptions): Promise<s
     return text
   }
 
+  // MyMemory does not support Kreol Morisien (mfe). Fall back to French
+  // as the closest available language. CMS editors should provide native
+  // Kreol translations via localized fields instead of auto-translation.
   const effectiveTo = to === 'mfe' ? 'fr' : to
   const effectiveFrom = from === 'mfe' ? 'fr' : from
 

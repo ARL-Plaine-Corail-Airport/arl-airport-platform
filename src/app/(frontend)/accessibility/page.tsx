@@ -8,14 +8,18 @@ import { buildFrontendMetadata } from '@/lib/metadata'
 export const revalidate = 300
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.accessibility_title} - ${dict.common.airport_location}`,
-    description: dict.pages.accessibility_summary,
-    path: '/accessibility',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.accessibility_title} - ${dict.common.airport_location}`,
+      description: dict.pages.accessibility_summary,
+      path: '/accessibility',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 export default async function AccessibilityPage() {

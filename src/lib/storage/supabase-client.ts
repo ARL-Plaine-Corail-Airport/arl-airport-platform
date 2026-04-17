@@ -63,18 +63,32 @@ export async function getSignedURL(
   expiresIn: number = SIGNED_URL_EXPIRY_SECONDS,
 ): Promise<string> {
   const supabase = getSupabaseAdminClient()
-
-  const { data, error } = await supabase.storage
+  const signedUrlPromise = supabase.storage
     .from(bucket)
     .createSignedUrl(path, expiresIn)
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Signed URL generation timed out for ${bucket}/${path}`))
+    }, 10_000)
+  })
 
-  if (error || !data?.signedUrl) {
-    throw new Error(
-      `[supabase-client] Failed to generate signed URL for ${bucket}/${path}: ${error?.message}`,
-    )
+  try {
+    const { data, error } = await Promise.race([
+      signedUrlPromise,
+      timeoutPromise,
+    ]) as Awaited<typeof signedUrlPromise>
+
+    if (error || !data?.signedUrl) {
+      throw new Error(
+        `[supabase-client] Failed to generate signed URL for ${bucket}/${path}: ${error?.message}`,
+      )
+    }
+
+    return data.signedUrl
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
   }
-
-  return data.signedUrl
 }
 
 /**

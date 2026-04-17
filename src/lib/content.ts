@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
 import { normalizeSiteSettings } from '@/lib/site-settings'
 import { getSignedURLs } from '@/lib/storage/supabase-client'
+import type { Notice } from '@/payload-types'
 
 // All content functions accept an optional `locale` parameter.
 // When provided, Payload returns field values for that locale.
@@ -213,7 +214,7 @@ export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
     logTruncationWarning('notices', result)
 
     // Filter out notices missing a title in the current locale
-    return result.docs.filter((doc: any) => !!doc.title)
+    return (result.docs as Notice[]).filter((doc) => !!doc.title)
   } catch (error) {
     logContentError('Failed to fetch latest notices', error)
     return []

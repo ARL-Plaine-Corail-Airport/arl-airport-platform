@@ -43,15 +43,19 @@ const cafeImages = [
 ] as const
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
 
-  return buildFrontendMetadata({
-    description: dict.duty_free.summary,
-    locale,
-    path: '/duty-free',
-    title: `${dict.duty_free.title} - ${dict.common.airport_location}`,
-  })
+    return buildFrontendMetadata({
+      description: dict.duty_free.summary,
+      locale,
+      path: '/duty-free',
+      title: `${dict.duty_free.title} - ${dict.common.airport_location}`,
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 function SparkIcon() {

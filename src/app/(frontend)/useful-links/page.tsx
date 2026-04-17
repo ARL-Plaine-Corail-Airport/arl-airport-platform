@@ -7,14 +7,18 @@ import { buildFrontendMetadata } from '@/lib/metadata'
 export const revalidate = 300
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.useful_links_title} - ${dict.common.airport_location}`,
-    description: dict.pages.useful_links_summary,
-    path: '/useful-links',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.useful_links_title} - ${dict.common.airport_location}`,
+      description: dict.pages.useful_links_summary,
+      path: '/useful-links',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 export default async function UsefulLinksPage() {

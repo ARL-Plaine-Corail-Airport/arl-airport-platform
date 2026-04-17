@@ -51,6 +51,11 @@ function setMemCacheEntry(
   memCache.set(cacheKey, value)
 }
 
+function refreshMemCacheEntry(cacheKey: string, entry: { data: string; expiresAt: number }) {
+  memCache.delete(cacheKey)
+  memCache.set(cacheKey, entry)
+}
+
 function deserializeCachedValue<T>(value: unknown): T | undefined {
   if (value === null || value === undefined) {
     return undefined
@@ -135,6 +140,8 @@ export async function cachedFetch<T>(
   options?: { shouldCache?: (data: T) => boolean },
 ): Promise<T> {
   const cacheKey = `arl:cache:${key}`
+  // Safe cast: each cache key must be associated with one fetcher result shape.
+  // Callers must not reuse a key for different data contracts.
   const inFlight = inFlightFetches.get(cacheKey) as Promise<T> | undefined
 
   // Try reading from cache
@@ -154,6 +161,7 @@ export async function cachedFetch<T>(
 
       if (entry.expiresAt > Date.now()) {
         if (cached !== undefined) {
+          refreshMemCacheEntry(cacheKey, entry)
           return cached
         }
       } else if (cached !== undefined) {
@@ -165,6 +173,7 @@ export async function cachedFetch<T>(
           )
         }
 
+        refreshMemCacheEntry(cacheKey, entry)
         return cached
       }
     }

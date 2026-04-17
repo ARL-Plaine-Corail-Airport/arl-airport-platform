@@ -10,20 +10,25 @@ import { splitParagraphs } from '@/lib/text'
 export const revalidate = 30
 
 export async function generateMetadata() {
-  const locale = await getLocale()
-  const dict = await getDictionary(locale)
-  return buildFrontendMetadata({
-    locale,
-    title: `${dict.pages.emergency_title} - ${dict.common.airport_location}`,
-    description: dict.pages.emergency_summary,
-    path: '/emergency-services',
-  })
+  try {
+    const locale = await getLocale()
+    const dict = await getDictionary(locale)
+    return buildFrontendMetadata({
+      locale,
+      title: `${dict.pages.emergency_title} - ${dict.common.airport_location}`,
+      description: dict.pages.emergency_summary,
+      path: '/emergency-services',
+    })
+  } catch {
+    return { title: 'ARL Airport' }
+  }
 }
 
 export default async function EmergencyServicesPage() {
   const locale = await getLocale()
   const [dict, data] = await Promise.all([getDictionary(locale), getEmergencyServices(locale)])
   const contactCards = (data.serviceContacts || []).map((contact) => ({
+    id: `emergency-${contact.serviceName}-${contact.phone}`,
     title: contact.serviceName,
     value: [contact.phone, contact.description, contact.available24h ? '24/7' : null]
       .filter(Boolean)

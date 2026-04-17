@@ -19,12 +19,18 @@ const OPEN_METEO_ENDPOINT = 'https://api.open-meteo.com/v1/forecast'
 function requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
+    // During `next build` (NEXT_OUTPUT_MODE=standalone), placeholder values are
+    // acceptable — real secrets are injected at runtime via docker-compose.
+    if (process.env.NEXT_OUTPUT_MODE) return ''
     throw new Error(`Missing required environment variable: ${name}`)
   }
   return value
 }
 
-const visitorHashSalt = process.env.VISITOR_HASH_SALT || 'default-dev-salt'
+const visitorHashSalt =
+  process.env.NODE_ENV === 'production'
+    ? requireEnv('VISITOR_HASH_SALT')
+    : process.env.VISITOR_HASH_SALT || 'dev-only-visitor-hash-salt'
 
 export const serverEnv = {
   // Server-side site URL for origin checks and canonical host derivation.
@@ -39,9 +45,6 @@ export const serverEnv = {
   // DATABASE_DIRECT_URL uses the direct connection (port 5432) for migrations only.
   databaseURL: requireEnv('DATABASE_URL'),
   databaseDirectURL: process.env.DATABASE_DIRECT_URL || '',
-
-  // Supabase server credentials
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
 
   // Supabase Storage: S3-compatible credentials
   s3AccessKeyId: process.env.SUPABASE_S3_ACCESS_KEY_ID || '',
@@ -58,8 +61,13 @@ export const serverEnv = {
   flightProviderLabel: process.env.FLIGHT_PROVIDER_LABEL || 'AirLabs',
   flightProviderEndpoint: process.env.FLIGHT_PROVIDER_ENDPOINT || 'https://airlabs.co/api/v9',
   flightProviderApiKey: process.env.FLIGHT_PROVIDER_API_KEY || '',
+  // When set alongside FLIGHT_PROVIDER_API_KEY, the AirLabs adapter authenticates
+  // with a short-lived signed signature instead of the raw api_key query param,
+  // so the long-lived key never appears in upstream access logs.
+  flightProviderApiId: process.env.FLIGHT_PROVIDER_API_ID || '',
   flightProviderIataCode: process.env.FLIGHT_PROVIDER_IATA_CODE || 'RRG',
   flightProviderAirlineFilter: process.env.FLIGHT_PROVIDER_AIRLINE_FILTER || '',
+  weatherProviderLabel: process.env.WEATHER_PROVIDER_LABEL || 'Open-Meteo Forecast API',
   weatherProviderEndpoint: process.env.WEATHER_PROVIDER_ENDPOINT || OPEN_METEO_ENDPOINT,
   // Plaine Corail Airport ARP coordinates from Mauritius AIP AD 2 FIMR.
   weatherProviderLatitude: readNumber(process.env.WEATHER_PROVIDER_LATITUDE, -19.757778),
@@ -68,6 +76,7 @@ export const serverEnv = {
 
   // Revalidation
   revalidateSecret: process.env.REVALIDATE_SECRET || '',
+  statusSecret: process.env.STATUS_SECRET || '',
 
   // Privacy
   visitorHashSalt,

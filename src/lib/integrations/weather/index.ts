@@ -2,7 +2,6 @@ import 'server-only'
 
 import { cache } from 'react'
 
-import { env } from '@/lib/env'
 import { serverEnv } from '@/lib/env.server'
 import { logger } from '@/lib/logger'
 import type { WeatherResponse } from './types'
@@ -144,7 +143,7 @@ export const getWeatherSnapshot = cache(async (): Promise<WeatherResponse> => {
 
     return {
       configured: true,
-      providerLabel: env.weatherProviderLabel,
+      providerLabel: serverEnv.weatherProviderLabel,
       fetchedAt: new Date().toISOString(),
       summary: describeWeatherCode(weatherCode),
       visibility: visibilityKm,
@@ -159,7 +158,7 @@ export const getWeatherSnapshot = cache(async (): Promise<WeatherResponse> => {
     logger.error('Failed to fetch weather snapshot', error, 'weather')
     return {
       configured: true,
-      providerLabel: env.weatherProviderLabel,
+      providerLabel: serverEnv.weatherProviderLabel,
       fetchedAt: null,
       summary: 'Live weather is temporarily unavailable.',
       visibility: null,

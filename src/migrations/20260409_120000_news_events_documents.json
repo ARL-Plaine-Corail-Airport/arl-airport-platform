@@ -4255,10 +4255,10 @@
         }
       },
       "foreignKeys": {
-        "news_events_attachments_file_id_media_id_fk": {
-          "name": "news_events_attachments_file_id_media_id_fk",
+        "news_events_attachments_file_id_documents_id_fk": {
+          "name": "news_events_attachments_file_id_documents_id_fk",
           "tableFrom": "news_events_attachments",
-          "tableTo": "media",
+          "tableTo": "documents",
           "columnsFrom": [
             "file_id"
           ],
@@ -4732,10 +4732,10 @@
         }
       },
       "foreignKeys": {
-        "_news_events_v_version_attachments_file_id_media_id_fk": {
-          "name": "_news_events_v_version_attachments_file_id_media_id_fk",
+        "_news_events_v_version_attachments_file_id_documents_id_fk": {
+          "name": "_news_events_v_version_attachments_file_id_documents_id_fk",
           "tableFrom": "_news_events_v_version_attachments",
-          "tableTo": "media",
+          "tableTo": "documents",
           "columnsFrom": [
             "file_id"
           ],
@@ -5364,10 +5364,10 @@
         }
       },
       "foreignKeys": {
-        "airport_project_attachments_file_id_media_id_fk": {
-          "name": "airport_project_attachments_file_id_media_id_fk",
+        "airport_project_attachments_file_id_documents_id_fk": {
+          "name": "airport_project_attachments_file_id_documents_id_fk",
           "tableFrom": "airport_project_attachments",
-          "tableTo": "media",
+          "tableTo": "documents",
           "columnsFrom": [
             "file_id"
           ],
@@ -5823,10 +5823,10 @@
         }
       },
       "foreignKeys": {
-        "_airport_project_v_version_attachments_file_id_media_id_fk": {
-          "name": "_airport_project_v_version_attachments_file_id_media_id_fk",
+        "_airport_project_v_version_attachments_file_id_documents_id_fk": {
+          "name": "_airport_project_v_version_attachments_file_id_documents_id_fk",
           "tableFrom": "_airport_project_v_version_attachments",
-          "tableTo": "media",
+          "tableTo": "documents",
           "columnsFrom": [
             "file_id"
           ],
@@ -9106,18 +9106,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "title": {
-          "name": "title",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value": {
-          "name": "value",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": true
-        },
         "link": {
           "name": "link",
           "type": "varchar",
@@ -9162,6 +9150,86 @@
           "name": "contact_info_cards_parent_id_fk",
           "tableFrom": "contact_info_cards",
           "tableTo": "contact_info",
+          "columnsFrom": [
+            "_parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.contact_info_cards_locales": {
+      "name": "contact_info_cards_locales",
+      "schema": "",
+      "columns": {
+        "title": {
+          "name": "title",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "_locale": {
+          "name": "_locale",
+          "type": "_locales",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "_parent_id": {
+          "name": "_parent_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "contact_info_cards_locales_locale_parent_id_unique": {
+          "name": "contact_info_cards_locales_locale_parent_id_unique",
+          "columns": [
+            {
+              "expression": "_locale",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "_parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contact_info_cards_locales_parent_id_fk": {
+          "name": "contact_info_cards_locales_parent_id_fk",
+          "tableFrom": "contact_info_cards_locales",
+          "tableTo": "contact_info_cards",
           "columnsFrom": [
             "_parent_id"
           ],
@@ -17330,6 +17398,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "73908ade-7061-4cf2-a521-4e77fd86b36e",
+  "id": "cfbbc0f6-bb03-4da4-9696-2710f486b21e",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

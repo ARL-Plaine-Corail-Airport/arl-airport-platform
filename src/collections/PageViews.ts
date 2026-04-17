@@ -24,11 +24,13 @@ export const PageViews: CollectionConfig = {
       type: 'text',
       required: true,
       index: true,
+      maxLength: 2048,
       admin: { description: 'URL path (e.g. /arrivals)' },
     },
     {
       name: 'referrer',
       type: 'text',
+      maxLength: 2048,
       admin: { description: 'Referrer domain (e.g. google.com)' },
     },
     {
@@ -44,12 +46,14 @@ export const PageViews: CollectionConfig = {
     {
       name: 'language',
       type: 'text',
+      maxLength: 10,
       admin: { description: 'Browser accept-language (first tag, e.g. en)' },
     },
     {
       name: 'visitorHash',
       type: 'text',
       index: true,
+      maxLength: 64,
       admin: { description: 'Daily anonymized visitor hash (SHA-256 of IP + date). Not reversible.' },
     },
   ],

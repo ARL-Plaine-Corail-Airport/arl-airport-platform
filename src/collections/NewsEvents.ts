@@ -177,7 +177,7 @@ export const NewsEvents: CollectionConfig = {
           name: 'file',
           label: 'File',
           type: 'upload',
-          relationTo: 'media',
+          relationTo: 'documents',
           required: true,
         },
       ],
@@ -211,7 +211,7 @@ export const NewsEvents: CollectionConfig = {
       ({ data, operation }) => {
         if (operation === 'create' || operation === 'update') {
           // Sync custom status with Payload's draft system
-          if (data._status === 'published' && data.status === 'draft') {
+          if (data._status === 'published' && data.status !== 'published') {
             data.status = 'published'
           }
           if (data._status === 'draft' && data.status === 'published') {

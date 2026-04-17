@@ -64,6 +64,15 @@ export const UsefulLinks: GlobalConfig = {
               label: 'URL',
               type: 'text',
               required: true,
+              validate: (value: string | null | undefined) => {
+                if (!value) return 'URL is required.'
+                try {
+                  new URL(value)
+                  return true
+                } catch {
+                  return 'Please enter a valid URL (e.g. https://example.com).'
+                }
+              },
               admin: {
                 description: 'Full URL including https://',
                 placeholder: 'https://example.com',

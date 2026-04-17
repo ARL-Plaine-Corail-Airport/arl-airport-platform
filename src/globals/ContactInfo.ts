@@ -34,7 +34,21 @@ export const ContactInfo: GlobalConfig = {
       fields: [
         { name: 'title', type: 'text', required: true, localized: true },
         { name: 'value', type: 'textarea', required: true, localized: true },
-        { name: 'link', type: 'text', admin: { placeholder: 'tel:+23083278888 or mailto:info@arl.aero' } },
+        {
+          name: 'link',
+          type: 'text',
+          validate: (value: string | null | undefined) => {
+            if (!value) return true
+            if (/^(tel:|mailto:)/.test(value)) return true
+            try {
+              new URL(value)
+              return true
+            } catch {
+              return 'Enter a tel:, mailto:, or https:// link.'
+            }
+          },
+          admin: { placeholder: 'tel:+23083278888 or mailto:info@arl.aero' },
+        },
       ],
     },
   ],

@@ -7613,7 +7613,7 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": false,
-          "default": "'Sir Gaetan Duval Airport, Rodrigues Island, Republic of Mauritius'"
+          "default": "'Plaine Corail Airport, Rodrigues Island, Republic of Mauritius'"
         },
         "working_hours": {
           "name": "working_hours",

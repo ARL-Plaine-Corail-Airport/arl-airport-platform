@@ -18,7 +18,7 @@
 
 import type { CollectionConfig } from 'payload'
 
-import { isEditor } from '@/access'
+import { isAdmin, isEditor } from '@/access'
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -26,7 +26,7 @@ export const Media: CollectionConfig = {
     read: () => true, // Public read: media is served from the public CDN bucket
     create: isEditor,
     update: isEditor,
-    delete: isEditor,
+    delete: isAdmin,
   },
   admin: {
     useAsTitle: 'alt',

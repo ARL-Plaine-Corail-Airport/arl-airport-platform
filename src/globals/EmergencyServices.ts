@@ -12,12 +12,12 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isApprover, publishedOrAdmin } from '@/access'
+import { isApprover } from '@/access'
 
 export const EmergencyServices: GlobalConfig = {
   slug: 'emergency-services',
   access: {
-    read:   publishedOrAdmin,
+    read:   () => true,
     update: isApprover, // Emergency content requires elevated access to edit
   },
   admin: {
@@ -70,6 +70,13 @@ export const EmergencyServices: GlobalConfig = {
           label: 'Phone Number',
           type: 'text',
           required: true,
+          validate: (value: string | null | undefined) => {
+            if (!value) return 'Phone number is required.'
+            if (!/^\+?[\d\s\-()]{7,20}$/.test(value.trim())) {
+              return 'Enter a valid phone number (e.g. +230 831 xxxx).'
+            }
+            return true
+          },
           admin: { placeholder: '+230 831 xxxx' },
         },
         {
@@ -116,6 +123,7 @@ export const EmergencyServices: GlobalConfig = {
       name: 'verifiedBy',
       label: 'Verified By',
       type: 'text',
+      required: true,
       admin: {
         position: 'sidebar',
         description: 'Name/role of the person who verified these contacts.',

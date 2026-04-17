@@ -112,6 +112,15 @@ export const WorkingHoursDirections: GlobalConfig = {
           name: 'googleMapsURL',
           label: 'Google Maps Link',
           type: 'text',
+          validate: (value: string | null | undefined) => {
+            if (!value) return true
+            try {
+              new URL(value)
+              return true
+            } catch {
+              return 'Please enter a valid URL.'
+            }
+          },
           admin: {
             description: 'Full Google Maps URL for the airport location.',
             placeholder: 'https://maps.google.com/...',
@@ -121,6 +130,15 @@ export const WorkingHoursDirections: GlobalConfig = {
           name: 'mapEmbedURL',
           label: 'Map Embed URL',
           type: 'text',
+          validate: (value: string | null | undefined) => {
+            if (!value) return true
+            try {
+              new URL(value)
+              return true
+            } catch {
+              return 'Please enter a valid URL.'
+            }
+          },
           admin: {
             description: 'Google Maps or OpenStreetMap embed src URL for the iframe.',
             placeholder: 'https://www.google.com/maps/embed?...',

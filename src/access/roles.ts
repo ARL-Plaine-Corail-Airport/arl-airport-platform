@@ -1,25 +1,42 @@
-type UserLike = {
-  roles?: string[]
-} | null | undefined
+import type { AccessArgs } from 'payload'
 
-const hasRole = (user: UserLike, allowed: string[]) =>
-  Boolean(user?.roles?.some((role) => allowed.includes(role)))
+type Role =
+  | 'super_admin'
+  | 'content_admin'
+  | 'approver'
+  | 'operations_editor'
+  | 'translator'
+  | 'viewer_auditor'
 
-export const isAdmin = ({ req }: any) =>
-  hasRole(req.user, ['super_admin', 'content_admin'])
+const ADMIN_ROLES: Role[] = ['super_admin', 'content_admin']
+const APPROVER_ROLES: Role[] = [...ADMIN_ROLES, 'approver']
+const EDITOR_ROLES: Role[] = [...APPROVER_ROLES, 'operations_editor', 'translator']
+const ALL_ROLES: Role[] = [...EDITOR_ROLES, 'viewer_auditor']
 
-export const isApprover = ({ req }: any) =>
-  hasRole(req.user, ['super_admin', 'content_admin', 'approver'])
+function getRoles(user: unknown): Role[] {
+  if (!user || typeof user !== 'object') return []
 
-export const isEditor = ({ req }: any) =>
-  hasRole(req.user, ['super_admin', 'content_admin', 'approver', 'operations_editor', 'translator'])
+  const roles = (user as { roles?: unknown }).roles
+  if (!Array.isArray(roles)) return []
 
-export const publishedOrAdmin = ({ req }: any) => {
-  if (isEditor({ req })) return true
+  return roles.filter(
+    (role): role is Role => typeof role === 'string' && ALL_ROLES.includes(role as Role),
+  )
+}
 
-  return {
-    status: {
-      equals: 'published',
-    },
-  }
+function hasAnyRole(user: unknown, allowedRoles: readonly Role[]) {
+  const roles = getRoles(user)
+  return roles.some((role) => allowedRoles.includes(role))
+}
+
+export const isAdmin = ({ req }: AccessArgs) => hasAnyRole(req.user, ADMIN_ROLES)
+
+export const isApprover = ({ req }: AccessArgs) => hasAnyRole(req.user, APPROVER_ROLES)
+
+export const isEditor = ({ req }: AccessArgs) => hasAnyRole(req.user, EDITOR_ROLES)
+
+export const publishedOrAdmin = ({ req }: AccessArgs) => {
+  if (hasAnyRole(req.user, ADMIN_ROLES)) return true
+  // Unauthenticated / low-privilege users only see published content
+  return { status: { equals: 'published' } }
 }

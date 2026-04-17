@@ -127,7 +127,7 @@ export const Documents: CollectionConfig = {
       ({ data, req, operation }) => {
         if (operation === 'create') {
           data.uploadedAt = new Date().toISOString()
-          if (req.user) {
+          if (req.user?.id) {
             data.uploadedBy = req.user.id
           }
         }

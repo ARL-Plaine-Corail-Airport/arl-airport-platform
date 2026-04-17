@@ -46,7 +46,7 @@ export const SiteSettings: GlobalConfig = {
     {
       name: 'physicalAddress',
       type: 'textarea',
-      defaultValue: 'Sir Gaetan Duval Airport, Rodrigues Island, Republic of Mauritius',
+      defaultValue: 'Plaine Corail Airport, Rodrigues Island, Republic of Mauritius',
     },
     {
       name: 'workingHours',
@@ -58,7 +58,21 @@ export const SiteSettings: GlobalConfig = {
       type: 'array',
       fields: [
         { name: 'label', type: 'text', required: true },
-        { name: 'url', type: 'text', required: true, admin: { placeholder: 'https://facebook.com/...' } },
+        {
+          name: 'url',
+          type: 'text',
+          required: true,
+          validate: (value: string | null | undefined) => {
+            if (!value) return 'URL is required.'
+            try {
+              new URL(value)
+              return true
+            } catch {
+              return 'Please enter a valid URL (e.g. https://example.com).'
+            }
+          },
+          admin: { placeholder: 'https://facebook.com/...' },
+        },
       ],
     },
     {
@@ -66,7 +80,21 @@ export const SiteSettings: GlobalConfig = {
       type: 'array',
       fields: [
         { name: 'label', type: 'text', required: true },
-        { name: 'url', type: 'text', required: true, admin: { placeholder: 'https://example.com' } },
+        {
+          name: 'url',
+          type: 'text',
+          required: true,
+          validate: (value: string | null | undefined) => {
+            if (!value) return 'URL is required.'
+            try {
+              new URL(value)
+              return true
+            } catch {
+              return 'Please enter a valid URL (e.g. https://example.com).'
+            }
+          },
+          admin: { placeholder: 'https://example.com' },
+        },
       ],
     },
     {

@@ -5,9 +5,80 @@
 // Content is managed by admins — this is NOT a live feed from an airline API.
 // =============================================================================
 
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, TextFieldValidation } from 'payload'
 
 import { isAdmin, isEditor, publishedOrAdmin } from '@/access'
+
+const AIRLINE_WEBSITE_PROTOCOLS = new Set(['http:', 'https:'])
+const AIRLINE_CONTACT_PHONE_PATTERN = /^\+?[0-9()\-\s]+$/
+const AIRLINE_IATA_CODE_PATTERN = /^[A-Z0-9]{2}$/
+const AIRLINE_ICAO_CODE_PATTERN = /^[A-Z]{3,4}$/
+
+const validateAirlineWebsite: TextFieldValidation = (value) => {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) {
+    return true
+  }
+
+  try {
+    const url = new URL(trimmedValue)
+
+    if (!AIRLINE_WEBSITE_PROTOCOLS.has(url.protocol)) {
+      return 'Official Website must start with http:// or https://.'
+    }
+
+    return true
+  } catch {
+    return 'Official Website must be a valid full URL starting with http:// or https://.'
+  }
+}
+
+const validateAirlineContactPhone: TextFieldValidation = (value) => {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) {
+    return true
+  }
+
+  if (!AIRLINE_CONTACT_PHONE_PATTERN.test(trimmedValue)) {
+    return 'Reservation / Contact Phone can only include an optional leading +, digits, spaces, dashes, and parentheses.'
+  }
+
+  if (!/\d/.test(trimmedValue)) {
+    return 'Reservation / Contact Phone must include at least one digit.'
+  }
+
+  return true
+}
+
+const validateAirlineIataCode: TextFieldValidation = (value) => {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) {
+    return true
+  }
+
+  if (!AIRLINE_IATA_CODE_PATTERN.test(trimmedValue)) {
+    return 'IATA code must be exactly 2 uppercase alphanumeric characters.'
+  }
+
+  return true
+}
+
+const validateAirlineIcaoCode: TextFieldValidation = (value) => {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) {
+    return true
+  }
+
+  if (!AIRLINE_ICAO_CODE_PATTERN.test(trimmedValue)) {
+    return 'ICAO code must be 3-4 uppercase letters.'
+  }
+
+  return true
+}
 
 export const Airlines: CollectionConfig = {
   slug: 'airlines',
@@ -72,6 +143,7 @@ export const Airlines: CollectionConfig = {
                   type: 'text',
                   required: true,
                   maxLength: 2,
+                  validate: validateAirlineIataCode,
                   admin: {
                     width: '50%',
                     description: 'Two-letter designator (e.g. MK for Air Mauritius).',
@@ -83,6 +155,7 @@ export const Airlines: CollectionConfig = {
                   label: 'ICAO Code',
                   type: 'text',
                   maxLength: 4,
+                  validate: validateAirlineIcaoCode,
                   admin: { width: '50%', placeholder: 'MAU' },
                 },
               ],
@@ -114,9 +187,10 @@ export const Airlines: CollectionConfig = {
                   name: 'website',
                   label: 'Official Website',
                   type: 'text',
+                  validate: validateAirlineWebsite,
                   admin: {
                     width: '50%',
-                    description: 'Full URL including https://',
+                    description: 'Full URL starting with http:// or https://',
                     placeholder: 'https://www.airmauritius.com',
                   },
                 },
@@ -124,6 +198,7 @@ export const Airlines: CollectionConfig = {
                   name: 'contactPhone',
                   label: 'Reservation / Contact Phone',
                   type: 'text',
+                  validate: validateAirlineContactPhone,
                   admin: { width: '50%', placeholder: '+230 207 7070' },
                 },
               ],

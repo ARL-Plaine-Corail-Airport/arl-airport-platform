@@ -31,6 +31,15 @@ export const AirportMap: GlobalConfig = {
     {
       name: 'mapEmbedURL',
       type: 'text',
+      validate: (value: string | null | undefined) => {
+        if (!value) return true
+        try {
+          new URL(value)
+          return true
+        } catch {
+          return 'Please enter a valid URL.'
+        }
+      },
       admin: { placeholder: 'https://www.google.com/maps/embed?...' },
     },
     {

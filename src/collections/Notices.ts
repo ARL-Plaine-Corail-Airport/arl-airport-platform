@@ -1,7 +1,35 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionBeforeChangeHook, CollectionConfig } from 'payload'
 
 import { isApprover, isEditor, publishedOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
+
+type NoticeExpirySiblingData = {
+  publishedAt?: string | Date | null
+}
+
+function hasNoticePublishedAt(siblingData: unknown): siblingData is NoticeExpirySiblingData {
+  return typeof siblingData === 'object' && siblingData !== null && 'publishedAt' in siblingData
+}
+
+const syncNoticeStatus = (({ data, req }) => {
+  // Sync custom status with Payload's draft system
+  if (data?._status === 'published' && data?.status !== 'published') {
+    data.status = 'published'
+  }
+  if (data?._status === 'draft' && data?.status === 'published') {
+    data.status = 'draft'
+  }
+
+  if (data?.status === 'published' && !data?.publishedAt) {
+    data.publishedAt = new Date().toISOString()
+  }
+
+  if (data?.status === 'approved' && req.user?.id) {
+    data.lastApprovedBy = req.user.id
+  }
+
+  return data
+}) satisfies CollectionBeforeChangeHook
 
 export const Notices: CollectionConfig = {
   slug: 'notices',
@@ -80,6 +108,7 @@ export const Notices: CollectionConfig = {
                 {
                   name: 'category',
                   type: 'select',
+                  required: true,
                   defaultValue: 'operational',
                   admin: { width: '50%' },
                   options: [
@@ -123,6 +152,22 @@ export const Notices: CollectionConfig = {
                 {
                   name: 'expiresAt',
                   type: 'date',
+                  validate: (value, { siblingData }) => {
+                    if (value && hasNoticePublishedAt(siblingData) && siblingData.publishedAt) {
+                      const expiresAt = new Date(value)
+                      const publishedAt = new Date(siblingData.publishedAt)
+
+                      if (
+                        !Number.isNaN(expiresAt.getTime()) &&
+                        !Number.isNaN(publishedAt.getTime()) &&
+                        expiresAt <= publishedAt
+                      ) {
+                        return 'Expiry date must be after publish date'
+                      }
+                    }
+
+                    return true
+                  },
                   admin: {
                     width: '50%',
                     date: { pickerAppearance: 'dayAndTime' },
@@ -225,26 +270,6 @@ export const Notices: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [autoSlug('title')],
-    beforeChange: [
-      ({ data, req, operation }: any) => {
-        // Sync custom status with Payload's draft system
-        if (data?._status === 'published' && data?.status === 'draft') {
-          data.status = 'published'
-        }
-        if (data?._status === 'draft' && data?.status === 'published') {
-          data.status = 'draft'
-        }
-
-        if (data?.status === 'published' && !data?.publishedAt) {
-          data.publishedAt = new Date().toISOString()
-        }
-
-        if (data?.status === 'approved' && req.user?.id) {
-          data.lastApprovedBy = req.user.id
-        }
-
-        return data
-      },
-    ],
+    beforeChange: [syncNoticeStatus],
   },
 }

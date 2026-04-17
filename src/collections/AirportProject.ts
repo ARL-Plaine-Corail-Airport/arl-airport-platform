@@ -177,7 +177,7 @@ export const AirportProject: CollectionConfig = {
         if (operation === 'create' || operation === 'update') {
           // Sync custom status with Payload's draft system:
           // When the "Publish" button is clicked, _status becomes 'published'
-          if (data._status === 'published' && data.status === 'draft') {
+          if (data._status === 'published' && data.status !== 'published') {
             data.status = 'published'
           }
           if (data._status === 'draft' && data.status === 'published') {

@@ -1,6 +1,22 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, TextFieldValidation } from 'payload'
 
 import { isEditor, isApprover } from '@/access'
+
+const AIRLINE_CODE_PATTERN = /^[A-Z0-9]{2,3}$/
+
+const validateAirlineCode: TextFieldValidation = (value) => {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) {
+    return 'Airline code is required.'
+  }
+
+  if (!AIRLINE_CODE_PATTERN.test(trimmedValue)) {
+    return 'Airline code must be 2 to 3 uppercase letters or digits.'
+  }
+
+  return true
+}
 
 export const Flights: CollectionConfig = {
   slug: 'flights',
@@ -52,10 +68,12 @@ export const Flights: CollectionConfig = {
           name: 'airline',
           type: 'text',
           required: true,
+          maxLength: 3,
+          validate: validateAirlineCode,
           admin: {
             width: '50%',
             placeholder: 'MK',
-            description: 'IATA airline code (e.g. MK for Air Mauritius).',
+            description: 'Airline code using 2 to 3 uppercase letters or digits (e.g. MK).',
           },
         },
         {

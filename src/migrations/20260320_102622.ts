@@ -533,7 +533,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"tagline" varchar DEFAULT 'Official passenger information platform for operational notices, flight information, passenger guidance, and mobile-first access.',
   	"primary_phone" varchar DEFAULT '+230 832 78 88',
   	"primary_email" varchar DEFAULT 'info@arl.aero',
-  	"physical_address" varchar DEFAULT 'Sir Gaetan Duval Airport, Rodrigues Island, Republic of Mauritius',
+ 	"physical_address" varchar DEFAULT 'Plaine Corail Airport, Rodrigues Island, Republic of Mauritius',
   	"working_hours" varchar DEFAULT 'Operational hours may vary by flight schedule and official notices.',
   	"seo_default_title" varchar DEFAULT 'Rodrigues Airport Passenger Information Platform',
   	"seo_default_description" varchar DEFAULT 'Official mobile-first platform for Plaine Corail Airport arrivals, departures, communiqués, passenger guidance, accessibility, transport, and airport contact information.',

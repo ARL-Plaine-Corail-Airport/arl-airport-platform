@@ -309,7 +309,7 @@ export interface Flight {
   boardType: 'arrival' | 'departure';
   status: 'active' | 'hidden';
   /**
-   * IATA airline code (e.g. MK for Air Mauritius).
+   * Airline code using 2 to 3 uppercase letters or digits (e.g. MK).
    */
   airline: string;
   /**
@@ -383,7 +383,7 @@ export interface Notice {
     };
     [k: string]: unknown;
   };
-  category?: ('operational' | 'passenger_info' | 'regulation' | 'fee' | 'emergency' | 'corporate') | null;
+  category: 'operational' | 'passenger_info' | 'regulation' | 'fee' | 'emergency' | 'corporate';
   status: 'draft' | 'in_review' | 'approved' | 'published' | 'expired' | 'archived';
   /**
    * Leave blank to auto-set when status is changed to Published.
@@ -487,7 +487,7 @@ export interface Faq {
    * Clear, concise answer. Keep it under 200 words.
    */
   answer: string;
-  category?: ('general' | 'flights' | 'transport' | 'accessibility' | 'documents') | null;
+  category: 'general' | 'flights' | 'transport' | 'accessibility' | 'documents';
   status?: ('draft' | 'published') | null;
   /**
    * Lower = shown first.
@@ -524,7 +524,7 @@ export interface Airline {
   logo?: (number | null) | Media;
   description?: string | null;
   /**
-   * Full URL including https://
+   * Full URL starting with http:// or https://
    */
   website?: string | null;
   contactPhone?: string | null;
@@ -591,7 +591,7 @@ export interface NewsEvent {
   attachments?:
     | {
         label: string;
-        file: number | Media;
+        file: number | Document;
         id?: string | null;
       }[]
     | null;
@@ -1543,7 +1543,7 @@ export interface EmergencyService {
   /**
    * Name/role of the person who verified these contacts.
    */
-  verifiedBy?: string | null;
+  verifiedBy: string;
   _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;

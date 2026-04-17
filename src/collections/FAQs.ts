@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 
-import { isEditor, publishedOrAdmin } from '@/access'
+import { isApprover, isEditor, publishedOrAdmin } from '@/access'
 
 export const FAQs: CollectionConfig = {
   slug: 'faqs',
@@ -8,7 +8,7 @@ export const FAQs: CollectionConfig = {
     read: publishedOrAdmin,
     create: isEditor,
     update: isEditor,
-    delete: isEditor,
+    delete: isApprover,
   },
   admin: {
     useAsTitle: 'question',
@@ -40,6 +40,7 @@ export const FAQs: CollectionConfig = {
         {
           name: 'category',
           type: 'select',
+          required: true,
           defaultValue: 'general',
           admin: { width: '40%' },
           options: [

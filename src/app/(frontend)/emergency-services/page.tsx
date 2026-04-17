@@ -60,8 +60,8 @@ export default async function EmergencyServicesPage() {
           {data.medicalFacilities && (
             <article className="card stack-sm">
               <h2>{dict.pages.medical_facilities}</h2>
-              {splitParagraphs(data.medicalFacilities).map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
+              {splitParagraphs(data.medicalFacilities).map((paragraph, index) => (
+                <p key={`medical-${index}`}>{paragraph}</p>
               ))}
             </article>
           )}
@@ -69,8 +69,8 @@ export default async function EmergencyServicesPage() {
           {data.evacuationProcedures && (
             <article className="card stack-sm">
               <h2>{dict.pages.emergency_procedures}</h2>
-              {splitParagraphs(data.evacuationProcedures).map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
+              {splitParagraphs(data.evacuationProcedures).map((paragraph, index) => (
+                <p key={`evacuation-${index}`}>{paragraph}</p>
               ))}
             </article>
           )}

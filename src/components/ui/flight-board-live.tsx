@@ -39,13 +39,11 @@ export function FlightBoardLive({
             <p className="flight-board__eyebrow">{t('flights.live_data')}</p>
             <h2 className="flight-board__title">{boardLabel}</h2>
           </div>
-          <div className="flight-board__status">
-            <span className="flight-board__provider">{data.providerLabel}</span>
-          </div>
+        <div className="flight-board__status">
+          <span className="flight-board__provider">{data.providerLabel}</span>
         </div>
-        <p className="flight-board__meta">
-          Live flight data is temporarily unavailable. Please try again shortly.
-        </p>
+      </div>
+      <p className="flight-board__meta">{t('flights.unavailable')}</p>
       </section>
     )
   }

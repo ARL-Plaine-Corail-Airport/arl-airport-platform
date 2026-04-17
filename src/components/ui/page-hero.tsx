@@ -114,7 +114,7 @@ export function PageHero({
           </div>
 
           {insights?.length ? (
-            <div className="hero-glance" aria-label={eyebrow ?? title}>
+            <div className="hero-glance" role="region" aria-label={eyebrow ?? title}>
               {insights.map((insight) => (
                 <HeroInsightCard key={`${insight.label}-${insight.value}`} insight={insight} />
               ))}

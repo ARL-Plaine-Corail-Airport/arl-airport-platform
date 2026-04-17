@@ -119,6 +119,7 @@
     "data_not_connected_title": "Données opérationnelles non connectées",
     "no_flights_title": "Aucun vol disponible",
     "no_records_desc": "Il n'y a aucun enregistrement à afficher pour ce tableau pour le moment.",
+    "unavailable": "Les données de vol en direct sont temporairement indisponibles. Veuillez réessayer sous peu.",
     "provider": "Fournisseur",
     "last_updated": "Dernière mise à jour",
     "route": "Itinéraire",
@@ -126,6 +127,8 @@
   },
   "weather": {
     "title": "Météo",
+    "unavailable": "Temporairement indisponible",
+    "unavailable_description": "Les mises à jour météo en direct reprendront automatiquement.",
     "visibility": "Visibilité",
     "km": "km",
     "advisory": "Avertissement"
@@ -199,6 +202,13 @@
     "install_prompt": "Ajouter à l'écran d'accueil pour un accès rapide",
     "install_button": "Installer",
     "dismiss": "Pas maintenant"
+  },
+  "errors": {
+    "title": "Une erreur est survenue",
+    "description": "Une erreur inattendue est survenue. Veuillez réessayer ou revenir à la page d'accueil.",
+    "retry": "Réessayer",
+    "home": "Page d'accueil",
+    "error_id": "ID de l'erreur"
   },
   "pages": {
     "eyebrow_flights": "Vols",
@@ -310,6 +320,82 @@
     "contact_summary": "Bureau d'aide officiel et coordonnées de l'aéroport.",
     "passenger_guide_title": "Guide du Passager",
     "passenger_guide_summary": "Guide de préparation au voyage pour les passagers transitant par l'aéroport de Plaine Corail."
+  },
+  "duty_free": {
+    "eyebrow": "Informations passagers",
+    "title": "Duty Free & Boutiques",
+    "summary": "Boutique hors taxes, librairie et comptoirs alimentaires disponibles à l'aéroport de Plaine Corail.",
+    "contact_label": "Contact",
+    "back_to_guide": "Retour au guide du passager",
+    "highlights": [
+      {
+        "eyebrow": "Accès passagers",
+        "title": "Accessible aux arrivées et aux départs",
+        "body": "L'offre commerciale accompagne les deux flux de passagers dans l'aérogare."
+      },
+      {
+        "eyebrow": "Horaires",
+        "title": "Calqués sur le programme de vols",
+        "body": "Les heures d'ouverture suivent le programme de vols publié et l'activité du terminal."
+      },
+      {
+        "eyebrow": "Contact",
+        "title": "Assistance directe disponible",
+        "body": "Téléphone et courriel restent disponibles pour les demandes passagers et produits."
+      }
+    ],
+    "retail": {
+      "eyebrow": "Shopping aéroportuaire",
+      "title": "Boutique Hors Taxes",
+      "body": "Les achats hors taxes sont disponibles pour tous les passagers au départ et à l'arrivée. Des articles de luxe hors taxes allant des parfums de grandes marques, cosmétiques, alcools, chocolats et cigarettes aux équipements électroniques, vins et bien plus encore peuvent être achetés à des prix compétitifs. Pour un meilleur confort et service des passagers à l'arrivée, la boutique hors taxes d'arrivée a été relocalisée dans un local plus grand fin décembre 2018. La nouvelle boutique offre un choix plus large de produits avec une expérience d'achat améliorée. Les heures d'ouverture sont selon le programme de vol publié. La Rodrigues Duty Paradise Ltd (RDFP) peut être contactée pour plus d'informations.",
+      "facts": [
+        "Parfums, cosmétiques, spiritueux, chocolats et articles de voyage.",
+        "Conçu pour les passagers à l'arrivée comme au départ.",
+        "Sélection élargie pour une expérience d'achat plus fluide."
+      ],
+      "schedule": "Horaires selon le programme de vols publié",
+      "access": "Arrivées et départs",
+      "contact_availability": "Contact direct disponible",
+      "call_cta": "Appeler la boutique",
+      "email_cta": "Envoyer un courriel"
+    },
+    "bookshop": {
+      "eyebrow": "Zone départ",
+      "title": "Librairie",
+      "body_1": "La librairie Island Books & Clothing est située dans la zone d'attente des départs après les contrôles d'immigration et de sécurité des bagages cabine. La librairie est accessible uniquement aux passagers au départ. La librairie propose une gamme de livres, magazines et romans en anglais et en français pour tous les âges. Des livres sur l'île Rodrigues peuvent y être achetés ainsi que des articles souvenirs.",
+      "body_2": "Les passagers au départ peuvent également se rafraîchir avec une boisson chaude ou froide et une collation à la librairie. C'est le seul point de rafraîchissement dans la zone de départ. Les heures d'ouverture sont selon le programme de vol publié.",
+      "overlay": "Ambiance retail côté départ",
+      "highlights": [
+        "Livres, magazines, romans et souvenirs de Rodrigues.",
+        "Point de pause avec boissons chaudes, boissons froides et snacks."
+      ],
+      "access": "Accessible aux passagers au départ uniquement",
+      "call_cta": "Appeler la librairie",
+      "email_cta": "Écrire à la librairie"
+    },
+    "cafe": {
+      "eyebrow": "Restauration terminal",
+      "title": "Comptoirs Alimentaires",
+      "body": "Des comptoirs alimentaires sont disponibles dans le hall des départs et dans le hall public (au rez-de-chaussée) pour les passagers et les visiteurs de l'aéroport. Les comptoirs alimentaires offrent une large gamme de boissons froides et chaudes. Des repas chauds, pâtisseries, sandwichs et autres aliments secs sont également disponibles. Les heures d'ouverture sont selon le programme de vol publié.",
+      "highlights": [
+        "Boissons froides et chaudes.",
+        "Repas chauds, viennoiseries, sandwichs et en-cas.",
+        "Service pour voyageurs et visiteurs de l'aéroport."
+      ],
+      "access": "Hall des départs et concourse public"
+    },
+    "return": {
+      "title": "Continuer vers les services passagers",
+      "summary": "Retrouvez les autres services aéroportuaires, facilités et informations utiles pour le voyage."
+    },
+    "images": {
+      "retail_1": "Devanture de la boutique duty free à l'arrivée à l'aéroport de Plaine Corail",
+      "retail_2": "Espace de vente duty free à l'arrivée à l'aéroport de Plaine Corail",
+      "retail_3": "Intérieur de la zone duty free côté départ à l'aéroport de Plaine Corail",
+      "cafe_1": "Comptoir et espace assis du Kafe Solitaire",
+      "cafe_2": "Comptoir de service du Kafe Solitaire",
+      "cafe_3": "Espace assis du Kafe Solitaire près du concourse"
+    }
   },
   "language": {
     "select": "Langue",

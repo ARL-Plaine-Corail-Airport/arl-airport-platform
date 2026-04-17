@@ -119,6 +119,7 @@
     "data_not_connected_title": "Operational data not connected",
     "no_flights_title": "No flights available",
     "no_records_desc": "There are no records to display for this board at the moment.",
+    "unavailable": "Live flight data is temporarily unavailable. Please try again shortly.",
     "provider": "Provider",
     "last_updated": "Last updated",
     "route": "Route",
@@ -126,6 +127,8 @@
   },
   "weather": {
     "title": "Weather",
+    "unavailable": "Temporarily unavailable",
+    "unavailable_description": "Live weather updates will resume automatically.",
     "visibility": "Visibility",
     "km": "km",
     "advisory": "Advisory"
@@ -199,6 +202,13 @@
     "install_prompt": "Add to home screen for quick access",
     "install_button": "Install",
     "dismiss": "Not now"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try again or return to the home page.",
+    "retry": "Try again",
+    "home": "Home page",
+    "error_id": "Error ID"
   },
   "pages": {
     "eyebrow_flights": "Flights",
@@ -310,6 +320,82 @@
     "contact_summary": "Official passenger help desk and airport contact details.",
     "passenger_guide_title": "Passenger Guide",
     "passenger_guide_summary": "Passenger preparation guidance for travel through Plaine Corail Airport."
+  },
+  "duty_free": {
+    "eyebrow": "Passenger information",
+    "title": "Duty Free & Shopping",
+    "summary": "Duty free shopping, bookshop, and food counters available at Plaine Corail Airport.",
+    "contact_label": "Contact",
+    "back_to_guide": "Back to Passenger Guide",
+    "highlights": [
+      {
+        "eyebrow": "Passenger access",
+        "title": "Available for arrivals and departures",
+        "body": "Retail and refreshment services support both passenger flows through the terminal."
+      },
+      {
+        "eyebrow": "Operating hours",
+        "title": "Aligned with the published flight schedule",
+        "body": "Trading hours follow the active flight programme rather than fixed retail hours."
+      },
+      {
+        "eyebrow": "Contact support",
+        "title": "Direct operator contact remains available",
+        "body": "Passengers can reach operators by phone or email for service and product information."
+      }
+    ],
+    "retail": {
+      "eyebrow": "Airport retail",
+      "title": "Duty Free Shopping",
+      "body": "Duty Free shopping is available for all departing and arriving passengers. Duty free luxury items ranging from top brand perfumes, cosmetics, liquor, chocolates, and cigarettes to electronic equipment, wines, and much more may be purchased at competitive prices. For an improved comfort and service for arriving passengers, the arrival duty free shop was relocated to a larger premise at the end of December 2018. The new shop offers a wider choice of products with an enhanced shopping experience. The opening hours are according to the published flight schedule. The Rodrigues Duty Paradise Ltd (RDFP) may be contacted for further information.",
+      "facts": [
+        "Travel retail with fragrances, cosmetics, wines, spirits, chocolates, and electronics.",
+        "Available to both arriving and departing passengers at Plaine Corail Airport.",
+        "Expanded retail environment designed for smoother passenger browsing."
+      ],
+      "schedule": "Opening hours follow the published flight schedule",
+      "access": "Arrivals and departures",
+      "contact_availability": "Direct contact available",
+      "call_cta": "Call duty free",
+      "email_cta": "Email duty free"
+    },
+    "bookshop": {
+      "eyebrow": "Departure zone",
+      "title": "Bookshop",
+      "body_1": "The Island Books & Clothing bookshop is located in the Departure Waiting Area after Immigration and Cabin Baggage Security checkpoints. The bookshop is accessible to only departing passengers. The bookshop has a range of books, magazines, and novels in English and in French for all ages. Books on the Island of Rodrigues may be purchased there along with souvenir items.",
+      "body_2": "Departing passengers may also refresh themselves over a hot or a cold drink and a snack at the bookshop. This is the only refreshment point in the Departure Area. The opening hours are according to the published flight schedule.",
+      "overlay": "Retail atmosphere in the departure zone",
+      "highlights": [
+        "Books, magazines, novels, Rodrigues titles, and souvenir items.",
+        "Refreshments, hot drinks, cold drinks, and light snacks before boarding."
+      ],
+      "access": "Accessible to departing passengers only",
+      "call_cta": "Call bookshop",
+      "email_cta": "Email bookshop"
+    },
+    "cafe": {
+      "eyebrow": "Food and refreshments",
+      "title": "Food Counters",
+      "body": "Food Counters are available in the departure hall and in the Public Concourse (on the ground floor area) for passengers and airport visitors. The Food Counters offer a wide range of cold and hot drinks. Hot meals, pastries, sandwiches and other dry foods are also available. The opening hours are according to the published flight schedule.",
+      "highlights": [
+        "Cold and hot drinks throughout the day.",
+        "Hot meals, pastries, sandwiches, and dry foods.",
+        "Available for both passengers and airport visitors."
+      ],
+      "access": "Departure hall and public concourse"
+    },
+    "return": {
+      "title": "Continue through passenger services",
+      "summary": "Explore the wider passenger guide for airport facilities, movement, and service information."
+    },
+    "images": {
+      "retail_1": "Duty free arrivals storefront at Plaine Corail Airport",
+      "retail_2": "Duty free arrivals retail floor at Plaine Corail Airport",
+      "retail_3": "Departure-side duty free retail interior at Plaine Corail Airport",
+      "cafe_1": "Kafe Solitaire counter and seating area",
+      "cafe_2": "Kafe Solitaire service counter",
+      "cafe_3": "Kafe Solitaire seating area near the concourse"
+    }
   },
   "language": {
     "select": "Language",

@@ -26,8 +26,8 @@ export function WeatherPreviewLive({
       <div className="weather-card weather-card__fallback" role="status" aria-live="polite">
         <div className="weather-card__fallback-copy">
           <p className="weather-card__eyebrow">{t('weather.title')}</p>
-          <h2 className="weather-card__fallback-title">Temporarily unavailable</h2>
-          <p className="weather-card__condition">Live weather updates will resume automatically.</p>
+          <h2 className="weather-card__fallback-title">{t('weather.unavailable')}</h2>
+          <p className="weather-card__condition">{t('weather.unavailable_description')}</p>
         </div>
       </div>
     )

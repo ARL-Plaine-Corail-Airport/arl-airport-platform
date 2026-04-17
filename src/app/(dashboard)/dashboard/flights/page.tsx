@@ -1,6 +1,8 @@
+import 'server-only'
+
 import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
-import { env, serverEnv } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 import { getFlightBoard } from '@/lib/integrations/flights'
 import { logger } from '@/lib/logger'
 import type { FlightRecord, FlightBoardResponse } from '@/lib/integrations/flights/types'
@@ -192,7 +194,7 @@ export default async function FlightsPage({
           <InfoIcon />
           <div>
             <strong>Flight data source not configured.</strong>{' '}
-            {activeBoard.message} Current mode: <strong>{env.flightProviderMode}</strong>. Endpoint
+            {activeBoard.message} Current mode: <strong>{serverEnv.flightProviderMode}</strong>. Endpoint
             configured: <strong>{serverEnv.flightProviderEndpoint ? 'Yes' : 'No'}</strong>. Review
             integration details on{' '}
             <Link href="/dashboard/settings" style={{ color: 'inherit', fontWeight: 600 }}>

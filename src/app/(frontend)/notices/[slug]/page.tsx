@@ -6,7 +6,8 @@ import { RichText } from '@/components/ui/rich-text'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
-import { getNoticeBySlug } from '@/lib/content'
+import { shouldSkipDbDuringBuild } from '@/lib/build-db'
+import { getLatestNotices, getNoticeBySlug } from '@/lib/content'
 import { formatDateTime } from '@/lib/date'
 import { env } from '@/lib/env'
 import { buildFrontendMetadata } from '@/lib/metadata'
@@ -20,6 +21,15 @@ export const revalidate = 60
 
 type Props = {
   params: Promise<{ slug: string }>
+}
+
+export async function generateStaticParams() {
+  if (shouldSkipDbDuringBuild()) {
+    return []
+  }
+
+  const notices = await getLatestNotices(100)
+  return notices.map((notice: any) => ({ slug: notice.slug }))
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -105,13 +115,23 @@ export default async function NoticeDetailPage({ params }: Props) {
               <div className="stack-sm">
                 <h2>{dict.labels.attachments}</h2>
                 <ul className="content-list">
-                  {notice.attachments.map((attachment: any, index: number) => (
-                    <li key={attachment?.id ?? `att-${index}`}>
-                      {attachment?.filename ||
-                        attachment?.alt ||
-                        dict.labels.attached_document}
-                    </li>
-                  ))}
+                  {notice.attachments.map((attachment: any, index: number) => {
+                    const fileUrl = typeof attachment?.file === 'object' ? attachment.file?.url : null
+
+                    if (!fileUrl) {
+                      return null
+                    }
+
+                    return (
+                      <li key={attachment?.id ?? `att-${index}`}>
+                        <a href={fileUrl} download className="news-item__download">
+                          {attachment?.filename ||
+                            attachment?.alt ||
+                            dict.labels.attached_document}
+                        </a>
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
             ) : null}

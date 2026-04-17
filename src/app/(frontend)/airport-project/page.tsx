@@ -57,6 +57,7 @@ export default async function AirportProjectPage({
     searchParams,
   ])
   const lp = (path: string) => localePath(path, locale)
+  const localizedBasePath = localePath('/airport-project', locale)
   const projectCategories = dict.project_categories
 
   const activeCat = params.category ?? ''
@@ -67,7 +68,7 @@ export default async function AirportProjectPage({
   return (
     <main>
       <PageHero
-        eyebrow={dict.pages.airport_project_title}
+        eyebrow={dict.pages.eyebrow_updates}
         title={dict.pages.airport_project_title}
         summary={dict.pages.airport_project_summary}
       />
@@ -75,7 +76,7 @@ export default async function AirportProjectPage({
         <div className="container">
           {catOptions.length > 1 && (
             <Suspense fallback={null}>
-              <FilterChips paramName="category" basePath="/airport-project" options={catOptions} />
+              <FilterChips paramName="category" basePath={localizedBasePath} options={catOptions} />
             </Suspense>
           )}
           {filtered.length ? (

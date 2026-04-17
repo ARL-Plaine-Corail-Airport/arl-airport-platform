@@ -350,16 +350,9 @@ export function SiteHeader({ phone }: { phone?: string }) {
       >
         <div
           className="mobile-menu__backdrop"
-          role="button"
-          tabIndex={0}
-          aria-label={t('nav.close_menu')}
+          role="presentation"
+          aria-hidden="true"
           onClick={() => setMenuOpen(false)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              setMenuOpen(false)
-            }
-          }}
         />
         <nav className="mobile-menu__panel" aria-label="Mobile navigation">
           <div className="mobile-menu__close">

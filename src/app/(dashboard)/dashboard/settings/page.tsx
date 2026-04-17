@@ -1,7 +1,10 @@
+import 'server-only'
+
 import config from '@payload-config'
 import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
-import { env, serverEnv } from '@/lib/env'
+import { env } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 import { getPayloadClient } from '@/lib/payload'
 import { logger } from '@/lib/logger'
 import { normalizeSiteSettings } from '@/lib/site-settings'
@@ -349,7 +352,7 @@ export default async function SettingsPage() {
                 <input
                   className="form-input"
                   type="text"
-                  value={`${env.flightProviderLabel} (${env.flightProviderMode})`}
+                  value={`${serverEnv.flightProviderLabel} (${serverEnv.flightProviderMode})`}
                   disabled
                   readOnly
                 />

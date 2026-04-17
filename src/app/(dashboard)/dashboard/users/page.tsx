@@ -179,7 +179,11 @@ const CENTERED_PERMISSIONS_ROW_ODD_LAST_STYLE: React.CSSProperties = {
   justifyContent: 'center',
 }
 
-function getAvatarStyle(primaryRole: DashboardRole): React.CSSProperties {
+function getAvatarStyle(primaryRole: DashboardRole | null): React.CSSProperties {
+  if (!primaryRole) {
+    return ACCENT_AVATAR_STYLE
+  }
+
   return getRoleBadgeClass(primaryRole) === 'role-super'
     ? SUPER_AVATAR_STYLE
     : ACCENT_AVATAR_STYLE

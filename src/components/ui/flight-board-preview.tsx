@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import { useI18n } from '@/i18n/provider'
 import { formatDateTime } from '@/lib/date'
+import type { FlightBoardResponse } from '@/lib/integrations/flights/types'
 import { statusBadgeClass, statusBadgeLabel } from '@/lib/flight-status'
 
 type FlightRecord = {
@@ -17,7 +18,7 @@ type FlightRecord = {
 }
 
 type FlightPanelProps = {
-  data: any
+  data: FlightBoardResponse
   type: 'arrivals' | 'departures'
 }
 
@@ -113,8 +114,8 @@ function FlightPanel({ data, type }: FlightPanelProps) {
 }
 
 type FlightBoardPreviewProps = {
-  arrivals: any
-  departures: any
+  arrivals: FlightBoardResponse
+  departures: FlightBoardResponse
 }
 
 export function FlightBoardPreview({ arrivals, departures }: FlightBoardPreviewProps) {

@@ -15,16 +15,27 @@ export function FlightBoardPreviewLive({
   initialArrivals,
   initialDepartures,
 }: FlightBoardPreviewLiveProps) {
-  const { data: arrivals } = useLiveApiData<FlightBoardResponse>({
+  const { data: arrivals, error: arrivalsError } = useLiveApiData<FlightBoardResponse>({
     initialData: initialArrivals,
     refreshIntervalMs: FLIGHT_REFRESH_INTERVAL_MS,
     url: '/api/flight-board?type=arrivals',
   })
-  const { data: departures } = useLiveApiData<FlightBoardResponse>({
+  const { data: departures, error: departuresError } = useLiveApiData<FlightBoardResponse>({
     initialData: initialDepartures,
     refreshIntervalMs: FLIGHT_REFRESH_INTERVAL_MS,
     url: '/api/flight-board?type=departures',
   })
 
-  return <FlightBoardPreview arrivals={arrivals} departures={departures} />
+  const hasStaleDataWarning = Boolean(arrivalsError || departuresError)
+
+  return (
+    <>
+      {hasStaleDataWarning ? (
+        <p className="flight-board__meta" role="status" aria-live="polite">
+          Live flight data could not be refreshed. Showing the last available data.
+        </p>
+      ) : null}
+      <FlightBoardPreview arrivals={arrivals} departures={departures} />
+    </>
+  )
 }

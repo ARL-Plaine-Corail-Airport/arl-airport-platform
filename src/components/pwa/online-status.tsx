@@ -61,6 +61,7 @@ export function OnlineStatus() {
       className={`online-status-banner${isOffline ? ' online-status-banner--visible' : ''}`}
       role="status"
       aria-live="polite"
+      suppressHydrationWarning
     >
       <span className="online-status-banner__dot" aria-hidden="true" />
       <span>{t('offline.banner')}</span>

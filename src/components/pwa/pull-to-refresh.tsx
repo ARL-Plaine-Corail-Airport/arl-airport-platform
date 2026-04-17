@@ -30,6 +30,7 @@ export function PullToRefresh() {
 
     const onTouchMove = (e: TouchEvent) => {
       if (!pulling.current || refreshingRef.current) return
+      if (window.scrollY > 0) return
       const delta = e.touches[0].clientY - startY.current
       if (delta <= 0) {
         pullDistanceRef.current = 0
@@ -41,7 +42,7 @@ export function PullToRefresh() {
       const distance = Math.min(delta * 0.5, MAX_PULL)
       pullDistanceRef.current = distance
       setPullDistance(distance)
-      if (distance > 10) e.preventDefault()
+      if (distance > 10 && window.scrollY === 0) e.preventDefault()
     }
 
     const onTouchEnd = () => {

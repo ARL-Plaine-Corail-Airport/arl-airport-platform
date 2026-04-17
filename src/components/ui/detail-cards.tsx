@@ -9,6 +9,12 @@ function getLinkLabel(href: string, t: (key: string) => string): string {
   return t('labels.open_link')
 }
 
+function getLinkAriaLabel(href: string, t: (key: string) => string): string {
+  const label = getLinkLabel(href, t)
+  const opensInNewTab = !href.startsWith('tel:') && !href.startsWith('mailto:')
+  return opensInNewTab ? `${label} (opens in new tab)` : label
+}
+
 export function DetailCards({
   items = [],
 }: {
@@ -36,6 +42,7 @@ export function DetailCards({
               className="detail-card__link"
               target={item.link.startsWith('tel:') || item.link.startsWith('mailto:') ? undefined : '_blank'}
               rel={item.link.startsWith('tel:') || item.link.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+              aria-label={getLinkAriaLabel(item.link, t)}
             >
               {getLinkLabel(item.link, t)}
             </a>

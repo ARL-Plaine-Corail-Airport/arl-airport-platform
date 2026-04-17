@@ -5,6 +5,7 @@ import { NoticeCard } from '@/components/ui/notice-card'
 import { PageHero } from '@/components/ui/page-hero'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
+import { localePath } from '@/i18n/path'
 import { getLatestNotices } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
@@ -36,6 +37,7 @@ export default async function NoticesPage({
     getDictionary(locale),
     getLatestNotices(30, locale),
   ])
+  const localizedBasePath = localePath('/notices', locale)
 
   const noticeCategories = dict.notice_categories
 
@@ -68,7 +70,7 @@ export default async function NoticesPage({
             <Suspense fallback={<FilterChipsSkeleton />}>
               <FilterChips
                 paramName="category"
-                basePath="/notices"
+                basePath={localizedBasePath}
                 options={categoryOptions}
               />
             </Suspense>

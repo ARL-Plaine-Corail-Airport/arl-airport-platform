@@ -9,7 +9,6 @@ import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
 import { shouldSkipDbDuringBuild } from '@/lib/build-db'
 import {
-  getNewsEventBySlug,
   getNewsEventBySlugWithSignedAttachments,
   getNewsEvents,
 } from '@/lib/content'
@@ -83,7 +82,7 @@ export default async function NewsEventDetailPage({ params }: Props) {
   const nonce = (await headers()).get('x-nonce') ?? undefined
   const [dict, item] = await Promise.all([
     getDictionary(locale),
-    getNewsEventBySlug(slug, locale),
+    getNewsEventBySlugWithSignedAttachments(slug, locale),
   ])
 
   if (!item) notFound()

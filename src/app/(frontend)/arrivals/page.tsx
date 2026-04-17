@@ -5,7 +5,7 @@ import { getLocale } from '@/i18n/get-locale'
 import { getFlightBoard } from '@/lib/integrations/flights'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
-export const revalidate = 2600
+export const revalidate = 60
 
 export async function generateMetadata() {
   const locale = await getLocale()

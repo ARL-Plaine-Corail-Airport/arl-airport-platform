@@ -60,31 +60,33 @@ export function ContentSlider({
         </Link>
       </div>
       <div className="content-slider__wrapper">
-        {canScrollLeft && (
-          <button
-            className="content-slider__arrow content-slider__arrow--left"
-            onClick={() => scroll('left')}
-            aria-label={`Scroll left in ${label}`}
-          >
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-        )}
+        <button
+          className={`content-slider__arrow content-slider__arrow--left${canScrollLeft ? '' : ' content-slider__arrow--hidden'}`}
+          onClick={() => scroll('left')}
+          aria-label={`Scroll left in ${label}`}
+          aria-hidden={!canScrollLeft}
+          tabIndex={canScrollLeft ? 0 : -1}
+          style={{ visibility: canScrollLeft ? 'visible' : 'hidden' }}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
         <div className="content-slider__track" ref={trackRef}>
           {children}
         </div>
-        {canScrollRight && (
-          <button
-            className="content-slider__arrow content-slider__arrow--right"
-            onClick={() => scroll('right')}
-            aria-label={`Scroll right in ${label}`}
-          >
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-        )}
+        <button
+          className={`content-slider__arrow content-slider__arrow--right${canScrollRight ? '' : ' content-slider__arrow--hidden'}`}
+          onClick={() => scroll('right')}
+          aria-label={`Scroll right in ${label}`}
+          aria-hidden={!canScrollRight}
+          tabIndex={canScrollRight ? 0 : -1}
+          style={{ visibility: canScrollRight ? 'visible' : 'hidden' }}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
       </div>
     </div>
   )

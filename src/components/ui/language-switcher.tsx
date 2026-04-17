@@ -1,6 +1,5 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { isValidLocale, localeLabels, locales, type Locale } from '@/i18n/config'
@@ -9,18 +8,19 @@ import { useI18n } from '@/i18n/provider'
 
 export function LanguageSwitcher() {
   const { locale: contextLocale } = useI18n()
-  const pathname = usePathname()
-
-  // Middleware rewrites locale-prefixed URLs (e.g. /fr/arrivals → /arrivals),
-  // so usePathname() can return the rewritten path without the locale prefix.
-  // Read from window.location.pathname instead, which always reflects the
-  // actual browser URL including the locale segment.
   const [activeLocale, setActiveLocale] = useState<Locale>(contextLocale)
 
   useEffect(() => {
     const segment = window.location.pathname.split('/').filter(Boolean)[0] ?? ''
-    setActiveLocale(isValidLocale(segment) ? segment : contextLocale)
-  }, [pathname, contextLocale])
+    const browserLocale = isValidLocale(segment) ? segment : null
+
+    if (browserLocale && browserLocale !== contextLocale) {
+      setActiveLocale(browserLocale)
+      return
+    }
+
+    setActiveLocale(contextLocale)
+  }, [contextLocale])
 
   const handleChange = (newLocale: Locale) => {
     if (newLocale === activeLocale) return

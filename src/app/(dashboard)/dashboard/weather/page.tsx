@@ -1,8 +1,11 @@
+import 'server-only'
+
 import Link from 'next/link'
 
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getSiteSettings } from '@/lib/content'
-import { env, serverEnv } from '@/lib/env'
+import { env } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 import { getWeatherSnapshot } from '@/lib/integrations/weather'
 
 export const metadata = { title: 'Weather' }

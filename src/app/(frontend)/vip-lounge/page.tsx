@@ -62,8 +62,8 @@ export default async function VIPLoungePage() {
               <div className="stack-sm">
                 <h2>{dict.pages.lounge_amenities}</h2>
                 <ul className="content-list">
-                  {data.amenities.map((entry: { item: string }) => (
-                    <li key={`amenity-${entry.item}`}>{entry.item}</li>
+                  {data.amenities.map((entry: { item: string }, index: number) => (
+                    <li key={`amenity-${index}`}>{entry.item}</li>
                   ))}
                 </ul>
               </div>

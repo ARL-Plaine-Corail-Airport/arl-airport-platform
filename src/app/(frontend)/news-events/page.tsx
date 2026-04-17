@@ -60,6 +60,7 @@ export default async function NewsEventsPage({
     searchParams,
   ])
   const lp = (path: string) => localePath(path, locale)
+  const localizedBasePath = localePath('/news-events', locale)
   const newsTypes = dict.news_types
 
   const activeType = params.type ?? ''
@@ -78,7 +79,7 @@ export default async function NewsEventsPage({
         <div className="container">
           {typeOptions.length > 1 && (
             <Suspense fallback={<FilterChipsSkeleton />}>
-              <FilterChips paramName="type" basePath="/news-events" options={typeOptions} />
+              <FilterChips paramName="type" basePath={localizedBasePath} options={typeOptions} />
             </Suspense>
           )}
           {filtered.length ? (

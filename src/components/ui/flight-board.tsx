@@ -2,9 +2,14 @@
 
 import { useI18n } from '@/i18n/provider'
 import { formatDateTime } from '@/lib/date'
+import type { FlightBoardResponse } from '@/lib/integrations/flights/types'
 import { statusBadgeClass, statusBadgeLabel } from '@/lib/flight-status'
 
-export function FlightBoard({ data }: { data: any }) {
+type FlightBoardProps = {
+  data: FlightBoardResponse
+}
+
+export function FlightBoard({ data }: FlightBoardProps) {
   const { t, locale } = useI18n()
   const boardLabel =
     data.boardType === 'arrivals'

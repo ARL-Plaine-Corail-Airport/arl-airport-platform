@@ -3,14 +3,14 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 
-function sendPageView(path: string) {
+function sendPageView(path: string, includeReferrer: boolean) {
   // Don't track admin/dashboard pages
   if (path.startsWith('/admin') || path.startsWith('/dashboard')) return
 
   const data = JSON.stringify({
     type: 'pageview',
     path,
-    ...(document.referrer ? { referrer: document.referrer } : {}),
+    ...(includeReferrer && document.referrer ? { referrer: document.referrer } : {}),
   })
 
   if (navigator.sendBeacon) {
@@ -31,12 +31,13 @@ export function AnalyticsTracker() {
 
   useEffect(() => {
     const visiblePath = window.location.pathname
+    const isFirstPageView = lastPath.current === ''
 
     // Avoid double-tracking same page (React strict mode)
     if (visiblePath === lastPath.current) return
     lastPath.current = visiblePath
 
-    sendPageView(visiblePath)
+    sendPageView(visiblePath, isFirstPageView)
   }, [pathname])
 
   return null

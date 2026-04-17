@@ -119,6 +119,7 @@
     "data_not_connected_title": "Data operasyonel pa konekte",
     "no_flights_title": "Pena vol disponib",
     "no_records_desc": "Pena okenn lanrezistreman pou afise pou sa tablo-la pou lemoman.",
+    "unavailable": "Data vol an direk tanporerman pa disponib. Silvouple resaye taler.",
     "provider": "Fournis",
     "last_updated": "Dernier mizajour",
     "route": "Litinerer",
@@ -126,6 +127,8 @@
   },
   "weather": {
     "title": "Letan",
+    "unavailable": "Tanporerman pa disponib",
+    "unavailable_description": "Mizajour letan an direk pou repran otomatikman.",
     "visibility": "Vizibilite",
     "km": "km",
     "advisory": "Averstiman"
@@ -199,6 +202,13 @@
     "install_prompt": "Azout lor ekran lakaz pou enn lakses rapid",
     "install_button": "Instale",
     "dismiss": "Pa asterla"
+  },
+  "errors": {
+    "title": "Ena enn problem",
+    "description": "Enn lerer inatandi finn arive. Silvouple resaye ouswa retourn lor paz lakaz.",
+    "retry": "Resaye",
+    "home": "Paz lakaz",
+    "error_id": "ID lerer"
   },
   "pages": {
     "eyebrow_flights": "Vol",
@@ -310,6 +320,82 @@
     "contact_summary": "Biro led ofisyel ek detay kontak ayropor.",
     "passenger_guide_title": "Gid Pasaze",
     "passenger_guide_summary": "Gid preparasyon vwayaz pou bann pasaze ki pe transit par Ayropor Plaine Corail."
+  },
+  "duty_free": {
+    "eyebrow": "Info pasaze",
+    "title": "Duty Free ek Boutik",
+    "summary": "Boutik duty free, libreri ek konte manze disponib dan Ayropor Plaine Corail.",
+    "contact_label": "Kontak",
+    "back_to_guide": "Retournn ver Gid Pasaze",
+    "highlights": [
+      {
+        "eyebrow": "Akses pasaze",
+        "title": "Pou arive ek pou depar",
+        "body": "Boutik ek servis disponib pou toulede mouvman pasaze dan terminal."
+      },
+      {
+        "eyebrow": "Ler louvertir",
+        "title": "Swiv program vol pibliye",
+        "body": "Ler servis adapte ar aktivite terminal ek program vol Lasanble zour."
+      },
+      {
+        "eyebrow": "Kontak",
+        "title": "Led direk disponib",
+        "body": "Telefon ek imel reste disponib pou kestyon lor prodwi ek servis."
+      }
+    ],
+    "retail": {
+      "eyebrow": "Boutik ayropor",
+      "title": "Boutik Duty Free",
+      "body": "Aste duty free disponib pou tou bann pasaze ki pe ale ek ki pe arive. Bann lartik di liks duty free ki sorti depi bann parfum top mark, kosmetik, liker, sokola, ek sigaret ziska ekipman elektronik, divin, ek boukou plis kapav aste a bann pri konpetitif. Pou enn pli bon konfor ek servis pou bann pasaze ki pe arive, boutik duty free larive finn deplase dan enn pli gran lokal ver lafin Desam 2018. Nouvo boutik la ofer enn pli gran swa prodwi avek enn lexperyans aste amelyore. Ler louvertir selon program vol pibliye. Rodrigues Duty Paradise Ltd (RDFP) kapav kontakte pou plis linformasyon.",
+      "facts": [
+        "Parfen, kosmetik, lalkol, sokola ek lezot lartik vwayaz.",
+        "Aksesib pou pasaze arive kouma pasaze depar.",
+        "Enn seleksyon pli larz pou enn lexperyans shopping pli konfrotab."
+      ],
+      "schedule": "Ler louvertir dapre program vol pibliye",
+      "access": "Arive ek depar",
+      "contact_availability": "Kontak direk disponib",
+      "call_cta": "Telefon duty free",
+      "email_cta": "Avoy enn imel"
+    },
+    "bookshop": {
+      "eyebrow": "Lazonn depar",
+      "title": "Libreri",
+      "body_1": "Libreri Island Books & Clothing sitye dan Zom Datant Depar apre kontrol Imigrasyon ek Sekirite Bagaz Kabinn. Libreri la aksesib zis pou bann pasaze ki pe ale. Libreri la ena enn seri liv, magazinn ek roman an Angle ek an Franse pou tou laz. Liv lor Lil Rodrig kapav aste laba ansam avek bann lartik souvenir.",
+      "body_2": "Bann pasaze ki pe ale kapav osi rafresi zot avek enn bwason so ou fre ek enn ti manze dan libreri la. Sa li sel pwen rafresisan dan Zom Depar. Ler louvertir selon program vol pibliye.",
+      "overlay": "Lanmbyans retail dan lazonn depar",
+      "highlights": [
+        "Liv, magazinn, roman ek souvenir Rodrigues.",
+        "Bwason so, bwason fre ek ti keksoz pou manze avan depar."
+      ],
+      "access": "Rezerv pou pasaze depar selman",
+      "call_cta": "Telefon libreri",
+      "email_cta": "Imel libreri"
+    },
+    "cafe": {
+      "eyebrow": "Manze ek bwason",
+      "title": "Konte Manze",
+      "body": "Bann konte manze disponib dan hol depar ek dan Konkours Piblik (lor letaz anba) pou bann pasaze ek viziter ayropor. Bann konte manze ofer enn gran varyete bwason fre ek so. Repa so, patisri, sandwits ek lezot manze sek osi disponib. Ler louvertir selon program vol pibliye.",
+      "highlights": [
+        "Bwason so ek fre.",
+        "Repa, gato, sandwich ek keksoz sek.",
+        "Servis pou pasaze ek viziter ayropor."
+      ],
+      "access": "Sal depar ek konkours piblik"
+    },
+    "return": {
+      "title": "Kontignn ver gid pasaze",
+      "summary": "Get lezot servis ayropor, fasilite ek lenformasyon itil pou prepar ou deplasman."
+    },
+    "images": {
+      "retail_1": "Devantir duty free larive dan Ayropor Plaine Corail",
+      "retail_2": "Lespas lavant duty free larive dan Ayropor Plaine Corail",
+      "retail_3": "Andan duty free kot lazonn depar dan Ayropor Plaine Corail",
+      "cafe_1": "Kontwar ek lespas asiz Kafe Solitaire",
+      "cafe_2": "Kontwar servis Kafe Solitaire",
+      "cafe_3": "Lespas asiz Kafe Solitaire pre ar konkours"
+    }
   },
   "language": {
     "select": "Lang",

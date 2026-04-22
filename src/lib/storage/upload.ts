@@ -112,7 +112,7 @@ export async function uploadToStorage(opts: UploadOptions): Promise<UploadResult
     const { data: urlData } = supabase.storage
       .from(opts.bucket)
       .getPublicUrl(data.path)
-    publicURL = urlData.publicUrl
+    publicURL = urlData?.publicUrl ?? null
   }
 
   return {

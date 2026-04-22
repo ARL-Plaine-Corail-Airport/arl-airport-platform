@@ -42,6 +42,7 @@ function createStorageMock() {
 async function loadSubject(storage = createStorageMock()) {
   vi.resetModules()
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://supabase.example.com')
+  vi.stubEnv('SUPABASE_URL', undefined)
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-role-key')
 
   createClient.mockReset()
@@ -77,6 +78,24 @@ describe('supabase storage client', () => {
     expect(createClient).toHaveBeenCalledTimes(1)
     expect(createClient).toHaveBeenCalledWith(
       'https://supabase.example.com',
+      'service-role-key',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      },
+    )
+  })
+
+  it('prefers the server-side runtime Supabase URL when configured', async () => {
+    const { createClient, getSupabaseAdminClient } = await loadSubject()
+    vi.stubEnv('SUPABASE_URL', 'https://runtime-supabase.example.com')
+
+    getSupabaseAdminClient()
+
+    expect(createClient).toHaveBeenCalledWith(
+      'https://runtime-supabase.example.com',
       'service-role-key',
       {
         auth: {
@@ -126,6 +145,23 @@ describe('supabase storage client', () => {
     await expect(getSignedURL('docs', 'missing.pdf')).rejects.toThrow(
       'Failed to generate signed URL for docs/missing.pdf',
     )
+  })
+
+  it('throws SignedUrlTimeoutError when Supabase does not respond within 10s', async () => {
+    const storage = createStorageMock()
+    storage.createSignedUrl.mockImplementation(
+      () => new Promise(() => {}),
+    )
+    vi.useFakeTimers()
+    try {
+      const { getSignedURL, SignedUrlTimeoutError } = await loadSubject(storage)
+      const pending = getSignedURL('docs', 'slow.pdf')
+      const assertion = expect(pending).rejects.toBeInstanceOf(SignedUrlTimeoutError)
+      await vi.advanceTimersByTimeAsync(10_001)
+      await assertion
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('batch-generates signed URLs as a path map', async () => {

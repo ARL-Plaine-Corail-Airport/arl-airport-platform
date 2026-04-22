@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
+import { Media } from '@/collections/Media'
 import { getMediaSource } from '@/lib/media'
+
+function buildAccessArgs() {
+  return {
+    req: {
+      user: undefined,
+    },
+  } as any
+}
 
 describe('getMediaSource', () => {
   it('returns null for missing media', () => {
@@ -52,5 +61,11 @@ describe('getMediaSource', () => {
       width: 1600,
       height: 900,
     })
+  })
+})
+
+describe('Media collection access', () => {
+  it('allows public metadata reads for public media assets', () => {
+    expect(Media.access?.read?.(buildAccessArgs())).toBe(true)
   })
 })

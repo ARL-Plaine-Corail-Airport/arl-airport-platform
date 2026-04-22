@@ -5,7 +5,7 @@ export default function Icon() {
       style={{
         width: 32,
         height: 32,
-        background: 'hsl(210, 80%, 25%)',
+        background: 'hsl(var(--arl-navy-700))',
         borderRadius: 8,
         display: 'flex',
         alignItems: 'center',

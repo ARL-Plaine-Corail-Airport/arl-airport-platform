@@ -77,6 +77,7 @@ export interface Config {
     airlines: Airline;
     'news-events': NewsEvent;
     'airport-project': AirportProject;
+    careers: Career;
     'page-views': PageView;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -95,6 +96,7 @@ export interface Config {
     airlines: AirlinesSelect<false> | AirlinesSelect<true>;
     'news-events': NewsEventsSelect<false> | NewsEventsSelect<true>;
     'airport-project': AirportProjectSelect<false> | AirportProjectSelect<true>;
+    careers: CareersSelect<false> | CareersSelect<true>;
     'page-views': PageViewsSelect<false> | PageViewsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -176,9 +178,13 @@ export interface User {
   fullName: string;
   roles: ('super_admin' | 'content_admin' | 'approver' | 'operations_editor' | 'translator' | 'viewer_auditor')[];
   /**
-   * Governance flag. Enforce at the identity-provider or auth layer in production.
+   * This flag is not currently enforced. Do not rely on it as a security control.
    */
   mfaRequired?: boolean | null;
+  /**
+   * Preferred dashboard language.
+   */
+  preferredLocale?: ('en' | 'fr' | 'mfe') | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -271,6 +277,10 @@ export interface Document {
    * Controls the storage prefix and determines who can access this document.
    */
   documentType: 'communique' | 'guidance' | 'regulation' | 'fee_schedule' | 'general';
+  /**
+   * Restricted documents are readable only by their uploader unless the user is a super admin.
+   */
+  visibility: 'public' | 'internal' | 'restricted';
   /**
    * The date this document comes into effect (optional).
    */
@@ -410,7 +420,7 @@ export interface Notice {
     metaDescription?: string | null;
   };
   /**
-   * Optional images or documents attached to this notice.
+   * Optional images attached to this notice.
    */
   attachments?: (number | Media)[] | null;
   /**
@@ -437,10 +447,13 @@ export interface Page {
    * Optional image displayed near the top of this page on the public site.
    */
   pageImage?: (number | null) | Media;
-  status?: ('draft' | 'published') | null;
+  status: 'draft' | 'in_review' | 'published';
   sections?:
     | {
         heading: string;
+        /**
+         * Keep section body content to 5000 characters or fewer.
+         */
         body: {
           root: {
             type: string;
@@ -584,6 +597,10 @@ export interface NewsEvent {
   };
   status?: ('draft' | 'in_review' | 'published' | 'archived') | null;
   publishedAt?: string | null;
+  /**
+   * Auto-populated when an approver publishes from In Review.
+   */
+  lastApprovedBy?: (number | null) | User;
   isPinned?: boolean | null;
   /**
    * Downloadable documents displayed as links on the news item.
@@ -652,6 +669,10 @@ export interface AirportProject {
     | null;
   status?: ('draft' | 'in_review' | 'published' | 'archived') | null;
   publishedAt?: string | null;
+  /**
+   * Auto-populated when an approver publishes from In Review.
+   */
+  lastApprovedBy?: (number | null) | User;
   isPinned?: boolean | null;
   seo?: {
     metaTitle?: string | null;
@@ -662,7 +683,47 @@ export interface AirportProject {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Anonymized page view events for internal analytics.
+ * Career opportunities and vacancy notices with downloadable PDF documents.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "careers".
+ */
+export interface Career {
+  id: number;
+  title: string;
+  /**
+   * Auto-generated from title if left blank. Used as a stable career notice identifier.
+   */
+  slug: string;
+  /**
+   * Description shown on the public Career listing page.
+   */
+  summary: string;
+  /**
+   * Upload the official vacancy PDF through the Documents collection.
+   */
+  attachments: {
+    label: string;
+    file: number | Document;
+    id?: string | null;
+  }[];
+  status?: ('draft' | 'in_review' | 'published' | 'archived') | null;
+  publishedAt?: string | null;
+  /**
+   * Auto-populated when an approver publishes from In Review.
+   */
+  lastApprovedBy?: (number | null) | User;
+  isPinned?: boolean | null;
+  seo?: {
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * Anonymized page view events for internal analytics. Events are retained for 90 days.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "page-views".
@@ -758,6 +819,10 @@ export interface PayloadLockedDocument {
         value: number | AirportProject;
       } | null)
     | ({
+        relationTo: 'careers';
+        value: number | Career;
+      } | null)
+    | ({
         relationTo: 'page-views';
         value: number | PageView;
       } | null);
@@ -811,6 +876,7 @@ export interface UsersSelect<T extends boolean = true> {
   fullName?: T;
   roles?: T;
   mfaRequired?: T;
+  preferredLocale?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -891,6 +957,7 @@ export interface DocumentsSelect<T extends boolean = true> {
   title?: T;
   description?: T;
   documentType?: T;
+  visibility?: T;
   effectiveDate?: T;
   expiryDate?: T;
   isActive?: T;
@@ -1046,6 +1113,7 @@ export interface NewsEventsSelect<T extends boolean = true> {
       };
   status?: T;
   publishedAt?: T;
+  lastApprovedBy?: T;
   isPinned?: T;
   attachments?:
     | T
@@ -1084,6 +1152,36 @@ export interface AirportProjectSelect<T extends boolean = true> {
       };
   status?: T;
   publishedAt?: T;
+  lastApprovedBy?: T;
+  isPinned?: T;
+  seo?:
+    | T
+    | {
+        metaTitle?: T;
+        metaDescription?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "careers_select".
+ */
+export interface CareersSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  summary?: T;
+  attachments?:
+    | T
+    | {
+        label?: T;
+        file?: T;
+        id?: T;
+      };
+  status?: T;
+  publishedAt?: T;
+  lastApprovedBy?: T;
   isPinned?: T;
   seo?:
     | T
@@ -1222,6 +1320,9 @@ export interface PassengerGuide {
   sections?:
     | {
         heading: string;
+        /**
+         * Keep section body content to 5000 characters or fewer.
+         */
         body: {
           root: {
             type: string;
@@ -1269,6 +1370,9 @@ export interface TransportParking {
   sections?:
     | {
         heading: string;
+        /**
+         * Keep section body content to 5000 characters or fewer.
+         */
         body: {
           root: {
             type: string;
@@ -1310,6 +1414,9 @@ export interface AccessibilityInfo {
   sections?:
     | {
         heading: string;
+        /**
+         * Keep section body content to 5000 characters or fewer.
+         */
         body: {
           root: {
             type: string;
@@ -1432,6 +1539,18 @@ export interface Regulation {
    * Optional disclaimer text shown at the bottom of the regulations page.
    */
   legalDisclaimer?: string | null;
+  /**
+   * Optional note to include in the approval history when publishing.
+   */
+  approvalNotes?: string | null;
+  approvalHistory?:
+    | {
+        approvedBy?: (number | null) | User;
+        approvedAt?: string | null;
+        notes?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -1521,6 +1640,10 @@ export interface VipLounge {
  */
 export interface EmergencyService {
   id: number;
+  /**
+   * Only approvers and admins may transition emergency contacts to Published.
+   */
+  status: 'draft' | 'pending_review' | 'published';
   pageTitle: string;
   introduction?: string | null;
   /**
@@ -1773,6 +1896,18 @@ export interface LegalPage {
     } | null;
     lastUpdated?: string | null;
   };
+  /**
+   * Optional note to include in the approval history when publishing.
+   */
+  approvalNotes?: string | null;
+  approvalHistory?:
+    | {
+        approvedBy?: (number | null) | User;
+        approvedAt?: string | null;
+        notes?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   _status?: ('draft' | 'published') | null;
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -1969,6 +2104,15 @@ export interface RegulationsSelect<T extends boolean = true> {
       };
   lastReviewedDate?: T;
   legalDisclaimer?: T;
+  approvalNotes?: T;
+  approvalHistory?:
+    | T
+    | {
+        approvedBy?: T;
+        approvedAt?: T;
+        notes?: T;
+        id?: T;
+      };
   _status?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -2039,6 +2183,7 @@ export interface VipLoungeSelect<T extends boolean = true> {
  * via the `definition` "emergency-services_select".
  */
 export interface EmergencyServicesSelect<T extends boolean = true> {
+  status?: T;
   pageTitle?: T;
   introduction?: T;
   primaryEmergencyNumber?: T;
@@ -2204,6 +2349,15 @@ export interface LegalPagesSelect<T extends boolean = true> {
         title?: T;
         content?: T;
         lastUpdated?: T;
+      };
+  approvalNotes?: T;
+  approvalHistory?:
+    | T
+    | {
+        approvedBy?: T;
+        approvedAt?: T;
+        notes?: T;
+        id?: T;
       };
   _status?: T;
   updatedAt?: T;

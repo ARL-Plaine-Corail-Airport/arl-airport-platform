@@ -10,11 +10,5 @@ export function shouldSkipDbDuringBuild() {
 }
 
 export function isBuildTimeDbDisabledError(error: unknown): error is BuildTimeDbDisabledError {
-  return (
-    error instanceof BuildTimeDbDisabledError ||
-    (typeof error === 'object' &&
-      error !== null &&
-      'name' in error &&
-      error.name === 'BuildTimeDbDisabledError')
-  )
+  return error instanceof BuildTimeDbDisabledError
 }

@@ -1,11 +1,12 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
-import { validateURL } from '@/fields/validators'
+import { validatePhoneValue, validateURL } from '@/fields/validators'
 
 export const ContactInfo: GlobalConfig = {
   slug: 'contact-info',
   access: {
+    // Public global: the contact page intentionally exposes these passenger-facing details.
     read: () => true,
     update: isEditor,
   },
@@ -38,11 +39,20 @@ export const ContactInfo: GlobalConfig = {
         {
           name: 'link',
           type: 'text',
-          validate: (value: string | null | undefined) =>
-            validateURL(value, {
+          validate: (value: string | null | undefined) => {
+            const urlValidation = validateURL(value, {
               allowedProtocols: ['tel:', 'mailto:', 'http:', 'https:'],
               invalidMessage: 'Enter a tel:, mailto:, or https:// link.',
-            }),
+            })
+            if (urlValidation !== true) return urlValidation
+
+            const trimmedValue = value?.trim()
+            if (trimmedValue?.toLowerCase().startsWith('tel:')) {
+              return validatePhoneValue(trimmedValue.slice(4))
+            }
+
+            return true
+          },
           admin: { placeholder: 'tel:+23083278888 or mailto:info@arl.aero' },
         },
       ],

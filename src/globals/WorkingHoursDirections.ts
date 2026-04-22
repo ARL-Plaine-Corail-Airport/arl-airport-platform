@@ -6,6 +6,7 @@ import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
 import { validateMapEmbedURL, validateURL } from '@/fields/validators'
+import { enforceApproverOnPublish } from './approvalGuards'
 
 export const WorkingHoursDirections: GlobalConfig = {
   slug: 'working-hours-directions',
@@ -162,4 +163,9 @@ export const WorkingHoursDirections: GlobalConfig = {
       ],
     },
   ],
+  hooks: {
+    beforeChange: [
+      enforceApproverOnPublish('Only approvers can publish working hours and directions.'),
+    ],
+  },
 }

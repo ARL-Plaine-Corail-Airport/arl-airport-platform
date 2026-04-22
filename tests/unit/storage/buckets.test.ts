@@ -39,8 +39,8 @@ describe('storage bucket constants', () => {
   })
 
   it('defines upload size and MIME type policies', () => {
-    expect(MAX_FILE_SIZES.image).toBe(10 * 1024 * 1024)
-    expect(MAX_FILE_SIZES.pdf).toBe(25 * 1024 * 1024)
+    expect(MAX_FILE_SIZES.image).toBe(50 * 1024 * 1024)
+    expect(MAX_FILE_SIZES.pdf).toBe(100 * 1024 * 1024)
     expect(ALLOWED_MEDIA_TYPES).toContain('image/webp')
     expect(ALLOWED_DOCUMENT_TYPES).toEqual(['application/pdf'])
   })

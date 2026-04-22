@@ -16,7 +16,7 @@ type SitemapEntry = MetadataRoute.Sitemap[number]
 const excludedGenericPageSlugs = new Set(['airport-vip-lounge'])
 
 const flightRoutes = ['/arrivals', '/departures', '/flight-status'] as const
-const contentListingRoutes = ['/news-events', '/notices', '/airport-project'] as const
+const contentListingRoutes = ['/news-events', '/notices', '/airport-project', '/career'] as const
 const informationalRoutes = [
   '/passenger-guide',
   '/transport-parking',

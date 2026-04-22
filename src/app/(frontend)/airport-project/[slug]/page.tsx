@@ -9,7 +9,7 @@ import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
 import { shouldSkipDbDuringBuild } from '@/lib/build-db'
 import {
-  getAirportProjectBySlug,
+  getAirportProjectBySlugWithSignedAttachments,
   getAirportProjectItems,
 } from '@/lib/content'
 import { formatDateTime } from '@/lib/date'
@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: Props) {
   const locale = await getLocale()
   const [dict, item] = await Promise.all([
     getDictionary(locale),
-    getAirportProjectBySlug(slug, locale),
+    getAirportProjectBySlugWithSignedAttachments(slug, locale),
   ])
 
   if (!item) {
@@ -81,7 +81,7 @@ export default async function AirportProjectDetailPage({ params }: Props) {
   const nonce = (await headers()).get('x-nonce') ?? undefined
   const [dict, item] = await Promise.all([
     getDictionary(locale),
-    getAirportProjectBySlug(slug, locale),
+    getAirportProjectBySlugWithSignedAttachments(slug, locale),
   ])
 
   if (!item) notFound()
@@ -145,10 +145,7 @@ export default async function AirportProjectDetailPage({ params }: Props) {
                   {item.attachments.map((att: any, i: number) => {
                     const fileUrl = typeof att.file === 'object' ? att.file?.url : null
                     if (!fileUrl) return null
-                    const attachmentKey =
-                      att.id ??
-                      (typeof att.file === 'object' ? att.file?.id : undefined) ??
-                      `att-${att.label ?? 'attachment'}-${i}`
+                    const attachmentKey = att.id ?? `${item.id ?? slug}-att-${i}`
                     return (
                       <li key={attachmentKey}>
                         <a

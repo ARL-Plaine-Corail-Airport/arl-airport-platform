@@ -54,9 +54,10 @@ describe('storage upload utilities', () => {
   })
 
   it('rejects oversized uploads and invalid MIME types', () => {
-    expect(validateUpload('image/webp', 11 * 1024 * 1024, 'image')).toEqual({
+    const oversizeImage = 51 * 1024 * 1024
+    expect(validateUpload('image/webp', oversizeImage, 'image')).toEqual({
       valid: false,
-      reason: 'File size 11534336 exceeds maximum 10485760 bytes for image',
+      reason: `File size ${oversizeImage} exceeds maximum ${50 * 1024 * 1024} bytes for image`,
     })
     expect(validateUpload('text/plain', 1024, 'pdf')).toEqual({
       valid: false,

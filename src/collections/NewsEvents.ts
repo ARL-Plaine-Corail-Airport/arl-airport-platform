@@ -5,11 +5,20 @@
 // Follows the same draft → review → published workflow as Notices.
 // =============================================================================
 
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, FieldAccess } from 'payload'
 
-import { isAdmin, isEditor, publishedVersionOrAdmin } from '@/access'
+import { isAdmin, isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
 import { syncWorkflowStatus } from './workflowStatus'
+
+const canSetNewsStatus: FieldAccess = ({ data, req, siblingData }) => {
+  if (isApprover({ req })) return true
+
+  const status = (siblingData as { status?: unknown } | undefined)?.status
+    ?? (data as { status?: unknown } | undefined)?.status
+
+  return status !== 'published'
+}
 
 export const NewsEvents: CollectionConfig = {
   slug: 'news-events',
@@ -45,6 +54,7 @@ export const NewsEvents: CollectionConfig = {
       type: 'text',
       required: true,
       unique: true,
+      maxLength: 120,
       admin: {
         description: 'Auto-generated from title if left blank. Used in the URL: /news-events/[slug]',
         placeholder: 'annual-open-day-2026',
@@ -133,6 +143,10 @@ export const NewsEvents: CollectionConfig = {
         { label: 'Published',   value: 'published' },
         { label: 'Archived',    value: 'archived'  },
       ],
+      access: {
+        create: canSetNewsStatus,
+        update: canSetNewsStatus,
+      },
       admin: {
         position: 'sidebar',
       },
@@ -145,6 +159,16 @@ export const NewsEvents: CollectionConfig = {
         position: 'sidebar',
         readOnly:  true,
         condition: (data) => Boolean(data?.publishedAt),
+      },
+    },
+    {
+      name: 'lastApprovedBy',
+      type: 'relationship',
+      relationTo: 'users',
+      admin: {
+        description: 'Auto-populated when an approver publishes from In Review.',
+        readOnly: true,
+        position: 'sidebar',
       },
     },
     {
@@ -211,10 +235,12 @@ export const NewsEvents: CollectionConfig = {
     beforeChange: [
       syncWorkflowStatus({
         collection: 'news-events',
-        requiredStatusForPublish: 'published',
+        requiredStatusForPublish: 'in_review',
         publishedStatus: 'published',
-        publishError: 'Set status to Published before using Publish.',
+        publishError: 'Only approvers can publish news/events after review.',
+        requireApproverToPublish: true,
         setPublishedAt: true,
+        setLastApprovedBy: true,
       }),
     ],
   },

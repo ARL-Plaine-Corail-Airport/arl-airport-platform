@@ -21,12 +21,14 @@ describe('logger', () => {
 
   it('logs errors with context prefix', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    logger.error('Something failed', new Error('boom'), 'test')
+    const error = new Error('boom')
+    logger.error('Something failed', error, 'test')
     expect(spy).toHaveBeenCalledOnce()
     const msg = spy.mock.calls[0][0] as string
     expect(msg).toContain('[ERROR]')
     expect(msg).toContain('[test]')
     expect(msg).toContain('boom')
+    expect(spy.mock.calls[0]?.[1]).toBe(error)
     expect(captureException).toHaveBeenCalledOnce()
     expect(captureException).toHaveBeenCalledWith(
       expect.any(Error),

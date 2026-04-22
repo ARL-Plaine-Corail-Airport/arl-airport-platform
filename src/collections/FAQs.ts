@@ -1,14 +1,15 @@
 import type { CollectionConfig } from 'payload'
 
-import { isApprover, isEditor, publishedOrAdmin } from '@/access'
+import { isAdmin, isEditor, publishedOrAdmin } from '@/access'
 
 export const FAQs: CollectionConfig = {
   slug: 'faqs',
   access: {
+    // Public read is intentional for published passenger FAQs.
     read: publishedOrAdmin,
     create: isEditor,
     update: isEditor,
-    delete: isApprover,
+    delete: isAdmin,
   },
   admin: {
     useAsTitle: 'question',

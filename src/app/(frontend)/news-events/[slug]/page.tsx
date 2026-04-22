@@ -150,16 +150,16 @@ export default async function NewsEventDetailPage({ params }: Props) {
               {dict.labels.published}: {formatDateTime(item.publishedAt, locale)} &middot;{' '}
               {dict.labels.updated}: {formatDateTime(item.updatedAt, locale)}
             </p>
-            <RichText data={item.body} />
+            {item.body && <RichText data={item.body} />}
 
             {Array.isArray(item.attachments) && item.attachments.length > 0 && (
               <div className="news-detail__attachments">
                 <h3>{dict.labels?.attachments ?? 'Attachments'}</h3>
                 <ul className="news-detail__file-list">
-                  {item.attachments.map((att: any) => {
+                  {item.attachments.map((att: any, i: number) => {
                     const fileUrl = typeof att.file === 'object' ? att.file?.url : null
                     if (!fileUrl) return null
-                    const attachmentKey = `${item.id ?? slug}-${att.label ?? 'attachment'}-${fileUrl}`
+                    const attachmentKey = att.id ?? `${item.id ?? slug}-att-${i}`
                     return (
                       <li key={attachmentKey}>
                         <a

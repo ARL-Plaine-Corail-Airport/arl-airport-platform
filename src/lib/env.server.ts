@@ -1,6 +1,10 @@
 import 'server-only'
 
 import { env } from './env'
+import {
+  getConfiguredFlightProviderBaseUrl,
+  getConfiguredWeatherProviderBaseUrl,
+} from './provider-endpoints'
 
 // =============================================================================
 // Server-only environment variable access
@@ -11,17 +15,26 @@ function readNumber(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-// Weather: this adapter only supports Open-Meteo. The endpoint is
-// overridable for self-hosted Open-Meteo instances, but query params
-// and response parsing are always Open-Meteo shaped.
-const OPEN_METEO_ENDPOINT = 'https://api.open-meteo.com/v1/forecast'
+const BUILD_TIME_UNSET_ENV = '__BUILD_TIME_UNSET__'
+const warnedBuildTimeMissingEnv = new Set<string>()
+
+function warnBuildTimeMissingEnv(name: string): void {
+  if (warnedBuildTimeMissingEnv.has(name)) return
+  warnedBuildTimeMissingEnv.add(name)
+  console.warn(
+    `[env] Missing required environment variable ${name} during build; using ${BUILD_TIME_UNSET_ENV}.`,
+  )
+}
 
 function requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
     // During `next build` (NEXT_OUTPUT_MODE=standalone), placeholder values are
     // acceptable — real secrets are injected at runtime via docker-compose.
-    if (process.env.NEXT_OUTPUT_MODE) return ''
+    if (process.env.NEXT_OUTPUT_MODE) {
+      warnBuildTimeMissingEnv(name)
+      return BUILD_TIME_UNSET_ENV
+    }
     throw new Error(`Missing required environment variable: ${name}`)
   }
   return value
@@ -31,6 +44,9 @@ const visitorHashSalt =
   process.env.NODE_ENV === 'production'
     ? requireEnv('VISITOR_HASH_SALT')
     : process.env.VISITOR_HASH_SALT || 'dev-only-visitor-hash-salt'
+
+const flightProviderBaseUrl = getConfiguredFlightProviderBaseUrl()
+const weatherProviderBaseUrl = getConfiguredWeatherProviderBaseUrl()
 
 export const serverEnv = {
   // Server-side site URL for origin checks and canonical host derivation.
@@ -59,7 +75,8 @@ export const serverEnv = {
   // Integration endpoints
   flightProviderMode: process.env.FLIGHT_PROVIDER_MODE || 'airlabs',
   flightProviderLabel: process.env.FLIGHT_PROVIDER_LABEL || 'AirLabs',
-  flightProviderEndpoint: process.env.FLIGHT_PROVIDER_ENDPOINT || 'https://airlabs.co/api/v9',
+  flightProviderEndpoint: flightProviderBaseUrl,
+  flightProviderBaseUrl,
   flightProviderApiKey: process.env.FLIGHT_PROVIDER_API_KEY || '',
   // When set alongside FLIGHT_PROVIDER_API_KEY, the AirLabs adapter authenticates
   // with a short-lived signed signature instead of the raw api_key query param,
@@ -68,7 +85,8 @@ export const serverEnv = {
   flightProviderIataCode: process.env.FLIGHT_PROVIDER_IATA_CODE || 'RRG',
   flightProviderAirlineFilter: process.env.FLIGHT_PROVIDER_AIRLINE_FILTER || '',
   weatherProviderLabel: process.env.WEATHER_PROVIDER_LABEL || 'Open-Meteo Forecast API',
-  weatherProviderEndpoint: process.env.WEATHER_PROVIDER_ENDPOINT || OPEN_METEO_ENDPOINT,
+  weatherProviderEndpoint: weatherProviderBaseUrl,
+  weatherProviderBaseUrl,
   // Plaine Corail Airport ARP coordinates from Mauritius AIP AD 2 FIMR.
   weatherProviderLatitude: readNumber(process.env.WEATHER_PROVIDER_LATITUDE, -19.757778),
   weatherProviderLongitude: readNumber(process.env.WEATHER_PROVIDER_LONGITUDE, 63.361389),

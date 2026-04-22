@@ -9,46 +9,76 @@ import {
   getMiddlewarePathInfo,
   matchesPathPrefix,
 } from '@/lib/middleware-routing'
+import {
+  getConfiguredFlightProviderBaseUrl,
+  getConfiguredWeatherProviderBaseUrl,
+} from '@/lib/provider-endpoints'
+import { getRateLimitKey } from '@/lib/rate-limit'
 
 // ─── Rate Limiting (Redis-backed for multi-instance deployments) ────────────
 // Uses Upstash sliding-window rate limiter shared across all instances.
 // Falls back to in-memory limiter in development when Redis is not configured.
 
-const RATE_LIMIT_MAX = 60 // requests per window
+const PUBLIC_API_RATE_LIMIT_MAX = 60 // requests per window
+const PAYLOAD_API_RATE_LIMIT_MAX = 300 // admin/API traffic can legitimately burst
 const RATE_LIMIT_WINDOW = '60 s'
 
 const upstashUrl = process.env.UPSTASH_REDIS_REST_URL || ''
 const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN || ''
 
-const ratelimit = upstashUrl && upstashToken
-  ? new Ratelimit({
-      redis: new Redis({ url: upstashUrl, token: upstashToken }),
-      limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX, RATE_LIMIT_WINDOW),
-      prefix: 'arl:ratelimit',
-    })
-  : null
+function createRatelimit(max: number, prefix: string): Ratelimit | null {
+  return upstashUrl && upstashToken
+    ? new Ratelimit({
+        redis: new Redis({ url: upstashUrl, token: upstashToken }),
+        limiter: Ratelimit.slidingWindow(max, RATE_LIMIT_WINDOW),
+        prefix,
+      })
+    : null
+}
+
+const publicApiRatelimit = createRatelimit(
+  PUBLIC_API_RATE_LIMIT_MAX,
+  'arl:ratelimit:public-api',
+)
+const payloadApiRatelimit = createRatelimit(
+  PAYLOAD_API_RATE_LIMIT_MAX,
+  'arl:ratelimit:payload-api',
+)
+
+const PUBLIC_API_ROUTES = [
+  '/api/track',
+  '/api/revalidate',
+  '/api/health',
+  '/api/status',
+  '/api/flight-board',
+  '/api/weather',
+] as const
 
 // In-memory fallback for local development (single-process only)
 type RateBucket = { count: number; resetAt: number }
+const DEV_BUCKET_MAX_ENTRIES = 1000
 const devBuckets = new Map<string, RateBucket>()
-let lastCleanup = Date.now()
 
-function devRateLimit(ip: string): { limited: boolean; remaining: number } {
-  const now = Date.now()
-  if (now - lastCleanup > 300_000) {
-    lastCleanup = now
-    for (const [key, bucket] of devBuckets) {
-      if (bucket.resetAt < now) devBuckets.delete(key)
-    }
+function evictOldestDevBucket() {
+  const oldestKey = devBuckets.keys().next().value
+  if (oldestKey !== undefined) {
+    devBuckets.delete(oldestKey)
   }
-  const bucket = devBuckets.get(ip)
+}
+
+function devRateLimit(key: string, max: number): { limited: boolean; remaining: number } {
+  const now = Date.now()
+  const bucket = devBuckets.get(key)
   if (!bucket || bucket.resetAt < now) {
-    devBuckets.set(ip, { count: 1, resetAt: now + 60_000 })
-    return { limited: false, remaining: RATE_LIMIT_MAX - 1 }
+    while (devBuckets.size >= DEV_BUCKET_MAX_ENTRIES) {
+      evictOldestDevBucket()
+    }
+    devBuckets.set(key, { count: 1, resetAt: now + 60_000 })
+    return { limited: false, remaining: max - 1 }
   }
   bucket.count++
-  const remaining = Math.max(0, RATE_LIMIT_MAX - bucket.count)
-  return { limited: bucket.count > RATE_LIMIT_MAX, remaining }
+  const remaining = Math.max(0, max - bucket.count)
+  return { limited: bucket.count > max, remaining }
 }
 
 // ─── Dashboard auth handoff ────────────────────────────────────────────────
@@ -63,14 +93,42 @@ const IS_DEV = process.env.NODE_ENV === 'development'
 
 type CspMode = 'app' | 'admin'
 
+const CSP_IMG_SRC =
+  "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com https://www.gravatar.com https://secure.gravatar.com"
+
+function getUrlOrigin(value: string): string | null {
+  try {
+    return new URL(value).origin
+  } catch {
+    return null
+  }
+}
+
+function buildConnectSrc(): string {
+  const providerOrigins = [
+    getUrlOrigin(getConfiguredWeatherProviderBaseUrl()),
+    getUrlOrigin(getConfiguredFlightProviderBaseUrl()),
+  ].filter((origin): origin is string => Boolean(origin))
+
+  return `connect-src ${Array.from(new Set([
+    "'self'",
+    'https://*.supabase.co',
+    ...providerOrigins,
+  ])).join(' ')}`
+}
+
+// Provider endpoint env vars are read at edge cold start. Change requires
+// container restart; rolling deploys pick up new origins automatically.
+const CSP_CONNECT_SRC = buildConnectSrc()
+
 function buildAppCspHeader(nonce: string): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com`,
+    CSP_IMG_SRC,
     "font-src 'self'",
-    `connect-src 'self' https://*.supabase.co https://api.open-meteo.com https://airlabs.co`,
+    CSP_CONNECT_SRC,
     "frame-src 'self' https://www.google.com https://maps.google.com",
     "frame-ancestors 'self'",
     "base-uri 'self'",
@@ -86,9 +144,9 @@ function buildAdminCspHeader(): string {
     // support, so admin routes intentionally use a looser policy here only.
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com`,
+    CSP_IMG_SRC,
     "font-src 'self'",
-    `connect-src 'self' https://*.supabase.co https://api.open-meteo.com https://airlabs.co`,
+    CSP_CONNECT_SRC,
     "frame-src 'self' https://www.google.com https://maps.google.com",
     "frame-ancestors 'self'",
     "base-uri 'self'",
@@ -145,6 +203,89 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+const JWT_VERIFY_CACHE_TTL_MS = 30_000
+const JWT_VERIFY_CACHE_MAX_ENTRIES = 256
+
+type JwtVerifyCacheEntry = {
+  secret: string
+  expiresAt: number
+}
+
+const jwtVerifyCache = new Map<string, JwtVerifyCacheEntry>()
+const jwtKeyEncoder = new TextEncoder()
+let cachedJwtKeySecret: string | null = null
+let cachedJwtKey: CryptoKey | null = null
+let cachedJwtKeyPromise: Promise<CryptoKey> | null = null
+
+function getCachedJwtVerification(token: string, secret: string): boolean | null {
+  const entry = jwtVerifyCache.get(token)
+  if (!entry) return null
+
+  if (entry.secret !== secret || entry.expiresAt <= Date.now()) {
+    jwtVerifyCache.delete(token)
+    return null
+  }
+
+  jwtVerifyCache.delete(token)
+  jwtVerifyCache.set(token, entry)
+  return true
+}
+
+function setCachedJwtVerification(token: string, secret: string, valid: boolean): void {
+  if (!valid) return
+  const now = Date.now()
+
+  for (const [cachedToken, entry] of jwtVerifyCache) {
+    if (entry.expiresAt <= now) {
+      jwtVerifyCache.delete(cachedToken)
+    }
+  }
+
+  jwtVerifyCache.set(token, {
+    secret,
+    expiresAt: now + JWT_VERIFY_CACHE_TTL_MS,
+  })
+
+  while (jwtVerifyCache.size > JWT_VERIFY_CACHE_MAX_ENTRIES) {
+    const oldestToken = jwtVerifyCache.keys().next().value
+    if (!oldestToken) break
+    jwtVerifyCache.delete(oldestToken)
+  }
+}
+
+async function getJwtVerificationKey(secret: string): Promise<CryptoKey> {
+  if (cachedJwtKey && cachedJwtKeySecret === secret) {
+    return cachedJwtKey
+  }
+
+  if (cachedJwtKeyPromise && cachedJwtKeySecret === secret) {
+    return cachedJwtKeyPromise
+  }
+
+  cachedJwtKeySecret = secret
+  cachedJwtKey = null
+
+  const keySecret = secret
+  cachedJwtKeyPromise = crypto.subtle.importKey(
+    'raw',
+    jwtKeyEncoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify'],
+  ).then((key) => {
+    if (cachedJwtKeySecret === keySecret) {
+      cachedJwtKey = key
+    }
+    return key
+  }).finally(() => {
+    if (cachedJwtKeySecret === keySecret) {
+      cachedJwtKeyPromise = null
+    }
+  })
+
+  return cachedJwtKeyPromise
+}
+
 async function isValidJwt(token: string): Promise<boolean> {
   const parts = token.split('.')
   if (parts.length !== 3) return false
@@ -155,19 +296,19 @@ async function isValidJwt(token: string): Promise<boolean> {
   const secret = process.env.PAYLOAD_SECRET
   if (!secret) return false
 
+  const cachedVerification = getCachedJwtVerification(token, secret)
+  if (cachedVerification !== null) return cachedVerification
+
   try {
-    const encoder = new TextEncoder()
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify'],
-    )
-    const data = encoder.encode(`${headerB64}.${payloadB64}`)
+    const key = await getJwtVerificationKey(secret)
+    const data = jwtKeyEncoder.encode(`${headerB64}.${payloadB64}`)
     const signature = decodeBase64UrlBytes(signatureB64)
 
-    return await crypto.subtle.verify('HMAC', key, signature, data)
+    const valid = await crypto.subtle.verify('HMAC', key, signature, data)
+    // Only cache successful verifications. Caching failures would let an
+    // attacker spam invalid tokens to evict legitimate entries from the LRU.
+    if (valid) setCachedJwtVerification(token, secret, true)
+    return valid
   } catch {
     return false
   }
@@ -180,27 +321,45 @@ function isExpiredJwt(token: string): boolean {
   return typeof exp === 'number' && Number.isFinite(exp) && exp * 1000 <= Date.now()
 }
 
-function getRateLimitKey(request: NextRequest, normalizedPathname: string): string {
-  const IP_PATTERN =
-    /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$|^[a-f0-9:]{3,39}$/i
-  const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? request.headers.get('x-real-ip')?.trim()
+async function checkRateLimit(
+  request: NextRequest,
+  normalizedPathname: string,
+  options: {
+    limiter: Ratelimit | null
+    max: number
+    scope: string
+  },
+): Promise<{ limited: boolean; remaining: number | null }> {
+  const rateLimitKey = getRateLimitKey(request, normalizedPathname)
 
-  if (rawIp && IP_PATTERN.test(rawIp)) {
-    return rawIp
+  if (options.limiter) {
+    try {
+      const result = await options.limiter.limit(rateLimitKey)
+      return {
+        limited: !result.success,
+        remaining: result.remaining,
+      }
+    } catch (error) {
+      logger.error('Rate limit check failed', error, 'middleware')
+      return { limited: false, remaining: null }
+    }
   }
 
-  const fingerprintParts = [
-    request.method,
-    normalizedPathname,
-    request.headers.get('user-agent')?.trim() ?? '',
-    request.headers.get('accept-language')?.trim() ?? '',
-    request.headers.get('accept')?.trim() ?? '',
-    request.headers.get('sec-ch-ua')?.trim() ?? '',
-    request.headers.get('sec-fetch-site')?.trim() ?? '',
-  ].filter((part): part is string => Boolean(part))
+  return devRateLimit(`${options.scope}:${rateLimitKey}`, options.max)
+}
 
-  return `anon:${fingerprintParts.join(':')}`
+function rateLimitResponse(max: number): NextResponse {
+  return NextResponse.json(
+    { ok: false, error: 'Too many requests. Please try again later.' },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': '60',
+        'X-RateLimit-Limit': String(max),
+        'X-RateLimit-Remaining': '0',
+      },
+    },
+  )
 }
 
 function applyCspHeaders(
@@ -281,7 +440,10 @@ function getPreferredLocale(request: NextRequest): string {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const { locale, normalizedPathname } = getMiddlewarePathInfo(pathname)
+  const { locale, normalizedPathname } = getMiddlewarePathInfo(
+    pathname,
+    request.headers.get('host') ?? request.nextUrl.host,
+  )
   const isLocalePrefixed = locale !== null
 
   if (normalizedPathname === '/monitoring' || normalizedPathname.startsWith('/monitoring/')) {
@@ -334,9 +496,8 @@ export async function middleware(request: NextRequest) {
 
   // ── Rate limit public API routes ──────────────────────────────────────
   // Only throttle the explicitly defined public API endpoints.
-  // All other /api/* traffic is Payload's REST catch-all (admin/editor use)
-  // and must not be rate-limited.
-  const PUBLIC_API_ROUTES = ['/api/track', '/api/revalidate', '/api/health', '/api/flight-board', '/api/weather']
+  // Remaining /api/* traffic is Payload's REST catch-all (admin/editor use)
+  // and gets a higher per-IP limit below so admin traffic is not unbounded.
   const isPublicApiRoute = PUBLIC_API_ROUTES.some(
     (route) => normalizedPathname === route || normalizedPathname.startsWith(`${route}/`),
   )
@@ -347,50 +508,46 @@ export async function middleware(request: NextRequest) {
     // advisory rather than authoritative. When no trusted IP is available, use
     // a stable fingerprint so repeated anonymous requests from the same
     // client share a limiter bucket without relying on trusted IP headers.
-    const rateLimitKey = getRateLimitKey(request, normalizedPathname)
-
-    let limited = false
-    let remaining: number | null = null
-
-    if (ratelimit) {
-      try {
-        const result = await ratelimit.limit(rateLimitKey)
-        limited = !result.success
-        remaining = result.remaining
-      } catch (error) {
-        logger.error('Rate limit check failed', error, 'middleware')
-        limited = false
-        remaining = null
-      }
-    } else {
-      const result = devRateLimit(rateLimitKey)
-      limited = result.limited
-      remaining = result.remaining
-    }
+    const { limited, remaining } = await checkRateLimit(request, normalizedPathname, {
+      limiter: publicApiRatelimit,
+      max: PUBLIC_API_RATE_LIMIT_MAX,
+      scope: 'public-api',
+    })
 
     if (limited) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please try again later.' },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': '60',
-            'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
-            'X-RateLimit-Remaining': '0',
-          },
-        },
-      )
+      return rateLimitResponse(PUBLIC_API_RATE_LIMIT_MAX)
     }
 
     const response = buildRouteResponse()
     if (remaining !== null) {
-      response.headers.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX))
+      response.headers.set('X-RateLimit-Limit', String(PUBLIC_API_RATE_LIMIT_MAX))
       response.headers.set('X-RateLimit-Remaining', String(remaining))
     }
     return response
   }
 
-  // ── Dashboard auth handoff ────────────────────────────────────────────
+  // Rate limit Payload REST catch-all routes without blocking login/admin access.
+  if (matchesPathPrefix(normalizedPathname, '/api')) {
+    const { limited, remaining } = await checkRateLimit(request, normalizedPathname, {
+      limiter: payloadApiRatelimit,
+      max: PAYLOAD_API_RATE_LIMIT_MAX,
+      scope: 'payload-api',
+    })
+
+    if (limited) {
+      return rateLimitResponse(PAYLOAD_API_RATE_LIMIT_MAX)
+    }
+
+    const response = buildRouteResponse()
+    if (remaining !== null) {
+      response.headers.set('X-RateLimit-Limit', String(PAYLOAD_API_RATE_LIMIT_MAX))
+      response.headers.set('X-RateLimit-Remaining', String(remaining))
+    }
+    response.headers.set('Cache-Control', 'private, no-store')
+    return response
+  }
+
+  // Dashboard auth handoff
   // Payload stores auth in a JWT cookie named `payload-token`. Middleware
   // verifies the signature before using the expiry shortcut. Section and role
   // access are still enforced server-side in the dashboard auth helpers after

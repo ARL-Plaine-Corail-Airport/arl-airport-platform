@@ -19,13 +19,33 @@ const redis =
 
 // In-memory fallback for development (single-process only)
 export const DEV_MEM_CACHE_MAX_ENTRIES = 100
-const memCache = new Map<string, { data: string; expiresAt: number }>()
-const inFlightFetches = new Map<string, Promise<unknown>>()
+const MEM_CACHE_REFRESH_RETRY_AFTER_MS = 15_000
+type MemCacheEntry = {
+  data: string
+  expiresAt: number
+  lastAccessed: number
+  refreshFailedAt?: number
+}
+
+type InFlightFetch = {
+  promise: Promise<unknown>
+  background: boolean
+}
+
+const memCache = new Map<string, MemCacheEntry>()
+const inFlightFetches = new Map<string, InFlightFetch>()
+
+function isRefreshFailureBackoffActive(entry: MemCacheEntry, now: number): boolean {
+  return (
+    entry.refreshFailedAt !== undefined &&
+    now - entry.refreshFailedAt < MEM_CACHE_REFRESH_RETRY_AFTER_MS
+  )
+}
 
 function pruneExpiredMemCache(now: number) {
   const staleKeys: string[] = []
   for (const [key, entry] of memCache) {
-    if (entry.expiresAt <= now) {
+    if (entry.expiresAt <= now && !isRefreshFailureBackoffActive(entry, now)) {
       staleKeys.push(key)
     }
   }
@@ -36,23 +56,43 @@ function pruneExpiredMemCache(now: number) {
 
 function setMemCacheEntry(
   cacheKey: string,
-  value: { data: string; expiresAt: number },
+  value: Omit<MemCacheEntry, 'lastAccessed'>,
 ) {
-  pruneExpiredMemCache(Date.now())
+  const now = Date.now()
+  pruneExpiredMemCache(now)
 
   if (!memCache.has(cacheKey)) {
     while (memCache.size >= DEV_MEM_CACHE_MAX_ENTRIES) {
-      const oldestKey = memCache.keys().next().value
-      if (oldestKey === undefined) break
-      memCache.delete(oldestKey)
+      let lruKey: string | undefined
+      let lruAccessedAt = Number.POSITIVE_INFINITY
+
+      for (const [key, entry] of memCache) {
+        if (entry.lastAccessed < lruAccessedAt) {
+          lruAccessedAt = entry.lastAccessed
+          lruKey = key
+        }
+      }
+
+      if (lruKey === undefined) break
+      memCache.delete(lruKey)
     }
   }
 
-  memCache.set(cacheKey, value)
+  memCache.set(cacheKey, { ...value, lastAccessed: now })
 }
 
-function refreshMemCacheEntry(cacheKey: string, entry: { data: string; expiresAt: number }) {
-  memCache.delete(cacheKey)
+function touchMemCacheEntry(cacheKey: string, entry: MemCacheEntry, now = Date.now()) {
+  entry.lastAccessed = now
+  memCache.set(cacheKey, entry)
+}
+
+function markMemCacheRefreshFailure(cacheKey: string) {
+  const entry = memCache.get(cacheKey)
+  if (!entry) return
+
+  const now = Date.now()
+  entry.refreshFailedAt = now
+  entry.lastAccessed = now
   memCache.set(cacheKey, entry)
 }
 
@@ -87,14 +127,20 @@ function trackInFlightFetch<T>(
           `Background cache refresh failed for ${cacheKey}: ${error instanceof Error ? error.message : String(error)}`,
           'cache',
         )
+        markMemCacheRefreshFailure(cacheKey)
         return undefined as T
       })
     : fetchPromise
 
-  inFlightFetches.set(cacheKey, trackedPromise)
+  const trackedFetch: InFlightFetch = {
+    promise: trackedPromise,
+    background: options?.background ?? false,
+  }
+
+  inFlightFetches.set(cacheKey, trackedFetch)
 
   trackedPromise.finally(() => {
-    if (inFlightFetches.get(cacheKey) === trackedPromise) {
+    if (inFlightFetches.get(cacheKey) === trackedFetch) {
       inFlightFetches.delete(cacheKey)
     }
   })
@@ -142,7 +188,10 @@ export async function cachedFetch<T>(
   const cacheKey = `arl:cache:${key}`
   // Safe cast: each cache key must be associated with one fetcher result shape.
   // Callers must not reuse a key for different data contracts.
-  const inFlight = inFlightFetches.get(cacheKey) as Promise<T> | undefined
+  const trackedFetch = inFlightFetches.get(cacheKey)
+  const inFlight = trackedFetch?.background
+    ? undefined
+    : trackedFetch?.promise as Promise<T> | undefined
 
   // Try reading from cache
   if (redis) {
@@ -157,15 +206,25 @@ export async function cachedFetch<T>(
   } else {
     const entry = memCache.get(cacheKey)
     if (entry) {
+      const now = Date.now()
       const cached = deserializeCachedValue<T>(entry.data)
 
-      if (entry.expiresAt > Date.now()) {
+      if (entry.expiresAt > now) {
         if (cached !== undefined) {
-          refreshMemCacheEntry(cacheKey, entry)
+          touchMemCacheEntry(cacheKey, entry, now)
           return cached
         }
       } else if (cached !== undefined) {
-        if (!inFlight) {
+        if (isRefreshFailureBackoffActive(entry, now)) {
+          touchMemCacheEntry(cacheKey, entry, now)
+          return cached
+        }
+
+        if (entry.refreshFailedAt) {
+          delete entry.refreshFailedAt
+        }
+
+        if (!trackedFetch) {
           void trackInFlightFetch(
             cacheKey,
             runFetchAndStore(cacheKey, ttlSeconds, fetcher, options),
@@ -173,7 +232,7 @@ export async function cachedFetch<T>(
           )
         }
 
-        refreshMemCacheEntry(cacheKey, entry)
+        touchMemCacheEntry(cacheKey, entry, now)
         return cached
       }
     }
@@ -181,6 +240,10 @@ export async function cachedFetch<T>(
 
   if (inFlight) {
     return inFlight
+  }
+
+  if (inFlightFetches.get(cacheKey)?.background) {
+    inFlightFetches.delete(cacheKey)
   }
 
   // Cache miss - fetch fresh data

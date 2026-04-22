@@ -2,7 +2,7 @@
 
 import { useI18n } from '@/i18n/provider'
 import { formatDateTime } from '@/lib/date'
-import type { FlightBoardResponse } from '@/lib/integrations/flights/types'
+import type { FlightBoardResponse, FlightRecord } from '@/lib/integrations/flights/types'
 import { statusBadgeClass, statusBadgeLabel } from '@/lib/flight-status'
 
 type FlightBoardProps = {
@@ -73,7 +73,7 @@ export function FlightBoard({ data }: FlightBoardProps) {
         {t('flights.last_updated')} {formatDateTime(data.fetchedAt, locale)}
       </p>
 
-      <div className="flight-table-desktop">
+      <div className="flight-table-desktop" role="region" aria-label="Flight data">
         <div className="table-wrapper">
           <table>
             <thead>
@@ -87,7 +87,7 @@ export function FlightBoard({ data }: FlightBoardProps) {
               </tr>
             </thead>
             <tbody>
-              {data.records.map((record: any) => (
+              {data.records.map((record: FlightRecord) => (
                 <tr key={record.id}>
                   <td>{record.airline}</td>
                   <td>{record.flightNumber}</td>
@@ -106,15 +106,21 @@ export function FlightBoard({ data }: FlightBoardProps) {
         </div>
       </div>
 
-      <div className="flight-list-mobile">
-        {data.records.map((record: any) => {
+      {/* eslint-disable-next-line jsx-a11y/no-redundant-roles -- audit requires explicit list semantics for mobile cards */}
+      <ul
+        className="flight-list-mobile"
+        role="list"
+        aria-label="Flight data"
+        style={{ listStyle: 'none', margin: 0, padding: 0 }}
+      >
+        {data.records.map((record: FlightRecord) => {
           const isDelayed =
             record.estimatedTime &&
             record.scheduledTime &&
             record.estimatedTime !== record.scheduledTime
 
           return (
-            <div key={record.id} className="flight-mobile-card">
+            <li key={record.id} className="flight-mobile-card">
               <div className="flight-mobile-card__top">
                 <div>
                   <p className="flight-row__number">{record.flightNumber}</p>
@@ -138,10 +144,10 @@ export function FlightBoard({ data }: FlightBoardProps) {
                   </div>
                 ) : null}
               </div>
-            </div>
+            </li>
           )
         })}
-      </div>
+      </ul>
     </section>
   )
 }

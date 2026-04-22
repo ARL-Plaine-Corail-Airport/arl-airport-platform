@@ -17,12 +17,9 @@
   --app-header-height: var(--p-header-h);
 }
 
-html,
-body {
+html:has(.template-default),
+body:has(.template-default) {
   background: var(--theme-bg);
-}
-
-body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   color: var(--theme-text);
@@ -47,20 +44,8 @@ body {
   Keep the admin shell flexible without forcing widths onto individual fields.
   Payload's own component CSS should own the form layout.
 */
-.template-default__wrap,
-.template-default__wrap > *,
-.collection-edit,
-.collection-edit__main,
-.collection-edit__form,
-.document-fields,
-.document-fields__main,
-.document-fields__edit,
-.document-fields__fields,
-.render-fields,
-.render-fields > *,
-.field-type,
-.tabs-field,
-.group-field {
+.template-default,
+.template-default__wrap {
   min-width: 0;
 }
 
@@ -157,6 +142,7 @@ body {
 }
 
 .nav-collapse-btn {
+  opacity: 0;
   position: fixed;
   left: calc(var(--p-sidebar-w) - 12px);
   top: calc(var(--p-header-h) + 20px);
@@ -175,8 +161,14 @@ body {
   z-index: var(--arl-z-toggle);
   transition:
     left var(--arl-duration-slow) var(--arl-ease-default),
+    opacity var(--arl-duration-base) var(--arl-ease-default),
     color var(--arl-duration-base) var(--arl-ease-default),
     box-shadow var(--arl-duration-base) var(--arl-ease-default);
+}
+
+html:not(.nav-collapsed) .nav-collapse-btn,
+html.nav-collapsed .nav-collapse-btn {
+  opacity: 1;
 }
 
 .nav-collapse-btn:hover {
@@ -191,28 +183,16 @@ body {
 }
 
 @media (min-width: 769px) {
-  .template-default,
-  .template-default--nav-hydrated,
-  .template-default--nav-hydrated.template-default--nav-open,
-  .template-default--nav-open {
-    grid-template-columns: var(--p-sidebar-w) minmax(0, 1fr) !important;
+  html.nav-collapsed .template-default {
+    grid-template-columns: 0 minmax(0, 1fr);
   }
-
-  .template-default__nav-toggler-wrapper {
-    display: none;
-  }
-
-  html.nav-collapsed .template-default,
-  html.nav-collapsed .template-default--nav-hydrated,
-  html.nav-collapsed .template-default--nav-hydrated.template-default--nav-open,
-  html.nav-collapsed .template-default--nav-open {
-    grid-template-columns: 0 minmax(0, 1fr) !important;
-  }
-
   html.nav-collapsed .nav {
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
+  }
+  .template-default__nav-toggler-wrapper {
+    display: none;
   }
 }
 

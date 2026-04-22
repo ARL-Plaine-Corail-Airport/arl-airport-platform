@@ -4,6 +4,8 @@ const originalNodeEnv = process.env.NODE_ENV
 const originalUpstashUrl = process.env.UPSTASH_REDIS_REST_URL
 const originalUpstashToken = process.env.UPSTASH_REDIS_REST_TOKEN
 const originalPayloadSecret = process.env.PAYLOAD_SECRET
+const originalFlightProviderEndpoint = process.env.FLIGHT_PROVIDER_ENDPOINT
+const originalWeatherProviderEndpoint = process.env.WEATHER_PROVIDER_ENDPOINT
 const testPayloadSecret = 'middleware-test-payload-secret-min-32-characters'
 const loggerError = vi.fn()
 
@@ -84,6 +86,8 @@ describe('middleware security', () => {
     restoreEnv('UPSTASH_REDIS_REST_URL', originalUpstashUrl)
     restoreEnv('UPSTASH_REDIS_REST_TOKEN', originalUpstashToken)
     restoreEnv('PAYLOAD_SECRET', originalPayloadSecret)
+    restoreEnv('FLIGHT_PROVIDER_ENDPOINT', originalFlightProviderEndpoint)
+    restoreEnv('WEATHER_PROVIDER_ENDPOINT', originalWeatherProviderEndpoint)
     vi.resetModules()
     vi.restoreAllMocks()
     loggerError.mockReset()
@@ -93,10 +97,30 @@ describe('middleware security', () => {
     const { middleware, NextRequest } = await loadProductionSecurityModules()
 
     const response = await middleware(new NextRequest('http://localhost/en/contact'))
+    const csp = response.headers.get('Content-Security-Policy')
 
-    expect(response.headers.get('Content-Security-Policy')).toContain(
-      "script-src 'self' 'nonce-",
+    expect(csp).toContain("script-src 'self' 'nonce-")
+    expect(csp).toContain(
+      "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com https://www.gravatar.com https://secure.gravatar.com",
     )
+    expect(csp).toContain(
+      "connect-src 'self' https://*.supabase.co https://api.open-meteo.com https://airlabs.co",
+    )
+  })
+
+  it('derives CSP connect-src provider origins from configured endpoints', async () => {
+    process.env.FLIGHT_PROVIDER_ENDPOINT = 'https://flight-provider.example/api/v1'
+    process.env.WEATHER_PROVIDER_ENDPOINT = 'https://weather-provider.example/forecast'
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+
+    const response = await middleware(new NextRequest('http://localhost/en/contact'))
+    const csp = response.headers.get('Content-Security-Policy')
+
+    expect(csp).toContain(
+      "connect-src 'self' https://*.supabase.co https://weather-provider.example https://flight-provider.example",
+    )
+    expect(csp).not.toContain('https://api.open-meteo.com')
+    expect(csp).not.toContain('https://airlabs.co')
   })
 
   it('sets production locale cookies with the secure flag', async () => {
@@ -134,9 +158,11 @@ describe('middleware security', () => {
     const { middleware, NextRequest } = await loadProductionSecurityModules()
 
     const response = await middleware(new NextRequest('http://localhost/admin/login'))
+    const csp = response.headers.get('Content-Security-Policy')
 
-    expect(response.headers.get('Content-Security-Policy')).toContain(
-      "script-src 'self' 'unsafe-inline'",
+    expect(csp).toContain("script-src 'self' 'unsafe-inline'")
+    expect(csp).toContain(
+      "img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com https://www.gravatar.com https://secure.gravatar.com",
     )
     expect(response.headers.get('x-nonce')).toBeNull()
   })
@@ -218,6 +244,83 @@ describe('middleware security', () => {
     expect(response.status).toBe(200)
     expect(response.headers.get('location')).toBeNull()
     expect(response.headers.get('Cache-Control')).toBe('private, no-store')
+  })
+
+  it('caches dashboard JWT verification for repeated token checks', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+    const payloadToken = await buildSignedJwt({
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    })
+    const verifySpy = vi.spyOn(crypto.subtle, 'verify')
+
+    const firstResponse = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${payloadToken}`,
+      },
+    }))
+    const secondResponse = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${payloadToken}`,
+      },
+    }))
+
+    expect(firstResponse.status).toBe(200)
+    expect(secondResponse.status).toBe(200)
+    expect(verifySpy).toHaveBeenCalledOnce()
+  })
+
+  it('reuses the imported dashboard JWT key across different tokens for one secret', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+    const expiresAt = Math.floor(Date.now() / 1000) + 3600
+    const firstToken = await buildSignedJwt({ exp: expiresAt, jti: 'first-token' })
+    const secondToken = await buildSignedJwt({ exp: expiresAt, jti: 'second-token' })
+    const importKeySpy = vi.spyOn(crypto.subtle, 'importKey')
+    const verifySpy = vi.spyOn(crypto.subtle, 'verify')
+
+    const firstResponse = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${firstToken}`,
+      },
+    }))
+    const secondResponse = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${secondToken}`,
+      },
+    }))
+
+    expect(firstResponse.status).toBe(200)
+    expect(secondResponse.status).toBe(200)
+    expect(verifySpy).toHaveBeenCalledTimes(2)
+    expect(importKeySpy).toHaveBeenCalledOnce()
+  })
+
+  it('refreshes the imported dashboard JWT key when the secret changes', async () => {
+    const rotatedSecret = 'rotated-middleware-test-secret-min-32-characters'
+    const expiresAt = Math.floor(Date.now() / 1000) + 3600
+    const firstToken = await buildSignedJwt({ exp: expiresAt, jti: 'before-rotate' })
+    const secondToken = await buildSignedJwt(
+      { exp: expiresAt, jti: 'after-rotate' },
+      rotatedSecret,
+    )
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+    const importKeySpy = vi.spyOn(crypto.subtle, 'importKey')
+
+    const firstResponse = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${firstToken}`,
+      },
+    }))
+
+    process.env.PAYLOAD_SECRET = rotatedSecret
+    const secondResponse = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        cookie: `payload-token=${secondToken}`,
+      },
+    }))
+
+    expect(firstResponse.status).toBe(200)
+    expect(secondResponse.status).toBe(200)
+    expect(importKeySpy).toHaveBeenCalledTimes(2)
   })
 
   it('fails open when the Upstash rate limiter throws', async () => {

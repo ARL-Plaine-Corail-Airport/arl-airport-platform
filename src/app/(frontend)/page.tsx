@@ -20,6 +20,7 @@ import {
 import { getFlightBoard } from '@/lib/integrations/flights'
 import { getWeatherSnapshot } from '@/lib/integrations/weather'
 import { buildFrontendMetadata } from '@/lib/metadata'
+import type { NewsEvent, Notice } from '@/payload-types'
 
 export const revalidate = 60
 
@@ -134,7 +135,7 @@ export default async function HomePage() {
           {/* Notices slider */}
           {notices.length > 0 ? (
             <ContentSlider label={d.notices_title} viewAllHref={lp('/notices')} viewAllLabel={d.all_notices}>
-              {notices.map((notice: any) => (
+              {notices.map((notice: Notice) => (
                 <Link key={notice.id} href={lp(`/notices/${notice.slug}`)} className="slider-card">
                   <div className="slider-card__meta">
                     {notice.category && <span className="pill">{dict.notice_categories?.[notice.category as keyof typeof dict.notice_categories] ?? notice.category}</span>}
@@ -154,7 +155,7 @@ export default async function HomePage() {
           {/* News & Events slider */}
           {newsItems.length > 0 ? (
             <ContentSlider label={d.news_title} viewAllHref={lp('/news-events')} viewAllLabel={d.all_news}>
-              {newsItems.map((item: any) => (
+              {newsItems.map((item: NewsEvent) => (
                 <Link key={item.id} href={lp(`/news-events/${item.slug}`)} className="slider-card">
                   <div className="slider-card__meta">
                     {item.type && <span className="pill">{dict.news_types?.[item.type as keyof typeof dict.news_types] ?? item.type}</span>}

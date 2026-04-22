@@ -15,6 +15,10 @@ import { logger } from '@/lib/logger'
 // Module-level singleton to avoid creating a new client on every call
 let _client: SupabaseClient | null = null
 
+function getRuntimeEnv(name: string): string | undefined {
+  return process.env[name]
+}
+
 /**
  * Returns a singleton Supabase client configured with the service role key.
  * This client has admin-level access - use only in server-side code.
@@ -22,12 +26,12 @@ let _client: SupabaseClient | null = null
 export function getSupabaseAdminClient(): SupabaseClient {
   if (_client) return _client
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const url = getRuntimeEnv('SUPABASE_URL') || getRuntimeEnv('NEXT_PUBLIC_SUPABASE_URL')
+  const key = getRuntimeEnv('SUPABASE_SERVICE_ROLE_KEY')
 
   if (!url || !key) {
     throw new Error(
-      '[supabase-client] NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set. ' +
+      '[supabase-client] SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY must be set. ' +
       'These are server-only variables.',
     )
   }
@@ -48,6 +52,14 @@ export function getSupabaseAdminClient(): SupabaseClient {
 // -----------------------------------------------------------------------------
 
 const SIGNED_URL_EXPIRY_SECONDS = 3600 // 1 hour
+const SIGNED_URL_TIMEOUT_MS = 10_000
+
+export class SignedUrlTimeoutError extends Error {
+  constructor(bucket: string, path: string) {
+    super(`Signed URL generation timed out for ${bucket}/${path}`)
+    this.name = 'SignedUrlTimeoutError'
+  }
+}
 
 /**
  * Generates a time-limited signed URL for a private document.
@@ -56,6 +68,8 @@ const SIGNED_URL_EXPIRY_SECONDS = 3600 // 1 hour
  * @param bucket  Bucket name (use BUCKETS.protectedDocs)
  * @param path    Object path within the bucket (e.g. "notices/2024-communique-01.pdf")
  * @param expiresIn Expiry in seconds (default: 3600)
+ * @throws SignedUrlTimeoutError if Supabase does not respond within 10s.
+ * @throws Error on any other Supabase failure.
  */
 export async function getSignedURL(
   bucket: string,
@@ -69,15 +83,15 @@ export async function getSignedURL(
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
-      reject(new Error(`Signed URL generation timed out for ${bucket}/${path}`))
-    }, 10_000)
+      reject(new SignedUrlTimeoutError(bucket, path))
+    }, SIGNED_URL_TIMEOUT_MS)
   })
 
   try {
     const { data, error } = await Promise.race([
       signedUrlPromise,
       timeoutPromise,
-    ]) as Awaited<typeof signedUrlPromise>
+    ])
 
     if (error || !data?.signedUrl) {
       throw new Error(

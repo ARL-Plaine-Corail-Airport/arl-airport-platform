@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       'flight-board',
     )
     return NextResponse.json(
-      { error: 'Invalid request' },
+      { ok: false, error: 'Invalid request' },
       {
         status: 400,
         headers: { 'Cache-Control': 'no-store' },
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     if (!payload) {
       return NextResponse.json(
-        { error: 'Board type unavailable' },
+        { ok: false, error: 'Board type unavailable' },
         {
           status: 502,
           headers: {
@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Redis caches the boards (2600s) and CDN re-caches the response (2600s).
     return NextResponse.json(payload, {
       headers: {
         'Cache-Control': boards.degraded
@@ -56,9 +57,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error('Failed to fetch flight board', error, 'flight-board')
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { ok: false, error: 'Flight data temporarily unavailable', degraded: true },
       {
-        status: 500,
+        status: 503,
         headers: {
           'Cache-Control': 'no-store',
         },

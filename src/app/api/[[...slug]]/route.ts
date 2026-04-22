@@ -1,8 +1,14 @@
 import config from '@payload-config'
 import { REST_DELETE, REST_GET, REST_PATCH, REST_POST, REST_PUT } from '@payloadcms/next/routes'
 
-export const GET = REST_GET(config)
-export const POST = REST_POST(config)
-export const PATCH = REST_PATCH(config)
-export const DELETE = REST_DELETE(config)
-export const PUT = REST_PUT(config)
+const restGet = REST_GET(config)
+const restPost = REST_POST(config)
+const restPatch = REST_PATCH(config)
+const restDelete = REST_DELETE(config)
+const restPut = REST_PUT(config)
+
+export const GET = restGet
+export const POST = restPost
+export const PATCH = restPatch
+export const DELETE = restDelete
+export const PUT = restPut

@@ -38,5 +38,7 @@ export function RichText({ data, className }: { data: any; className?: string })
     )
   }
 
+  // Trust boundary: Payload's Lexical React renderer escapes text nodes by default;
+  // the configured richText fields do not enable raw HTML nodes.
   return <PayloadRichText data={data} className={resolvedClassName} />
 }

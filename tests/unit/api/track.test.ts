@@ -30,6 +30,13 @@ function hashVisitorForTest(ip: string, salt: string): string {
   return createHash('sha256').update(`${salt}:${ip}:${date}`).digest('hex')
 }
 
+function hashFingerprintForTest(userAgent: string, acceptLanguage: string | null, salt: string): string {
+  const date = new Date().toISOString().slice(0, 10)
+  return createHash('sha256')
+    .update(`${salt}:fingerprint:${userAgent}:${acceptLanguage ?? ''}:${date}`)
+    .digest('hex')
+}
+
 describe('track route', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -92,7 +99,7 @@ describe('track route', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(403)
-    await expect(response.text()).resolves.toBe('')
+    await expect(response.json()).resolves.toEqual({ ok: false, error: 'Forbidden' })
     expect(getPayloadClient).not.toHaveBeenCalled()
     expect(createMock).not.toHaveBeenCalled()
   })
@@ -205,7 +212,7 @@ describe('track route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(400)
-    expect(body).toEqual({ error: 'Invalid request' })
+    expect(body).toEqual({ ok: false, error: 'Invalid request' })
     expect(getPayloadClient).not.toHaveBeenCalled()
   })
 
@@ -251,8 +258,10 @@ describe('track route', () => {
     expect(firstCall?.data.visitorHash).toBe(secondCall?.data.visitorHash)
   })
 
-  it('rejects malformed IPv6 candidates and hashes the fallback unknown identity', async () => {
+  it('rejects malformed IPv6 candidates and falls back to a fingerprint visitor hash', async () => {
     getPayloadClient.mockResolvedValue({ create: createMock })
+    const userAgent = 'FingerprintTest/1.0'
+    const acceptLanguage = 'fr-FR,fr;q=0.9'
 
     const request = new NextRequest('http://localhost/api/track', {
       method: 'POST',
@@ -263,6 +272,8 @@ describe('track route', () => {
       headers: {
         'content-type': 'application/json',
         'sec-fetch-site': 'same-origin',
+        'user-agent': userAgent,
+        'accept-language': acceptLanguage,
         'x-forwarded-for': '2001:db8:::1',
       },
     })
@@ -272,7 +283,35 @@ describe('track route', () => {
     expect(response.status).toBe(201)
     expect(createMock).toHaveBeenCalledTimes(1)
     expect(createMock.mock.calls[0]?.[0].data.visitorHash).toBe(
-      hashVisitorForTest('unknown', 'test-visitor-hash-salt'),
+      hashFingerprintForTest(userAgent, acceptLanguage, 'test-visitor-hash-salt'),
+    )
+  })
+
+  it('uses the same daily fingerprint visitor hash when IP headers are missing', async () => {
+    getPayloadClient.mockResolvedValue({ create: createMock })
+    const userAgent = 'FingerprintTest/2.0'
+    const acceptLanguage = 'en-US,en;q=0.9'
+
+    const request = new NextRequest('http://localhost/api/track', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'pageview',
+        path: '/en/contact',
+      }),
+      headers: {
+        'content-type': 'application/json',
+        'sec-fetch-site': 'same-origin',
+        'user-agent': userAgent,
+        'accept-language': acceptLanguage,
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(201)
+    expect(createMock).toHaveBeenCalledTimes(1)
+    expect(createMock.mock.calls[0]?.[0].data.visitorHash).toBe(
+      hashFingerprintForTest(userAgent, acceptLanguage, 'test-visitor-hash-salt'),
     )
   })
 
@@ -298,7 +337,7 @@ describe('track route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(500)
-    expect(body).toEqual({ ok: false })
+    expect(body).toEqual({ ok: false, error: 'Track event failed' })
     expect(loggerError).toHaveBeenCalledWith('Failed to record page view', error, 'track')
   })
 })

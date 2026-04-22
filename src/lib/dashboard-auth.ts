@@ -2,9 +2,10 @@ import 'server-only'
 
 import { cache } from 'react'
 
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
+import { defaultLocale, isValidLocale, type Locale } from '@/i18n/config'
 import {
   canAccessAny,
   getInitials,
@@ -14,12 +15,9 @@ import {
 } from '@/lib/dashboard'
 import type { DashboardRole } from '@/lib/dashboard'
 import { getPayloadClient } from '@/lib/payload'
+import type { User } from '@/payload-types'
 
-type DashboardUser = {
-  email?: string | null
-  fullName?: string | null
-  roles: string[]
-} & Record<string, unknown>
+type DashboardUser = User & { roles: string[] }
 
 function isDashboardUser(user: unknown): user is DashboardUser {
   if (!user || typeof user !== 'object') {
@@ -39,6 +37,15 @@ export type DashboardSession = {
   initials: string
   roleLabel: string
   roleBadgeClass: string
+  locale: Locale
+}
+
+function resolveDashboardLocale(user: DashboardUser, cookieLocale: string): Locale {
+  if (user.preferredLocale && isValidLocale(user.preferredLocale)) {
+    return user.preferredLocale
+  }
+  if (isValidLocale(cookieLocale)) return cookieLocale
+  return defaultLocale
 }
 
 export const getDashboardSession = cache(async (): Promise<DashboardSession> => {
@@ -61,7 +68,9 @@ export const getDashboardSession = cache(async (): Promise<DashboardSession> => 
   if (!primaryRole) {
     redirect('/admin')
   }
-  const fullName = dashboardUser.fullName || dashboardUser.email || 'User'
+  const fullName = dashboardUser.fullName?.trim() || dashboardUser.email || 'User'
+  const requestCookies = await cookies()
+  const locale = resolveDashboardLocale(dashboardUser, requestCookies.get('locale')?.value ?? '')
 
   return {
     user: dashboardUser,
@@ -71,6 +80,7 @@ export const getDashboardSession = cache(async (): Promise<DashboardSession> => 
     initials: getInitials(fullName),
     roleLabel: getRoleLabel(primaryRole),
     roleBadgeClass: getRoleBadgeClass(primaryRole),
+    locale,
   }
 })
 

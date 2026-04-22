@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { requireDashboardSectionAccess } from '@/lib/dashboard-auth'
 import { getPayloadClient } from '@/lib/payload'
-import { getFlightBoard } from '@/lib/integrations/flights'
+import { cachedFetch } from '@/lib/cache'
+import { getFlightBoards } from '@/lib/integrations/flights'
 import { logger } from '@/lib/logger'
 import { formatDate } from '@/lib/date'
 import type { Notice } from '@/payload-types'
@@ -38,6 +39,8 @@ const STATUS_BADGE: Record<string, string> = {
   expired: 'badge-muted',
   archived: 'badge-muted',
 }
+
+const unavailableValue = '\u2014'
 
 function countDelayed(records: Array<{ remarks?: string | null }>): number {
   return records.filter((record) => {
@@ -161,38 +164,26 @@ function AlertIcon() {
   )
 }
 
-function ActivityDot({ type }: { type: 'create' | 'update' | 'delete' | 'publish' }) {
-  const icons: Record<string, React.ReactNode> = {
-    create: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-    ),
-    update: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-      </svg>
-    ),
-    delete: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3 6 5 6 21 6" />
-        <path d="M19 6l-1 14H6L5 6" />
-        <path d="M10 11v6" /><path d="M14 11v6" />
-        <path d="M9 6V4h6v2" />
-      </svg>
-    ),
-    publish: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    ),
-  }
-  return <div className={`activity-dot ${type}`}>{icons[type]}</div>
+function DegradedDataBanner({ sources }: { sources: string[] }) {
+  if (sources.length === 0) return null
+
+  return (
+    <div
+      role="status"
+      style={{
+        border: '1px solid #f59e0b',
+        background: '#fffbeb',
+        color: '#92400e',
+        borderRadius: 8,
+        padding: '0.875rem 1rem',
+        marginBottom: '1rem',
+        fontSize: '0.875rem',
+      }}
+    >
+      <strong>Dashboard data is degraded.</strong>{' '}
+      Could not load {sources.join(', ')}. Unavailable values are shown as {unavailableValue}.
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -205,10 +196,10 @@ export default async function DashboardOverviewPage() {
 
   // Fetch data with fallbacks
   let recentNotices: Notice[] = []
-  let totalNotices = 0
-  let activeNotices = 0
-  let emergencyBanners = 0
-  let userCount = 0
+  let totalNotices: number | null = null
+  let activeNotices: number | null = null
+  let emergencyBanners: number | null = null
+  let userCount: number | null = null
 
   let arrivalsBoard = { configured: false, records: [] as Array<{ remarks?: string | null }> }
   let departuresBoard = { configured: false, records: [] as Array<{ remarks?: string | null }> }
@@ -219,8 +210,7 @@ export default async function DashboardOverviewPage() {
     activeNoticesResult,
     emergencyBannersResult,
     usersResult,
-    arrivalsResult,
-    departuresResult,
+    boardsResult,
   ] = await Promise.allSettled([
     payload.find({
       collection: 'notices',
@@ -258,31 +248,38 @@ export default async function DashboardOverviewPage() {
       collection: 'users',
       overrideAccess: true,
     }),
-    getFlightBoard('arrivals'),
-    getFlightBoard('departures'),
+    cachedFetch('flights:rotations', 2600, getFlightBoards, {
+      shouldCache: (data) => !data.degraded,
+    }),
   ])
+
+  const degradedSources: string[] = []
 
   if (recentNoticesResult.status === 'fulfilled') {
     recentNotices = recentNoticesResult.value.docs
   } else {
+    degradedSources.push('recent notices')
     logger.error('Failed to fetch recent notices', recentNoticesResult.reason, 'dashboard')
   }
 
   if (totalNoticesResult.status === 'fulfilled') {
     totalNotices = totalNoticesResult.value.totalDocs
   } else {
+    degradedSources.push('total notices')
     logger.error('Failed to fetch total notices count', totalNoticesResult.reason, 'dashboard')
   }
 
   if (activeNoticesResult.status === 'fulfilled') {
     activeNotices = activeNoticesResult.value.totalDocs
   } else {
+    degradedSources.push('active notices')
     logger.error('Failed to fetch active notices count', activeNoticesResult.reason, 'dashboard')
   }
 
   if (emergencyBannersResult.status === 'fulfilled') {
     emergencyBanners = emergencyBannersResult.value.totalDocs
   } else {
+    degradedSources.push('emergency banners')
     logger.error(
       'Failed to fetch emergency banner count',
       emergencyBannersResult.reason,
@@ -293,24 +290,22 @@ export default async function DashboardOverviewPage() {
   if (usersResult.status === 'fulfilled') {
     userCount = usersResult.value.totalDocs
   } else {
+    degradedSources.push('admin users')
     logger.error('Failed to fetch users count', usersResult.reason, 'dashboard')
   }
 
-  if (arrivalsResult.status === 'fulfilled') {
-    arrivalsBoard = arrivalsResult.value
+  if (boardsResult.status === 'fulfilled') {
+    arrivalsBoard = boardsResult.value.arrivals
+    departuresBoard = boardsResult.value.departures
   } else {
-    logger.error('Failed to fetch arrivals board', arrivalsResult.reason, 'dashboard')
-  }
-
-  if (departuresResult.status === 'fulfilled') {
-    departuresBoard = departuresResult.value
-  } else {
-    logger.error('Failed to fetch departures board', departuresResult.reason, 'dashboard')
+    degradedSources.push('flight boards')
+    logger.error('Failed to fetch flight boards', boardsResult.reason, 'dashboard')
   }
 
   // Compute stats
   const totalFlights = arrivalsBoard.records.length + departuresBoard.records.length
   const delayedCount = countDelayed(arrivalsBoard.records) + countDelayed(departuresBoard.records)
+  const flightsUnavailable = boardsResult.status === 'rejected'
 
   return (
     <main className="page-content">
@@ -348,6 +343,8 @@ export default async function DashboardOverviewPage() {
         </Link>
       </div>
 
+      <DegradedDataBanner sources={degradedSources} />
+
       {/* Stats grid */}
       <div className="stats-grid">
         {/* Today's Flights */}
@@ -357,9 +354,11 @@ export default async function DashboardOverviewPage() {
           </div>
           <div className="stat-info">
             <div className="stat-label">Today&apos;s Flights</div>
-            <div className="stat-value">{totalFlights}</div>
+            <div className="stat-value">{flightsUnavailable ? unavailableValue : totalFlights}</div>
             <div className="stat-change">
-              {arrivalsBoard.configured
+              {flightsUnavailable
+                ? 'Unavailable'
+                : arrivalsBoard.configured
                 ? `${arrivalsBoard.records.length} arr · ${departuresBoard.records.length} dep`
                 : 'Feed not configured'}
             </div>
@@ -373,9 +372,13 @@ export default async function DashboardOverviewPage() {
           </div>
           <div className="stat-info">
             <div className="stat-label">Delayed</div>
-            <div className="stat-value">{delayedCount}</div>
+            <div className="stat-value">{flightsUnavailable ? unavailableValue : delayedCount}</div>
             <div className="stat-change">
-              {arrivalsBoard.configured ? 'From live feed' : 'Feed not configured'}
+              {flightsUnavailable
+                ? 'Unavailable'
+                : arrivalsBoard.configured
+                ? 'From live feed'
+                : 'Feed not configured'}
             </div>
           </div>
         </div>
@@ -387,8 +390,10 @@ export default async function DashboardOverviewPage() {
           </div>
           <div className="stat-info">
             <div className="stat-label">Active Notices</div>
-            <div className="stat-value">{activeNotices}</div>
-            <div className="stat-change">{totalNotices} total notices</div>
+            <div className="stat-value">{activeNotices ?? unavailableValue}</div>
+            <div className="stat-change">
+              {totalNotices === null ? 'Total unavailable' : `${totalNotices} total notices`}
+            </div>
           </div>
         </div>
 
@@ -399,8 +404,8 @@ export default async function DashboardOverviewPage() {
           </div>
           <div className="stat-info">
             <div className="stat-label">Admin Users</div>
-            <div className="stat-value">{userCount}</div>
-            <div className="stat-change">All roles</div>
+            <div className="stat-value">{userCount ?? unavailableValue}</div>
+            <div className="stat-change">{userCount === null ? 'Unavailable' : 'All roles'}</div>
           </div>
         </div>
 
@@ -411,9 +416,13 @@ export default async function DashboardOverviewPage() {
           </div>
           <div className="stat-info">
             <div className="stat-label">Emergency Banners</div>
-            <div className="stat-value">{emergencyBanners}</div>
+            <div className="stat-value">{emergencyBanners ?? unavailableValue}</div>
             <div className="stat-change">
-              {emergencyBanners === 0 ? 'All clear' : 'Active alert'}
+              {emergencyBanners === null
+                ? 'Unavailable'
+                : emergencyBanners === 0
+                ? 'All clear'
+                : 'Active alert'}
             </div>
           </div>
         </div>
@@ -480,59 +489,6 @@ export default async function DashboardOverviewPage() {
                 </tbody>
               </table>
             )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Recent Activity</h2>
-          </div>
-          <div className="card-body" style={{ padding: '4px 18px' }}>
-            <div className="activity-list">
-              {recentNotices.slice(0, 5).map((notice, idx) => {
-                const types: Array<'create' | 'update' | 'publish'> = ['publish', 'update', 'create']
-                const type = types[idx % types.length]
-                return (
-                  <div key={notice.id} className="activity-item">
-                    <ActivityDot type={type} />
-                    <div className="activity-body">
-                      <div className="activity-text">
-                        Notice{' '}
-                        <strong>&ldquo;{notice.title}&rdquo;</strong>{' '}
-                        {type === 'publish' ? 'published' : type === 'update' ? 'updated' : 'created'}
-                      </div>
-                      <div className="activity-time">{formatDate(notice.updatedAt)}</div>
-                    </div>
-                  </div>
-                )
-              })}
-              {recentNotices.length === 0 && (
-                <>
-                  <div className="activity-item">
-                    <ActivityDot type="create" />
-                    <div className="activity-body">
-                      <div className="activity-text">Dashboard initialised</div>
-                      <div className="activity-time">Today</div>
-                    </div>
-                  </div>
-                  <div className="activity-item">
-                    <ActivityDot type="update" />
-                    <div className="activity-body">
-                      <div className="activity-text">Site settings configured</div>
-                      <div className="activity-time">Today</div>
-                    </div>
-                  </div>
-                  <div className="activity-item">
-                    <ActivityDot type="publish" />
-                    <div className="activity-body">
-                      <div className="activity-text">First admin user created</div>
-                      <div className="activity-time">Today</div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
           </div>
         </div>
       </div>

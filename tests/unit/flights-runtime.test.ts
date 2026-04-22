@@ -41,7 +41,7 @@ function setupFlightRuntime(options: SetupOptions = {}) {
     envOverrides = {},
   } = options
 
-  const fetchMock = vi.fn(async (input: string) => {
+  const fetchMock = vi.fn(async (input: string, _init?: RequestInit) => {
     const requestUrl = new URL(input)
     const isArrivals = requestUrl.searchParams.has('arr_iata')
 
@@ -317,6 +317,28 @@ describe('flight board runtime reconciliation', () => {
     expect(departuresRequest?.searchParams.get('airline_iata')).toBe('MK&override=no')
     expect(arrivalsRequest?.searchParams.get('api_key')).toBe('key&special=value')
     expect(departuresRequest?.searchParams.get('api_key')).toBe('key&special=value')
+  })
+
+  it('fetches AirLabs schedules without Next revalidation', async () => {
+    const { fetchMock } = setupFlightRuntime()
+
+    const { getFlightBoards } = await import('@/lib/integrations/flights')
+    await getFlightBoards()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init).toEqual(
+        expect.objectContaining({
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        }),
+      )
+      expect(init).not.toEqual(
+        expect.objectContaining({
+          next: expect.anything(),
+        }),
+      )
+    }
   })
 
   it('redacts AirLabs query secrets from provider warning logs and public board messages', async () => {

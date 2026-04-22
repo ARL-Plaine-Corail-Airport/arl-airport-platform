@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ARL Airport Platform — Database Population Guide</title>
+<style>
+  @page { margin: 1.5cm; size: A4; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #1a1a2e;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 20pt;
+    color: #114c7a;
+    border-bottom: 3px solid #114c7a;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+  .subtitle {
+    font-size: 10pt;
+    color: #666;
+    margin-bottom: 2rem;
+  }
+  h2 {
+    font-size: 14pt;
+    color: #114c7a;
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.25rem;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 11pt;
+    color: #1a1a2e;
+    margin-top: 1.25rem;
+    margin-bottom: 0.4rem;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-size: 10pt;
+    color: #444;
+    margin-top: 0.75rem;
+    margin-bottom: 0.3rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #d0d0d0;
+    padding: 4px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #f0f4f8;
+    font-weight: 600;
+    color: #114c7a;
+    white-space: nowrap;
+  }
+  tr:nth-child(even) { background: #fafbfc; }
+  .required { color: #c0392b; font-weight: 600; }
+  .optional { color: #7f8c8d; }
+  .tag {
+    display: inline-block;
+    font-size: 7.5pt;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    margin-right: 2px;
+  }
+  .tag-yes { background: #e8f5e9; color: #2e7d32; }
+  .tag-no { background: #f5f5f5; color: #999; }
+  .tag-loc { background: #e3f2fd; color: #1565c0; }
+  .note {
+    background: #fff8e1;
+    border-left: 3px solid #f9a825;
+    padding: 6px 10px;
+    margin: 0.5rem 0 1rem;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+  .note-blue {
+    background: #e3f2fd;
+    border-left: 3px solid #1565c0;
+  }
+  .section-num {
+    color: #114c7a;
+    font-weight: 700;
+    margin-right: 0.25rem;
+  }
+  ul { margin: 0.25rem 0 0.75rem 1.25rem; }
+  li { margin-bottom: 2px; }
+  code {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 8.5pt;
+    background: #f0f0f0;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .page-break { page-break-before: always; }
+  .toc { margin: 1rem 0 2rem; }
+  .toc a { color: #114c7a; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc li { margin-bottom: 3px; }
+  .toc ul { list-style: none; margin-left: 0; }
+  .toc ul ul { margin-left: 1.25rem; }
+  .lang-box {
+    display: inline-block;
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 9pt;
+    margin: 0.25rem 0;
+  }
+  .checklist { list-style: none; margin-left: 0; }
+  .checklist li::before { content: "\2610  "; font-size: 11pt; }
+  footer {
+    margin-top: 2rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #ccc;
+    font-size: 8pt;
+    color: #999;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>ARL Airport Platform</h1>
+<p class="subtitle">Database Population Guide &mdash; Complete Field Reference<br>
+Airport of Rodrigues Ltd &bull; Plaine Corail Airport &bull; Generated April 2026</p>
+
+<div class="note note-blue">
+  <strong>Localization:</strong> Fields marked <span class="tag tag-loc">Localized</span> must be filled in all 3 languages:
+  <span class="lang-box"><strong>EN</strong> English</span>
+  <span class="lang-box"><strong>FR</strong> Fran&ccedil;ais</span>
+  <span class="lang-box"><strong>MFE</strong> Kreol Morisien</span>
+</div>
+
+<div class="toc">
+<h3>Table of Contents</h3>
+<ul>
+  <li><a href="#s1">1. System Setup</a></li>
+  <li><a href="#s2">2. Site Settings</a></li>
+  <li><a href="#s3">3. Assets (Media &amp; Documents)</a></li>
+  <li><a href="#s4">4. Content Collections</a>
+    <ul>
+      <li><a href="#s4a">4.1 Airlines</a></li>
+      <li><a href="#s4b">4.2 Flights (Manual Overrides)</a></li>
+      <li><a href="#s4c">4.3 Notices</a></li>
+      <li><a href="#s4d">4.4 News &amp; Events</a></li>
+      <li><a href="#s4e">4.5 Airport Project</a></li>
+      <li><a href="#s4f">4.6 FAQs</a></li>
+      <li><a href="#s4g">4.7 Pages (Custom)</a></li>
+    </ul>
+  </li>
+  <li><a href="#s5">5. Site Page Globals</a>
+    <ul>
+      <li><a href="#s5a">5.1 Home Page</a></li>
+      <li><a href="#s5b">5.2 Passenger Guide</a></li>
+      <li><a href="#s5c">5.3 Transport &amp; Parking</a></li>
+      <li><a href="#s5d">5.4 Accessibility Info</a></li>
+      <li><a href="#s5e">5.5 Airport Map</a></li>
+      <li><a href="#s5f">5.6 Contact Info</a></li>
+      <li><a href="#s5g">5.7 Emergency Services</a></li>
+      <li><a href="#s5h">5.8 Working Hours &amp; Directions</a></li>
+      <li><a href="#s5i">5.9 VIP Lounge</a></li>
+      <li><a href="#s5j">5.10 Regulations</a></li>
+      <li><a href="#s5k">5.11 Usage Fees</a></li>
+      <li><a href="#s5l">5.12 Management &amp; Staff</a></li>
+      <li><a href="#s5m">5.13 Useful Links</a></li>
+      <li><a href="#s5n">5.14 Legal Pages</a></li>
+    </ul>
+  </li>
+  <li><a href="#s6">6. Population Order &amp; Checklist</a></li>
+</ul>
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="s1"><span class="section-num">1.</span> System Setup</h2>
+
+<h3>Users</h3>
+<p>Create at least one <code>super_admin</code> account before populating any content.</p>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Type</th><th>Example / Notes</th></tr>
+  <tr><td>Email</td><td class="required">Yes</td><td>Email</td><td><code>admin@arl.aero</code></td></tr>
+  <tr><td>Password</td><td class="required">Yes</td><td>Password</td><td>Min 8 chars, mix of upper/lower/numbers</td></tr>
+  <tr><td>Full Name</td><td class="required">Yes</td><td>Text</td><td><code>Jean-Pierre Duval</code></td></tr>
+  <tr><td>Roles</td><td class="required">Yes</td><td>Multi-select</td><td><code>super_admin</code>, <code>content_admin</code>, <code>approver</code>, <code>operations_editor</code>, <code>translator</code>, <code>viewer_auditor</code></td></tr>
+  <tr><td>MFA Required</td><td class="optional">No</td><td>Checkbox</td><td>Default: true</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="s2"><span class="section-num">2.</span> Site Settings <small>(Global)</small></h2>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Type</th><th>Example / Notes</th></tr>
+  <tr><td>Site Name</td><td class="required">Yes</td><td>Text</td><td><code>Airport of Rodrigues Ltd</code></td></tr>
+  <tr><td>Airport Name</td><td class="required">Yes</td><td>Text</td><td><code>Plaine Corail Airport</code></td></tr>
+  <tr><td>Tagline</td><td class="optional">No</td><td>Textarea</td><td>Short description of the platform</td></tr>
+  <tr><td>Primary Phone</td><td class="optional">No</td><td>Text</td><td><code>+230 832 7888</code></td></tr>
+  <tr><td>Primary Email</td><td class="optional">No</td><td>Email</td><td><code>info@arl.aero</code></td></tr>
+  <tr><td>Physical Address</td><td class="optional">No</td><td>Textarea</td><td><code>Plaine Corail Airport, Plaine Corail, Rodrigues Island, Mauritius</code></td></tr>
+  <tr><td>Working Hours</td><td class="optional">No</td><td>Textarea</td><td><code>Mon&ndash;Sun: 06:00 &ndash; 22:00 (varies by flight schedule)</code></td></tr>
+  <tr><td>Social Links</td><td class="optional">No</td><td>Array</td><td>Each: <code>{label, url}</code> &mdash; e.g. Facebook, Instagram</td></tr>
+  <tr><td>Useful Links</td><td class="optional">No</td><td>Array</td><td>Each: <code>{label, url}</code></td></tr>
+  <tr><td>SEO Default Title</td><td class="optional">No</td><td>Text</td><td><code>Rodrigues Airport Passenger Information Platform</code></td></tr>
+  <tr><td>SEO Default Description</td><td class="optional">No</td><td>Textarea</td><td>~160 character description</td></tr>
+  <tr><td>Default OG Image</td><td class="optional">No</td><td>Upload</td><td>1200&times;630 recommended</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="s3"><span class="section-num">3.</span> Assets</h2>
+<div class="note">Upload all images and documents <strong>before</strong> creating content that references them.</div>
+
+<h3>Media (Images)</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Image File</td><td class="required">Yes</td><td>No</td><td>JPEG, PNG, WebP, or SVG</td></tr>
+  <tr><td>Alt Text</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Describe the image for accessibility</td></tr>
+  <tr><td>Caption</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Optional display caption</td></tr>
+  <tr><td>Category</td><td class="optional">No</td><td>No</td><td><code>hero</code>, <code>page</code>, <code>airline</code>, <code>staff</code>, <code>news</code>, <code>amenity</code>, <code>map</code>, <code>general</code></td></tr>
+</table>
+<p>Auto-generated sizes: thumbnail (400&times;300), card (800&times;600), hero (1920&times;1080).</p>
+
+<h3>Documents (PDFs)</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>PDF File</td><td class="required">Yes</td><td>No</td><td>PDF only, stored in private bucket</td></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Document name</td></tr>
+  <tr><td>Document Type</td><td class="required">Yes</td><td>No</td><td><code>communique</code>, <code>guidance</code>, <code>regulation</code>, <code>fee_schedule</code>, <code>general</code></td></tr>
+  <tr><td>Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Brief description</td></tr>
+  <tr><td>Effective Date</td><td class="optional">No</td><td>No</td><td>When it takes effect</td></tr>
+  <tr><td>Expiry Date</td><td class="optional">No</td><td>No</td><td>When superseded</td></tr>
+  <tr><td>Active</td><td class="optional">No</td><td>No</td><td>Default: true</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<div class="page-break"></div>
+<h2 id="s4"><span class="section-num">4.</span> Content Collections</h2>
+
+<h3 id="s4a">4.1 Airlines</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example / Notes</th></tr>
+  <tr><td>Name</td><td class="required">Yes</td><td>No</td><td><code>Air Mauritius</code></td></tr>
+  <tr><td>IATA Code</td><td class="required">Yes</td><td>No</td><td><code>MK</code> (max 2 characters)</td></tr>
+  <tr><td>ICAO Code</td><td class="optional">No</td><td>No</td><td><code>MAU</code> (max 4 characters)</td></tr>
+  <tr><td>Logo</td><td class="optional">No</td><td>No</td><td>Upload to Media first</td></tr>
+  <tr><td>Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Brief airline description</td></tr>
+  <tr><td>Website</td><td class="optional">No</td><td>No</td><td><code>https://www.airmauritius.com</code></td></tr>
+  <tr><td>Contact Phone</td><td class="optional">No</td><td>No</td><td>Reservation line</td></tr>
+  <tr><td>Is Active</td><td class="optional">No</td><td>No</td><td>Default: true</td></tr>
+  <tr><td>Display Order</td><td class="optional">No</td><td>No</td><td>Sort order number</td></tr>
+</table>
+<h4>Destinations (sub-array per airline)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>City</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Port Louis</code> / <code>Port-Louis</code></td></tr>
+  <tr><td>Airport Code</td><td class="optional">No</td><td>No</td><td><code>MRU</code> (max 3 chars)</td></tr>
+  <tr><td>Country</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td><code>Mauritius</code> / <code>Maurice</code></td></tr>
+</table>
+
+<h3 id="s4b">4.2 Flights (Manual Overrides)</h3>
+<div class="note">Only needed to override incorrect API data. The AirLabs feed handles regular flight data automatically.</div>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Example / Notes</th></tr>
+  <tr><td>Board Type</td><td class="required">Yes</td><td><code>arrival</code> or <code>departure</code></td></tr>
+  <tr><td>Airline</td><td class="required">Yes</td><td>IATA code: <code>MK</code></td></tr>
+  <tr><td>Flight Number</td><td class="required">Yes</td><td><code>MK140</code></td></tr>
+  <tr><td>Route</td><td class="required">Yes</td><td>Origin/destination IATA: <code>MRU</code></td></tr>
+  <tr><td>Scheduled Time</td><td class="required">Yes</td><td>Date + time</td></tr>
+  <tr><td>Estimated Time</td><td class="optional">No</td><td>Only if delayed/changed</td></tr>
+  <tr><td>Remarks</td><td class="required">Yes</td><td><code>Scheduled</code>, <code>On Time</code>, <code>Delayed</code>, <code>Cancelled</code>, <code>Departed</code>, <code>En Route</code>, <code>Landed</code>, <code>Diverted</code>, <code>Boarding</code></td></tr>
+  <tr><td>Status</td><td class="required">Yes</td><td><code>active</code> or <code>hidden</code></td></tr>
+  <tr><td>Source</td><td class="optional">No</td><td>Auto-set: <code>manual</code> (read-only)</td></tr>
+</table>
+
+<h3 id="s4c">4.3 Notices</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Notice headline</td></tr>
+  <tr><td>Slug</td><td class="required">Yes</td><td>No</td><td>Auto-generated from title</td></tr>
+  <tr><td>Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Short description for listings</td></tr>
+  <tr><td>Body</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Full content (rich text editor)</td></tr>
+  <tr><td>Category</td><td class="optional">No</td><td>No</td><td><code>operational</code>, <code>passenger_info</code>, <code>regulation</code>, <code>fee</code>, <code>emergency</code>, <code>corporate</code></td></tr>
+  <tr><td>Status</td><td class="required">Yes</td><td>No</td><td>Set to <code>published</code> to display. Options: <code>draft</code>, <code>in_review</code>, <code>approved</code>, <code>published</code>, <code>expired</code>, <code>archived</code></td></tr>
+  <tr><td>Published At</td><td class="optional">No</td><td>No</td><td>Auto-set on publish</td></tr>
+  <tr><td>Expires At</td><td class="optional">No</td><td>No</td><td>Auto-expire date</td></tr>
+  <tr><td>Urgent</td><td class="optional">No</td><td>No</td><td>Shows alert-style highlight</td></tr>
+  <tr><td>Pinned</td><td class="optional">No</td><td>No</td><td>Stays at top of list</td></tr>
+  <tr><td>Promote to Banner</td><td class="optional">No</td><td>No</td><td>Shows as site-wide banner</td></tr>
+  <tr><td>Attachments</td><td class="optional">No</td><td>No</td><td>Select from Media uploads</td></tr>
+  <tr><td>SEO Meta Title</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Override page title for search</td></tr>
+  <tr><td>SEO Meta Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>~160 chars for search results</td></tr>
+</table>
+
+<h3 id="s4d">4.4 News &amp; Events</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Article headline</td></tr>
+  <tr><td>Slug</td><td class="required">Yes</td><td>No</td><td>Auto-generated</td></tr>
+  <tr><td>Type</td><td class="required">Yes</td><td>No</td><td><code>news</code>, <code>event</code>, <code>press</code>, <code>announcement</code></td></tr>
+  <tr><td>Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>~160 chars excerpt</td></tr>
+  <tr><td>Body</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Rich text content</td></tr>
+  <tr><td>Featured Image</td><td class="optional">No</td><td>No</td><td>Select from Media</td></tr>
+  <tr><td>Status</td><td class="optional">No</td><td>No</td><td><code>draft</code>, <code>in_review</code>, <code>published</code>, <code>archived</code></td></tr>
+  <tr><td>Pinned</td><td class="optional">No</td><td>No</td><td>Feature at top</td></tr>
+  <tr><td>Attachments</td><td class="optional">No</td><td>No</td><td>Array of <code>{label, file}</code></td></tr>
+  <tr><td>SEO fields</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Meta title + description</td></tr>
+</table>
+<h4>Event Details (only when Type = <code>event</code>)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Start Date</td><td class="optional">No</td><td>No</td><td>Date + time</td></tr>
+  <tr><td>End Date</td><td class="optional">No</td><td>No</td><td>Date + time</td></tr>
+  <tr><td>Location</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td><code>Terminal Building, Conference Room</code></td></tr>
+</table>
+
+<h3 id="s4e">4.5 Airport Project</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Project update headline</td></tr>
+  <tr><td>Slug</td><td class="required">Yes</td><td>No</td><td>Auto-generated</td></tr>
+  <tr><td>Category</td><td class="required">Yes</td><td>No</td><td><code>notice_to_bidders</code>, <code>press_release</code>, <code>site_visit</code>, <code>environmental</code>, <code>general</code></td></tr>
+  <tr><td>Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Brief description</td></tr>
+  <tr><td>Body</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Rich text content</td></tr>
+  <tr><td>Featured Image</td><td class="optional">No</td><td>No</td><td>Select from Media</td></tr>
+  <tr><td>Status</td><td class="optional">No</td><td>No</td><td><code>draft</code>, <code>in_review</code>, <code>published</code>, <code>archived</code></td></tr>
+  <tr><td>Pinned</td><td class="optional">No</td><td>No</td><td>Feature at top</td></tr>
+  <tr><td>SEO fields</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Meta title + description</td></tr>
+</table>
+<h4>Attachments (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Label</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Tender Document PDF</code></td></tr>
+  <tr><td>File</td><td class="required">Yes</td><td>No</td><td>Select from Documents</td></tr>
+</table>
+
+<h3 id="s4f">4.6 FAQs</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Question</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>The question text</td></tr>
+  <tr><td>Answer</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Keep under 200 words</td></tr>
+  <tr><td>Category</td><td class="optional">No</td><td>No</td><td><code>general</code>, <code>flights</code>, <code>transport</code>, <code>accessibility</code>, <code>documents</code></td></tr>
+  <tr><td>Status</td><td class="optional">No</td><td>No</td><td><code>draft</code> or <code>published</code></td></tr>
+  <tr><td>Order</td><td class="optional">No</td><td>No</td><td>Display sort number (default: 0)</td></tr>
+</table>
+
+<h3 id="s4g">4.7 Pages (Custom)</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Slug</td><td class="required">Yes</td><td>No</td><td>URL path segment</td></tr>
+  <tr><td>Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Brief page description</td></tr>
+  <tr><td>Page Image</td><td class="optional">No</td><td>No</td><td>Select from Media</td></tr>
+  <tr><td>Status</td><td class="optional">No</td><td>No</td><td><code>draft</code> or <code>published</code></td></tr>
+  <tr><td>Sections</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Array &mdash; see below</td></tr>
+  <tr><td>SEO fields</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Meta title + description</td></tr>
+</table>
+<h4>Section Fields (reusable pattern)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th></tr>
+  <tr><td>Heading</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Body</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Bullets</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<div class="page-break"></div>
+<h2 id="s5"><span class="section-num">5.</span> Site Page Globals</h2>
+
+<h3 id="s5a">5.1 Home Page</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Hero Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Main headline</td></tr>
+  <tr><td>Hero Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Intro paragraph</td></tr>
+  <tr><td>Services Preview</td><td class="optional">No</td><td>No</td><td>Array of <code>{title, summary}</code></td></tr>
+  <tr><td>Emergency Alert Title</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Alert section heading</td></tr>
+  <tr><td>Emergency Alert Body</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Alert content</td></tr>
+</table>
+
+<h3 id="s5b">5.2 Passenger Guide</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Intro Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Intro Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Brief intro</td></tr>
+  <tr><td>Sections</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Check-in, baggage, security, customs, etc.</td></tr>
+  <tr><td>Important Contacts</td><td class="optional">No</td><td>No</td><td>Array of <code>{label, value}</code></td></tr>
+</table>
+
+<h3 id="s5c">5.3 Transport &amp; Parking</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Intro Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Intro Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Brief intro</td></tr>
+  <tr><td>Sections</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Parking, bus, taxi info</td></tr>
+  <tr><td>Map Embed URL</td><td class="optional">No</td><td>No</td><td>Google Maps embed URL</td></tr>
+</table>
+
+<h3 id="s5d">5.4 Accessibility Info</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Intro Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Intro Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Brief intro</td></tr>
+  <tr><td>Sections</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Wheelchair, visual aids, etc.</td></tr>
+  <tr><td>Assistance Contact</td><td class="optional">No</td><td>No</td><td>Help desk contact info</td></tr>
+</table>
+
+<h3 id="s5e">5.5 Airport Map</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Intro Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Intro Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Brief intro</td></tr>
+  <tr><td>Map Embed URL</td><td class="optional">No</td><td>No</td><td>Google Maps embed URL</td></tr>
+</table>
+<h4>Points of Interest (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Name</td><td class="required">Yes</td><td>No</td><td>Point name</td></tr>
+  <tr><td>Category</td><td class="required">Yes</td><td>No</td><td><code>terminal</code>, <code>parking</code>, <code>transport</code>, <code>accessibility</code>, <code>security</code>, <code>services</code></td></tr>
+  <tr><td>Description</td><td class="required">Yes</td><td>No</td><td>Brief description</td></tr>
+  <tr><td>Latitude</td><td class="optional">No</td><td>No</td><td>Decimal degrees, e.g. <code>-19.7577</code></td></tr>
+  <tr><td>Longitude</td><td class="optional">No</td><td>No</td><td>Decimal degrees, e.g. <code>63.3610</code></td></tr>
+</table>
+
+<h3 id="s5f">5.6 Contact Info</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Help Desk Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Help Desk Summary</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Brief intro</td></tr>
+</table>
+<h4>Contact Cards (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Phone</code> / <code>T&eacute;l&eacute;phone</code></td></tr>
+  <tr><td>Value</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>+230 832 7888</code></td></tr>
+  <tr><td>Link</td><td class="optional">No</td><td>No</td><td><code>tel:+2308327888</code> or <code>mailto:info@arl.aero</code></td></tr>
+</table>
+
+<h3 id="s5g">5.7 Emergency Services</h3>
+<div class="note"><strong>Critical content</strong> &mdash; requires Approver role. All numbers must be verified.</div>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Page Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Introduction</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Intro paragraph</td></tr>
+  <tr><td>Primary Emergency Number</td><td class="required">Yes</td><td>No</td><td><code>999</code></td></tr>
+  <tr><td>Medical Facilities</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Nearby medical info</td></tr>
+  <tr><td>Evacuation Procedures</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Emergency guidance</td></tr>
+  <tr><td>Last Verified Date</td><td class="required">Yes</td><td>No</td><td>Date of last verification</td></tr>
+  <tr><td>Verified By</td><td class="optional">No</td><td>No</td><td>Name or role</td></tr>
+</table>
+<h4>Service Contacts (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Service Name</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Fire Services</code> / <code>Pompiers</code></td></tr>
+  <tr><td>Phone</td><td class="required">Yes</td><td>No</td><td><code>+230 831 XXXX</code></td></tr>
+  <tr><td>Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>When to contact</td></tr>
+  <tr><td>Available 24h</td><td class="optional">No</td><td>No</td><td>Default: true</td></tr>
+</table>
+
+<h3 id="s5h">5.8 Working Hours &amp; Directions</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Page Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Hours Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>General hours note</td></tr>
+</table>
+<h4>Schedule (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Day / Period</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Monday &ndash; Friday</code></td></tr>
+  <tr><td>Hours</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>06:00 &ndash; 22:00</code></td></tr>
+</table>
+<h4>Department Hours (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Department</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Check-in Counter</code></td></tr>
+  <tr><td>Hours</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Opens 2 hours before departure</code></td></tr>
+  <tr><td>Notes</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Additional info</td></tr>
+</table>
+<h4>Location</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Address</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Full postal address</td></tr>
+  <tr><td>Google Maps URL</td><td class="optional">No</td><td>No</td><td>Link to Google Maps</td></tr>
+  <tr><td>Map Embed URL</td><td class="optional">No</td><td>No</td><td>Embeddable map URL</td></tr>
+  <tr><td>Latitude</td><td class="optional">No</td><td>No</td><td><code>-19.7577</code></td></tr>
+  <tr><td>Longitude</td><td class="optional">No</td><td>No</td><td><code>63.3610</code></td></tr>
+</table>
+<h4>Getting Here (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Transport Mode</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Bus</code>, <code>Taxi</code>, <code>Car</code></td></tr>
+  <tr><td>Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Route details, frequency, cost</td></tr>
+</table>
+
+<h3 id="s5i">5.9 VIP Lounge</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Page Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Introduction</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Lounge description</td></tr>
+  <tr><td>Amenities</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Array of items: <code>Wi-Fi</code>, <code>Refreshments</code>, etc.</td></tr>
+  <tr><td>Eligibility</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Who can use the lounge</td></tr>
+  <tr><td>Booking Information</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>How to book</td></tr>
+  <tr><td>Operating Hours</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td><code>06:00 &ndash; 22:00 daily</code></td></tr>
+  <tr><td>Contact Phone</td><td class="optional">No</td><td>No</td><td>Lounge phone number</td></tr>
+  <tr><td>Contact Email</td><td class="optional">No</td><td>No</td><td>Lounge email</td></tr>
+  <tr><td>Lounge Images</td><td class="optional">No</td><td>No</td><td>Gallery from Media</td></tr>
+</table>
+
+<h3 id="s5j">5.10 Regulations</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Page Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Introduction</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Intro paragraph</td></tr>
+  <tr><td>Legal Disclaimer</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Bottom disclaimer text</td></tr>
+  <tr><td>Last Reviewed Date</td><td class="optional">No</td><td>No</td><td>Date of last review</td></tr>
+</table>
+<h4>Regulation Sections (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Heading</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Section title</td></tr>
+  <tr><td>Body</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Rich text content</td></tr>
+  <tr><td>Attached Document</td><td class="optional">No</td><td>No</td><td>PDF from Documents</td></tr>
+</table>
+
+<h3 id="s5k">5.11 Usage Fees</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Page Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Introduction</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>General intro</td></tr>
+  <tr><td>Payment Methods</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Accepted payment types</td></tr>
+  <tr><td>Last Approved Date</td><td class="optional">No</td><td>No</td><td>Date of last approval</td></tr>
+</table>
+<h4>Fee Categories (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Category Name</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>e.g. <code>Landing Fees</code></td></tr>
+  <tr><td>Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Fee details</td></tr>
+  <tr><td>Source Note</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Reference to official source</td></tr>
+  <tr><td>Official Schedule PDF</td><td class="optional">No</td><td>No</td><td>From Documents</td></tr>
+  <tr><td>Effective From</td><td class="optional">No</td><td>No</td><td>Date</td></tr>
+</table>
+<h4>Contact for Enquiries</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Notes</th></tr>
+  <tr><td>Name</td><td class="optional">No</td><td>Contact name / department</td></tr>
+  <tr><td>Phone</td><td class="optional">No</td><td>Phone number</td></tr>
+  <tr><td>Email</td><td class="optional">No</td><td>Email address</td></tr>
+</table>
+
+<h3 id="s5l">5.12 Management &amp; Staff</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Page Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Introduction</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Intro paragraph</td></tr>
+</table>
+<h4>Management Team (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Name</td><td class="required">Yes</td><td>No</td><td>Full name</td></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Job title</td></tr>
+  <tr><td>Photo</td><td class="optional">No</td><td>No</td><td>From Media</td></tr>
+  <tr><td>Bio</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Short biography</td></tr>
+  <tr><td>Department</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Department name</td></tr>
+  <tr><td>Display Order</td><td class="optional">No</td><td>No</td><td>Sort order (default: 0)</td></tr>
+  <tr><td>Visible</td><td class="optional">No</td><td>No</td><td>Default: true</td></tr>
+</table>
+<h4>Departments (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th></tr>
+  <tr><td>Department Name</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td></tr>
+</table>
+
+<h3 id="s5m">5.13 Useful Links</h3>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Notes</th></tr>
+  <tr><td>Page Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td>Page heading</td></tr>
+  <tr><td>Introduction</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Intro paragraph</td></tr>
+</table>
+<h4>Link Groups (sub-array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Group Name</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Government &amp; Tourism</code></td></tr>
+</table>
+<h4>Links within each group (nested array)</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th><th>Example</th></tr>
+  <tr><td>Label</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td><td><code>Mauritius Tourism Authority</code></td></tr>
+  <tr><td>URL</td><td class="required">Yes</td><td>No</td><td><code>https://www.tourism-mauritius.mu</code></td></tr>
+  <tr><td>Description</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td><td>Brief description</td></tr>
+  <tr><td>Open in New Tab</td><td class="optional">No</td><td>No</td><td>Default: true</td></tr>
+</table>
+
+<h3 id="s5n">5.14 Legal Pages</h3>
+<div class="note"><strong>Requires Approver role</strong> to edit. Contains 4 sub-sections:</div>
+
+<h4>Disclaimer</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Content</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Last Updated</td><td class="optional">No</td><td>No</td></tr>
+</table>
+
+<h4>Terms of Use</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Content</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Last Updated</td><td class="optional">No</td><td>No</td></tr>
+  <tr><td>Effective Date</td><td class="optional">No</td><td>No</td></tr>
+</table>
+
+<h4>Privacy Policy</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th></tr>
+  <tr><td>Title</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Content</td><td class="required">Yes</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Last Updated</td><td class="optional">No</td><td>No</td></tr>
+  <tr><td>Data Controller Name</td><td class="optional">No</td><td>No</td></tr>
+  <tr><td>Data Controller Email</td><td class="optional">No</td><td>No</td></tr>
+</table>
+
+<h4>Cookie Policy</h4>
+<table>
+  <tr><th>Field</th><th>Required</th><th>Localized</th></tr>
+  <tr><td>Title</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Content</td><td class="optional">No</td><td><span class="tag tag-loc">Localized</span></td></tr>
+  <tr><td>Last Updated</td><td class="optional">No</td><td>No</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<div class="page-break"></div>
+<h2 id="s6"><span class="section-num">6.</span> Population Order &amp; Checklist</h2>
+
+<p>Follow this order to avoid missing references:</p>
+
+<h3>Phase 1: Foundation</h3>
+<ul class="checklist">
+  <li>Create admin user(s) with appropriate roles</li>
+  <li>Fill in Site Settings (name, phone, email, address, social links)</li>
+  <li>Upload all Media assets (images for airlines, staff, news, pages)</li>
+  <li>Upload all Documents (PDFs for regulations, fees, tenders)</li>
+</ul>
+
+<h3>Phase 2: Content Collections</h3>
+<ul class="checklist">
+  <li>Add Airlines (with logos, destinations)</li>
+  <li>Add FAQs (all categories)</li>
+  <li>Add Notices (set status to <code>published</code>)</li>
+  <li>Add News &amp; Events articles</li>
+  <li>Add Airport Project updates</li>
+  <li>Add custom Pages if needed</li>
+  <li>Add Flight overrides (only if API data is incorrect)</li>
+</ul>
+
+<h3>Phase 3: Site Page Globals</h3>
+<ul class="checklist">
+  <li>Home Page (hero text, emergency alert)</li>
+  <li>Passenger Guide (sections for check-in, baggage, security)</li>
+  <li>Transport &amp; Parking (parking info, bus/taxi details)</li>
+  <li>Accessibility Info (wheelchair, assistance services)</li>
+  <li>Airport Map (points of interest with coordinates)</li>
+  <li>Contact Info (help desk cards with tel:/mailto: links)</li>
+  <li>Emergency Services (verified phone numbers &mdash; <strong>critical</strong>)</li>
+  <li>Working Hours &amp; Directions (schedule, location, getting here)</li>
+  <li>VIP Lounge (amenities, booking, hours)</li>
+  <li>Regulations (sections with attached PDFs)</li>
+  <li>Usage Fees (fee categories with official PDFs)</li>
+  <li>Management &amp; Staff (team profiles, departments)</li>
+  <li>Useful Links (grouped external links)</li>
+</ul>
+
+<h3>Phase 4: Legal &amp; Final</h3>
+<ul class="checklist">
+  <li>Legal Pages: Disclaimer, Terms, Privacy Policy, Cookie Policy</li>
+  <li>Review all content in EN, FR, and MFE</li>
+  <li>Verify all emergency contact numbers</li>
+  <li>Test all <code>tel:</code> and <code>mailto:</code> links</li>
+  <li>Check all uploaded media displays correctly</li>
+  <li>Set all content status to <code>published</code></li>
+</ul>
+
+<div class="note note-blue" style="margin-top: 2rem;">
+  <strong>Tip:</strong> Access the CMS admin panel at <code>/admin</code> to populate all content. Globals are under the &ldquo;Globals&rdquo; section in the sidebar. Collections are listed individually.
+</div>
+
+<footer>
+  ARL Airport Platform &mdash; Database Population Guide &bull; Airport of Rodrigues Ltd &bull; April 2026
+</footer>
+
+</body>
+</html>

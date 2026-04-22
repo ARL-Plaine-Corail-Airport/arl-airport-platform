@@ -82,6 +82,45 @@ async function deleteBySlug(payload: any, collection: string, slug: string) {
   })
 }
 
+async function ensureInitialSuperAdmin(payload: any) {
+  const existing = await payload.find({
+    collection: 'users',
+    limit: 1,
+    where: {
+      roles: {
+        contains: 'super_admin',
+      },
+    },
+  })
+
+  if (existing.docs[0]) {
+    console.log('[seed] Super admin already exists.')
+    return
+  }
+
+  const email = process.env.INITIAL_ADMIN_EMAIL
+  const password = process.env.INITIAL_ADMIN_PASSWORD
+
+  if (!email || !password) {
+    throw new Error(
+      '[seed] No super_admin user exists. Set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD before seeding.',
+    )
+  }
+
+  await payload.create({
+    collection: 'users',
+    data: {
+      email,
+      password,
+      fullName: 'Initial Super Admin',
+      roles: ['super_admin'],
+      mfaRequired: true,
+    },
+  })
+
+  console.log(`[seed] Created initial super admin: ${email}`)
+}
+
 async function updateGlobalWithLogging(
   payload: any,
   slug: string,
@@ -103,6 +142,8 @@ async function updateGlobalWithLogging(
 async function main() {
   const payload = await getPayload({ config })
   const failedGlobalUpdates: string[] = []
+
+  await ensureInitialSuperAdmin(payload)
 
   await updateGlobalWithLogging(payload, 'site-settings', {
       siteName: 'Airport of Rodrigues Ltd',

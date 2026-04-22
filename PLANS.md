@@ -1,0 +1,2638 @@
+# ARL Airport Platform Audit Fix Plan
+
+## Milestone 20: Payload Admin Rendering And Shell Repair
+- Status: Completed
+- Date: April 22, 2026
+- Scope:
+  - add `(payload)` route-group `not-found.tsx` and `error.tsx`
+  - replace the custom Payload admin nav toggle without portal rendering
+  - narrow `src/payload-admin-shell.css` overrides that collapse Payload internals
+  - document LegalPages global version cap semantics
+  - add a dashboard slot safety note
+  - regenerate the Payload import map
+  - update admin brand token usage in `Logo` and `Icon`
+- Files likely affected:
+  - `src/app/(payload)/not-found.tsx`
+  - `src/app/(payload)/error.tsx`
+  - `src/components/admin/NavToggle.tsx`
+  - `src/payload-admin-shell.css`
+  - `src/globals/LegalPages.ts`
+  - `src/components/admin/BeforeDashboard.tsx`
+  - `src/components/admin/Logo.tsx`
+  - `src/components/admin/Icon.tsx`
+  - `src/app/(payload)/admin/importMap.js`
+- Dependencies:
+  - create the error boundary before runtime verification so blank admin slots expose errors
+  - update `NavToggle` and CSS together so collapsed-nav state and button visibility remain aligned
+  - regenerate the import map after component edits
+- Risks:
+  - Payload admin CSS selectors are version-sensitive
+  - user-specific saved Payload column preferences may still hide columns after code repair
+  - Docker production validation can be slow or blocked by local environment configuration
+- Validation commands:
+  - `pnpm exec payload generate:importmap`
+  - `pnpm lint`
+  - `pnpm build`
+  - `docker compose -f docker-compose.prod.yml up --build -d`
+- Acceptance criteria:
+  - unknown `/admin` routes use the admin-specific 404 instead of the frontend card
+  - admin render failures show a visible `(payload)` error fallback
+  - the sidebar collapse button mounts in Payload's tree, cleans up `html.nav-collapsed`, and does not flash mid-content
+  - collection list intrinsic widths are no longer collapsed by custom CSS
+  - Payload's uncollapsed grid layout is controlled by Payload CSS, not custom `!important` overrides
+  - admin brand color reads from design tokens in `Logo` and `Icon`
+- Stop-and-fix rule:
+  - after validation, fix only regressions introduced by this milestone before continuing
+- Completion record:
+  - completed fixes: added `(payload)` admin 404 and error boundary, replaced portal-based `NavToggle`, narrowed admin shell CSS overrides, documented LegalPages global version cap, added dashboard slot safety note, regenerated import map, and tokenized `Logo`/`Icon` brand colors
+  - files changed: `src/app/(payload)/not-found.tsx`, `src/app/(payload)/error.tsx`, `src/components/admin/NavToggle.tsx`, `src/payload-admin-shell.css`, `src/globals/LegalPages.ts`, `src/components/admin/BeforeDashboard.tsx`, `src/components/admin/Logo.tsx`, `src/components/admin/Icon.tsx`, `PLANS.md`, `.ai-maintenance/*/20260422-090923-*`
+  - validation: `pnpm exec payload generate:importmap` passed with no import map rewrite; `pnpm lint` passed; `pnpm build` passed; `docker compose -f docker-compose.prod.yml up --build -d` passed and app containers reported healthy
+  - residual manual QA: verify authenticated browser views for `/admin/globals/site-settings`, `/admin/globals/legal-pages`, `/admin/collections/notices`, `/admin/collections/news-events`, and an invalid `/admin` URL; if list columns remain hidden, check Payload's per-user Columns preference
+
+## Plan Metadata
+- Date: April 15, 2026
+- Source: comprehensive codebase audit prompt for the ARL Airport Platform
+- Status: rebuilt as a cumulative milestone record after the file was mistakenly overwritten by a single-batch note
+- Scope: fixes 1 through 67
+- Working rules:
+  - make the minimum necessary change
+  - avoid unrelated refactors
+  - preserve existing behavior unless a requested fix explicitly changes it
+  - do not weaken authorization, validation, or cache safety
+- Stop-and-fix rule:
+  - after each milestone, run the milestone validation commands
+  - if validation fails, fix only regressions introduced by that milestone before continuing
+
+## Shared Validation
+- Milestone validation commands:
+  - `pnpm lint`
+  - `pnpm test`
+  - `pnpm exec tsc --noEmit`
+- Final verification commands:
+  - `pnpm lint`
+  - `pnpm test`
+  - `pnpm build`
+  - `pnpm exec tsc --noEmit`
+- Validation note:
+  - `tsconfig.json` includes `.next/types/**/*.ts`, so the final `pnpm exec tsc --noEmit` run must happen after `pnpm build`
+
+## Frontend Batch: Metadata And UI Hardening
+- Status: Completed
+- Scope:
+  - root `not-found.tsx` locale awareness
+  - `generateMetadata()` fallback hardening for requested frontend pages
+  - airport-project filter skeleton consistency
+  - flight-board live error-state provider label fix
+  - stable keys in detail cards
+  - conservative dashboard error-boundary review
+- Validation:
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - metadata failures fall back to `ARL Airport` instead of throwing
+  - root 404 renders locale-aware labels from the static locale map
+  - airport-project loading state uses a skeleton fallback
+  - flight board error state uses `initialData.providerLabel`
+  - detail card keys are stable and no longer index-based
+- Completion record:
+  - completed fixes: root not-found locale awareness, guarded metadata fallbacks, airport-project skeleton fallback, flight-board live provider label fix, stable detail-card keys, dashboard error syntax fix
+  - validation: `pnpm lint` passed
+  - build validation: `pnpm build` reached static generation but failed in the repo build pipeline with `ENOENT: .../.next/server/pages-manifest.json`
+
+## Milestone 1: Critical Security And Server Boundaries
+- Status: Completed
+- Fixes in scope: 1-9
+- Fixes:
+  - `1.` escape JSON-LD output in `src/lib/structured-data.tsx` by replacing `<` with `\u003c`
+  - `2.` remove server-only env values from the browser-safe env object in `src/lib/env.ts`
+  - `3.` split public env access into `src/lib/env.ts` and server env access into `src/lib/env.server.ts`
+  - `4.` add `import 'server-only'` to `src/lib/storage/supabase-client.ts`
+  - `5.` add `import 'server-only'` to `src/lib/storage/upload.ts`
+  - `6.` add `import 'server-only'` to `src/lib/analytics.ts`
+  - `7.` add `import 'server-only'` to `src/lib/content.ts`
+  - `8.` add `import 'server-only'` to `src/lib/metadata.ts`
+  - `9.` remove the response-side `x-nonce` header from `src/middleware.ts` and keep nonce propagation request-only
+- Files likely affected:
+  - `src/lib/structured-data.tsx`
+  - `src/lib/env.ts`
+  - `src/lib/env.server.ts`
+  - `src/lib/storage/supabase-client.ts`
+  - `src/lib/storage/upload.ts`
+  - `src/lib/analytics.ts`
+  - `src/lib/content.ts`
+  - `src/lib/metadata.ts`
+  - `src/middleware.ts`
+  - any server-side import sites updated to use `@/lib/env.server`
+- Dependencies:
+  - fix `3` before fixes `4-8` so server-only modules import the correct env boundary
+  - preserve nonce flow for server components while removing client-visible leakage
+- Risks:
+  - accidental client import of server-only modules
+  - environment resolution regressions after the split
+  - CSP regressions if the request nonce flow changes unintentionally
+- Acceptance criteria:
+  - CMS-provided JSON-LD cannot break out of the script tag
+  - browser-safe env access does not depend on non-`NEXT_PUBLIC_` variables
+  - server env reads do not execute in client bundles
+  - Supabase service role and other server-only modules are import-guarded
+  - CSP nonce is not exposed in response headers
+- Completion record:
+  - completed fixes: `1-9`
+  - milestone validation: `pnpm lint`, `pnpm test`, `pnpm exec tsc --noEmit`
+  - residual manual QA:
+    - verify structured data still renders in page source
+    - verify server components still receive the nonce through request headers
+
+## Milestone 2: High Priority Security, Access Control, Workflow, And Live Data
+- Status: Completed
+- Fixes in scope: 10-18
+- Fixes:
+  - `10.` salt visitor hashing in `src/app/api/track/route.ts` and add `VISITOR_HASH_SALT` to `.env.example` and server env
+  - `11.` restrict `roles` field creation in `src/collections/Users.ts` with `create: canUpdateRoles`
+  - `12.` restrict user deletion to `super_admin` only in `src/collections/Users.ts`
+  - `13.` switch versioned collection public reads to `publishedVersionOrAdmin` in `AirportProject`, `NewsEvents`, `Notices`, and `Pages`
+  - `14.` prevent publish when custom workflow state is not approved, avoiding `_status` and custom `status` desync
+  - `15.` reduce flight page revalidation from `2600` to `60` seconds in arrivals, departures, and flight-status pages
+  - `16.` use `getNewsEventBySlugWithSignedAttachments` in `src/app/(frontend)/news-events/[slug]/page.tsx`
+  - `17.` prevent locale hydration flicker in `src/components/ui/language-switcher.tsx`
+  - `18.` surface live flight-board errors with an outdated-data indicator in `src/components/ui/flight-board-preview-live.tsx`
+- Files likely affected:
+  - `.env.example`
+  - `src/lib/env.server.ts`
+  - `src/app/api/track/route.ts`
+  - `src/collections/Users.ts`
+  - `src/collections/AirportProject.ts`
+  - `src/collections/NewsEvents.ts`
+  - `src/collections/Notices.ts`
+  - `src/collections/Pages.ts`
+  - `src/app/(frontend)/arrivals/page.tsx`
+  - `src/app/(frontend)/departures/page.tsx`
+  - `src/app/(frontend)/flight-status/page.tsx`
+  - `src/app/(frontend)/news-events/[slug]/page.tsx`
+  - `src/lib/content.ts`
+  - `src/components/ui/language-switcher.tsx`
+  - `src/components/ui/flight-board-preview-live.tsx`
+- Dependencies:
+  - fix `10` depends on the server env split from milestone 1
+  - fixes `13` and `14` must be implemented together so access rules and workflow behavior stay aligned
+  - fix `16` depends on `getNewsEventBySlugWithSignedAttachments` remaining exported and importable
+- Risks:
+  - breaking editorial publish flow if the workflow guard is too strict
+  - changing user-role access semantics too broadly
+  - shortening revalidation without regressing data fetch stability
+- Acceptance criteria:
+  - visitor hashes are salted server-side
+  - non-super-admins cannot create privileged roles or delete super-admin users
+  - draft leakage is blocked on versioned collections
+  - publish is rejected unless workflow state is approved
+  - flight data pages refresh every 60 seconds
+  - news attachments render with working signed URLs
+  - locale switcher no longer flickers on hydration
+  - live board preview shows when data may be outdated
+- Completion record:
+  - completed fixes: `10-18`
+  - milestone validation: `pnpm lint`, `pnpm test`, `pnpm exec tsc --noEmit`
+  - residual manual QA:
+    - exercise admin publish workflow for airport project, news, notices, and pages
+    - open a signed news attachment from the detail page
+    - verify locale switcher state on first load
+
+## Milestone 3: Medium Priority Platform Correctness, I18n, Caching, And PWA Behavior
+- Status: Completed
+- Fixes in scope: 19-50
+- Fixes:
+  - `19.` block encoded traversal in `src/lib/validation.ts`
+  - `20.` add same-origin CSRF protection to `POST /api/track`
+  - `21.` change locale redirects in `src/middleware.ts` from `308` to `307`
+  - `22.` remove the timing side-channel in revalidate secret comparison
+  - `23.` guard missing board payloads in `src/app/api/flight-board/route.ts`
+  - `24.` add `Cache-Control: no-store` to all health responses
+  - `25.` hide non-active flights from unauthenticated collection reads
+  - `26.` allow non-admin users to read their own profile
+  - `27.` default FAQs to `draft`
+  - `28.` support localized title objects in `src/hooks/autoSlug.ts`
+  - `29.` add `generateStaticParams` to `src/app/(frontend)/notices/[slug]/page.tsx`
+  - `30.` render notice attachments as download links
+  - `31.` move duty-free copy into dictionaries and move contact details into config or managed data
+  - `32.` add translation length limiting and rate limiting in `src/lib/translate.ts`
+  - `33.` reduce analytics memory pressure in `src/lib/analytics.ts`
+  - `34.` treat cached empty strings as valid cached values in `src/lib/cache.ts`
+  - `35.` avoid a shared anonymous rate-limit bucket in `src/middleware.ts`
+  - `36.` decode dashboard JWT expiry in middleware to avoid auth flash on expired cookies
+  - `37.` wrap install prompt flow in `try/catch`
+  - `38.` add `suppressHydrationWarning` to the online-status banner
+  - `39.` replace `any` with `FlightBoardResponse` in `src/components/ui/flight-board.tsx`
+  - `40.` replace `any` with `FlightBoardResponse` in `src/components/ui/flight-board-preview.tsx`
+  - `41.` localize the weather preview error state
+  - `42.` localize the flight-board live error state
+  - `43.` localize strings in `src/app/(frontend)/error.tsx`
+  - `44.` import global CSS and add basic locale handling in `src/app/global-error.tsx`
+  - `45.` add `src/app/(frontend)/not-found.tsx`
+  - `46.` localize `FilterChips` base paths in news-events, notices, and airport-project listings
+  - `47.` avoid leaking flight integration API keys through logged URLs
+  - `48.` return `401`-class auth failures from `src/lib/payload-admin.ts` through a custom auth error path
+  - `49.` stop pull-to-refresh from blocking normal scrolling when the page is already scrolled
+  - `50.` add stale-while-revalidate behavior with an in-flight promise map in `src/lib/cache.ts`
+- Files likely affected:
+  - `src/lib/validation.ts`
+  - `src/app/api/track/route.ts`
+  - `src/middleware.ts`
+  - `src/app/api/revalidate/route.ts`
+  - `src/app/api/flight-board/route.ts`
+  - `src/app/api/health/route.ts`
+  - `src/collections/Flights.ts`
+  - `src/collections/Users.ts`
+  - `src/collections/FAQs.ts`
+  - `src/hooks/autoSlug.ts`
+  - `src/app/(frontend)/notices/[slug]/page.tsx`
+  - `src/app/(frontend)/duty-free/page.tsx`
+  - `src/i18n/dictionaries/*`
+  - `src/lib/translate.ts`
+  - `src/lib/analytics.ts`
+  - `src/lib/cache.ts`
+  - `src/components/pwa/install-prompt.tsx`
+  - `src/components/pwa/online-status.tsx`
+  - `src/components/ui/flight-board.tsx`
+  - `src/components/ui/flight-board-preview.tsx`
+  - `src/components/ui/weather-preview-live.tsx`
+  - `src/components/ui/flight-board-live.tsx`
+  - `src/app/(frontend)/error.tsx`
+  - `src/app/global-error.tsx`
+  - `src/app/(frontend)/not-found.tsx`
+  - `src/app/(frontend)/news-events/page.tsx`
+  - `src/app/(frontend)/notices/page.tsx`
+  - `src/app/(frontend)/airport-project/page.tsx`
+  - `src/lib/integrations/flights/index.ts`
+  - `src/lib/payload-admin.ts`
+  - `src/components/pwa/pull-to-refresh.tsx`
+- Dependencies:
+  - fix `20` depends on `serverEnv.siteUrl`
+  - fixes `34` and `50` must stay compatible with existing cache return shapes
+  - fixes `41-46` require dictionary and locale-path consistency
+  - fix `31` should reuse existing i18n structure rather than introducing a parallel copy system
+- Risks:
+  - cache changes could alter refresh behavior if stale and fresh states are not separated cleanly
+  - rate-limit changes could accidentally fail closed
+  - error-state localization could drift from available dictionary keys
+  - global error and not-found boundaries must remain compatible with App Router expectations
+- Acceptance criteria:
+  - encoded traversal is rejected
+  - `/api/track` rejects cross-origin POSTs
+  - locale redirects are temporary
+  - revalidate secret comparison does not short-circuit on length
+  - health responses are explicitly non-cacheable
+  - hidden flights are not publicly readable
+  - authenticated users can read their own user document
+  - localized auto-slug generation works
+  - notices pre-render and attachment links download correctly
+  - duty-free page copy is sourced from dictionaries and contact data is not hardcoded in JSX
+  - translation requests enforce size and rate controls
+  - analytics and cache behavior degrade safely under load and expiry
+  - live and error UI states are localized
+  - global error and not-found boundaries exist and render correctly
+  - filter paths remain locale-aware
+  - payload admin auth failures are distinguishable from server errors
+- Completion record:
+  - completed fixes: `19-50`
+  - milestone validation: `pnpm lint`, `pnpm test`, `pnpm exec tsc --noEmit`
+  - residual manual QA:
+    - verify notice detail pre-rendering and attachment downloads
+    - verify duty-free translations across `en`, `fr`, and `mfe`
+    - force live API failures to confirm outdated/unavailable messaging
+    - verify expired dashboard cookie redirects before page content flashes
+
+## Milestone 4: Low Priority Cleanup, Safety, Accessibility, And UX Consistency
+- Status: Completed
+- Fixes in scope: 51-67
+- Fixes:
+  - `51.` make document audit fields immutable at create and update time
+  - `52.` source locale validation from `@/i18n/config`
+  - `53.` widen `remarks` typing to `string | null | undefined`
+  - `54.` remove dead fallback logic from `localePath`
+  - `55.` return `null` for invalid dashboard roles instead of silently granting `viewer_auditor`
+  - `56.` remove button semantics from the header backdrop
+  - `57.` add `role="region"` so the page hero `aria-label` is meaningful
+  - `58.` add an explicit new-tab indicator to external link labels
+  - `59.` only send `document.referrer` on the first SPA pageview
+  - `60.` always render content-slider arrows and toggle visibility with CSS
+  - `61.` replace paragraph-content React keys on emergency-services page
+  - `62.` replace content-string React keys on VIP lounge page
+  - `63.` change the manifest `start_url` to `/`
+  - `64.` add a pathname length guard in `src/lib/middleware-routing.ts`
+  - `65.` tighten the IPv6 regex in `src/app/api/track/route.ts`
+  - `66.` batch translation requests with a concurrency limit of five
+  - `67.` give airport-project list items a non-duplicative eyebrow label
+- Files likely affected:
+  - `src/collections/Documents.ts`
+  - `src/lib/validation.ts`
+  - `src/lib/flight-status.ts`
+  - `src/i18n/path.ts`
+  - `src/lib/dashboard.ts`
+  - `src/components/layout/header.tsx`
+  - `src/components/ui/page-hero.tsx`
+  - `src/components/ui/detail-cards.tsx`
+  - `src/components/analytics/tracker.tsx`
+  - `src/components/ui/content-slider.tsx`
+  - `src/app/(frontend)/emergency-services/page.tsx`
+  - `src/app/(frontend)/vip-lounge/page.tsx`
+  - `src/app/manifest.ts`
+  - `src/lib/middleware-routing.ts`
+  - `src/app/api/track/route.ts`
+  - `src/lib/translate.ts`
+  - `src/app/(frontend)/airport-project/page.tsx`
+- Dependencies:
+  - fix `52` should align with the shared locale configuration used elsewhere
+  - fixes `64-66` should remain consistent with medium-priority tracking and translation hardening
+  - fix `55` may require explicit caller handling for a `null` primary role
+- Risks:
+  - role fallback changes could expose unhandled caller assumptions
+  - manifest changes must still cooperate with locale redirects
+  - accessibility tweaks must not change layout or interaction flow beyond the requested fix
+- Acceptance criteria:
+  - document audit fields cannot be mutated through the API
+  - locale validation uses the shared locale list
+  - nullable remarks are type-safe
+  - locale path helper no longer carries dead logic
+  - invalid dashboard roles do not silently receive privileges
+  - backdrop and hero semantics are accessible
+  - external links announce new-tab behavior
+  - SPA analytics referrer data is not stale
+  - slider arrows no longer cause layout shift
+  - list rendering uses stable keys
+  - the PWA starts at `/` and relies on locale redirect middleware
+  - route validation rejects overlong paths and invalid IPv6 inputs
+  - translation batching preserves output order while limiting concurrency
+  - airport-project eyebrow text no longer duplicates the title
+- Completion record:
+  - completed fixes: `51-67`
+  - milestone validation: `pnpm lint`, `pnpm test`, `pnpm exec tsc --noEmit`
+  - residual manual QA:
+    - verify dashboard callers handle an invalid primary role gracefully
+    - verify the PWA still lands on the correct locale after install
+    - verify slider arrow visibility changes do not introduce focus issues
+
+## Final Acceptance Summary
+- Requested fixes intentionally completed:
+  - critical: `1-9`
+  - high: `10-18`
+  - medium: `19-50`
+  - low: `51-67`
+- Final verification record:
+  - `pnpm lint`
+  - `pnpm test`
+  - `pnpm build`
+  - `pnpm exec tsc --noEmit`
+- Final manual QA priorities:
+  - admin workflow publishing for versioned collections
+  - locale-aware frontend routes and filter-chip navigation
+  - notice and news attachment downloads
+  - dashboard auth redirect behavior with expired cookies
+  - localized error and not-found boundaries
+
+## Milestone 5: Audit Fix Prompt Batch For Verified Issues 1-15
+- Status: Completed
+- Scope: remediate the 15 verified issues from the audit prompt dated April 15, 2026
+- Current turn scope: globals/collections batch only, limited to `src/fields/validators.ts`, the five requested globals, and the three requested collections
+- Fix groups:
+  - Security and validation:
+    - remove the unstable anonymous rate-limit fingerprint component in `src/middleware.ts`
+    - restrict map embed URLs to approved HTTPS Google Maps and OpenStreetMap domains
+    - simplify `safeCompare()` in `src/app/api/revalidate/route.ts`
+    - add a timeout guard to Supabase signed URL generation
+  - I18n and frontend resilience:
+    - make the root `src/app/not-found.tsx` locale-aware via `defaultLocale`
+    - guard frontend `generateMetadata()` functions with a shared try/catch fallback pattern in the requested route files
+    - align `airport-project` filter-chip loading UI with the existing skeleton pattern
+    - fix the stale provider label reference in `src/components/ui/flight-board-live.tsx`
+    - replace the unstable list key in `src/components/ui/detail-cards.tsx`
+    - decide the dashboard error-boundary localization fix conservatively without introducing a new dashboard i18n dependency
+  - Collections, analytics, and data model updates:
+    - warn in production when documents are created without an authenticated uploader
+    - localize Airport Map point-of-interest text fields
+    - add requested indexes in `Notices`, `Pages`, and `Airlines`
+    - surface analytics truncation state through the dashboard
+    - extract shared URL validation helpers for the named globals while keeping map embed validation stricter
+- Files likely affected:
+  - `src/middleware.ts`
+  - `tests/unit/middleware-security.test.ts`
+  - `src/globals/AirportMap.ts`
+  - `src/globals/TransportParking.ts`
+  - `src/globals/WorkingHoursDirections.ts`
+  - `src/globals/SiteSettings.ts`
+  - `src/globals/ContactInfo.ts`
+  - `src/fields/validators.ts`
+  - `src/app/not-found.tsx`
+  - `src/app/(frontend)/amenities/page.tsx`
+  - `src/app/(frontend)/accessibility/page.tsx`
+  - `src/app/(frontend)/airport-map/page.tsx`
+  - `src/app/(frontend)/transport-parking/page.tsx`
+  - `src/app/(frontend)/passenger-guide/page.tsx`
+  - `src/app/(frontend)/emergency-services/page.tsx`
+  - `src/app/(frontend)/useful-links/page.tsx`
+  - `src/app/(frontend)/vip-lounge/page.tsx`
+  - `src/app/(frontend)/terms-conditions/page.tsx`
+  - `src/app/(frontend)/privacy/page.tsx`
+  - `src/app/(frontend)/disclaimer/page.tsx`
+  - `src/app/(frontend)/duty-free/page.tsx`
+  - `src/app/(frontend)/contact/page.tsx`
+  - `src/app/(frontend)/working-hours/page.tsx`
+  - `src/app/(frontend)/management/page.tsx`
+  - `src/app/(frontend)/regulations/page.tsx`
+  - `src/app/(frontend)/usage-fees/page.tsx`
+  - `src/app/(frontend)/airport-project/page.tsx`
+  - `src/components/ui/flight-board-live.tsx`
+  - `src/components/ui/detail-cards.tsx`
+  - `src/app/(dashboard)/dashboard/error.tsx`
+  - `src/collections/Documents.ts`
+  - `src/collections/Notices.ts`
+  - `src/collections/Pages.ts`
+  - `src/collections/Airlines.ts`
+  - `src/lib/analytics.ts`
+  - `src/app/(dashboard)/dashboard/analytics/page.tsx`
+  - `src/app/api/revalidate/route.ts`
+  - `src/lib/storage/supabase-client.ts`
+  - `src/payload-types.ts`
+- Dependencies:
+  - preserve existing local edits in `src/middleware.ts`, `src/collections/Notices.ts`, and `tests/unit/middleware-security.test.ts`
+  - keep map embed validation stricter than the shared generic URL validator
+  - regenerate Payload types after localizing Airport Map POI fields
+  - analytics truncation changes must preserve existing summary shape except for the additive `truncated` flag
+- Risks:
+  - rate-limit-key changes can alter cache or limiter bucket behavior across replicas
+  - collection index additions and localized field changes can require generated type updates
+  - metadata fallbacks must not change the page render path or introduce async root boundary issues
+  - signed-URL timeout handling must not break normal Supabase success paths
+- Validation commands:
+  - `pnpm generate:types`
+  - `pnpm test`
+  - `pnpm lint`
+  - `pnpm build`
+  - `docker compose -f docker-compose.prod.yml up --build -d`
+- Acceptance criteria:
+  - anonymous requests without trusted IP headers share a stable rate-limit fingerprint
+  - only approved HTTPS map embed providers are accepted in the targeted globals
+  - the root 404 page and requested frontend metadata functions fail safely
+  - document create hooks warn in production when audit attribution is missing
+  - Airport Map POI labels become localizable and generated Payload types stay in sync
+  - requested collection indexes are present
+  - dashboard analytics can indicate truncation when the aggregation hits `MAX_PAGES`
+  - signed URL generation fails within a bounded timeout instead of hanging indefinitely
+  - validation must stop on introduced regressions and those regressions must be fixed before closing the milestone
+- Completion record:
+  - completed fixes:
+    - stable anonymous rate-limit fingerprint in `src/middleware.ts`
+    - approved-domain HTTPS-only map embed validation in `AirportMap`, `TransportParking`, and `WorkingHoursDirections`
+    - shared URL validator extraction for `SiteSettings`, `ContactInfo`, and `WorkingHoursDirections`
+    - locale-aware root `not-found.tsx`
+    - production warning for document creates without `req.user?.id`
+    - live flight-board error branch uses `initialData.providerLabel`
+    - Airport Map POI `name` and `description` are localized
+    - requested collection indexes were added in `Notices`, `Pages`, and `Airlines`
+    - requested frontend metadata generators now fail closed to `{ title: 'ARL Airport' }`
+    - `airport-project` now uses `FilterChipsSkeleton`
+    - analytics truncation state is returned and surfaced on the dashboard
+    - `safeCompare()` is simplified
+    - signed URL generation now times out after 10 seconds
+    - dashboard error boundary now follows `defaultLocale` labels without adding new dashboard i18n plumbing
+    - `detail-cards` no longer uses an index-based React key
+  - scope note:
+    - `src/app/(frontend)/working-hours/page.tsx`, `management/page.tsx`, `regulations/page.tsx`, and `usage-fees/page.tsx` do not exist in this checkout, so there were no file-local metadata functions to patch there
+  - files changed:
+    - `PLANS.md`
+    - `src/app/not-found.tsx`
+    - `src/app/(frontend)/amenities/page.tsx`
+    - `src/app/(frontend)/accessibility/page.tsx`
+    - `src/app/(frontend)/airport-map/page.tsx`
+    - `src/app/(frontend)/transport-parking/page.tsx`
+    - `src/app/(frontend)/passenger-guide/page.tsx`
+    - `src/app/(frontend)/emergency-services/page.tsx`
+    - `src/app/(frontend)/useful-links/page.tsx`
+    - `src/app/(frontend)/vip-lounge/page.tsx`
+    - `src/app/(frontend)/terms-conditions/page.tsx`
+    - `src/app/(frontend)/privacy/page.tsx`
+    - `src/app/(frontend)/disclaimer/page.tsx`
+    - `src/app/(frontend)/duty-free/page.tsx`
+    - `src/app/(frontend)/contact/page.tsx`
+    - `src/app/(frontend)/airport-project/page.tsx`
+    - `src/app/(dashboard)/dashboard/analytics/page.tsx`
+    - `src/app/(dashboard)/dashboard/error.tsx`
+    - `src/app/api/revalidate/route.ts`
+    - `src/components/ui/flight-board-live.tsx`
+    - `src/components/ui/detail-cards.tsx`
+    - `src/fields/validators.ts`
+    - `src/globals/AirportMap.ts`
+    - `src/globals/TransportParking.ts`
+    - `src/globals/WorkingHoursDirections.ts`
+    - `src/globals/SiteSettings.ts`
+    - `src/globals/ContactInfo.ts`
+    - `src/collections/Documents.ts`
+    - `src/collections/Notices.ts`
+    - `src/collections/Pages.ts`
+    - `src/collections/Airlines.ts`
+    - `src/lib/analytics.ts`
+    - `src/lib/storage/supabase-client.ts`
+    - `src/middleware.ts`
+    - `tests/unit/middleware-security.test.ts`
+  - validation results:
+    - `pnpm generate:types` ✅
+    - `pnpm test` ✅
+    - `pnpm lint` ✅
+    - `pnpm build` ❌ without `VISITOR_HASH_SALT` because of a pre-existing production env requirement in `src/lib/env.server.ts`
+    - `$env:VISITOR_HASH_SALT='validation-visitor-hash-salt'; pnpm build` ✅
+    - `pnpm exec tsc --noEmit` ✅
+    - `$env:VISITOR_HASH_SALT='validation-visitor-hash-salt'; docker compose -f docker-compose.prod.yml up --build -d` ❌ because the Docker build path still does not receive `VISITOR_HASH_SALT`, causing pre-existing build-time failures in `/api/weather` and `/api/revalidate`
+  - residual risks / manual QA:
+    - confirm production deployment injects `VISITOR_HASH_SALT` into both the app runtime and the Docker build path if image builds are expected to succeed in CI/CD
+    - manually verify CMS editors can only save approved Google Maps or OpenStreetMap embed URLs
+    - manually verify dashboard analytics truncation messaging by forcing the page-view dataset above the `MAX_PAGES` cap
+
+## Milestone 6: Conservative Repair Mode Skill
+- Status: Completed
+- Scope:
+  - create a repo-local Codex skill that encodes the requested conservative maintenance, repair, verification, artifact, and intent-comparison workflow
+  - keep the trigger metadata concise while moving detailed operating rules into bundled references
+  - preserve existing repo-local skills and avoid changing unrelated project code
+- Files likely affected:
+  - `PLANS.md`
+  - `.codex/skills/conservative-repair-mode/SKILL.md`
+  - `.codex/skills/conservative-repair-mode/agents/openai.yaml`
+  - `.codex/skills/conservative-repair-mode/references/repair-cycle.md`
+  - `.codex/skills/conservative-repair-mode/references/artifact-templates.md`
+- Dependencies:
+  - follow `AGENTS.md` planning requirements before editing
+  - use the bundled `skill-creator` workflow and validator
+  - keep the skill aligned with the existing `.codex/skills` repo structure used by the current checkout, even though `.codex/` is ignored by Git in this repository
+- Risks:
+  - overloading `SKILL.md` with too much copied prompt text and making triggering or usage noisy
+  - creating duplicate or conflicting guidance with existing hardening and whole-code-fix skills
+  - leaving UI metadata, skill body, and reference material inconsistent
+- Validation commands:
+  - `python "C:\Users\kelvi\.codex\skills\.system\skill-creator\scripts\quick_validate.py" ".codex/skills/conservative-repair-mode"`
+  - `Get-Content -Raw ".codex/skills/conservative-repair-mode/SKILL.md"`
+  - `Get-Content -Raw ".codex/skills/conservative-repair-mode/agents/openai.yaml"`
+- Acceptance criteria:
+  - the new skill exists under `.codex/skills` with valid frontmatter and UI metadata
+  - the description clearly signals when to use the skill
+  - the skill body is concise and points to detailed references instead of duplicating the full prompt verbatim
+  - the bundled references preserve the requested conservative repair workflow, artifact requirements, verification loop, and output contract
+  - validation passes without requiring unrelated repository changes
+- Completion record:
+  - completed fixes:
+    - scaffolded `.codex/skills/conservative-repair-mode` with `SKILL.md`, `agents/openai.yaml`, and focused `references/`
+    - authored a concise trigger-oriented skill body that delegates detailed workflow and artifact requirements into two reference files
+    - corrected the generated `default_prompt` so it explicitly references `$conservative-repair-mode`
+  - files changed:
+    - `PLANS.md`
+    - `.codex/skills/conservative-repair-mode/SKILL.md`
+    - `.codex/skills/conservative-repair-mode/agents/openai.yaml`
+    - `.codex/skills/conservative-repair-mode/references/repair-cycle.md`
+    - `.codex/skills/conservative-repair-mode/references/artifact-templates.md`
+  - validation results:
+    - `python "C:\Users\kelvi\.codex\skills\.system\skill-creator\scripts\quick_validate.py" ".codex/skills/conservative-repair-mode"` failed because the local Python environment does not have `PyYAML`
+    - equivalent custom frontmatter validation passed for `SKILL.md`
+    - interface metadata validation passed for `agents/openai.yaml`
+    - manual review confirmed the expected skill file layout under `.codex/skills/conservative-repair-mode`
+  - residual risks / notes:
+    - `.codex/` is ignored by the repository, so the new skill is local to this checkout unless ignore rules are changed intentionally
+    - the bundled validator will continue to fail until `PyYAML` is available in the local Python environment
+
+## Milestone 7: Conservative Audit Repair Batch For Issues 1-11
+- Status: Completed
+- Scope:
+  - implement the 11 requested audit fixes from the April 16, 2026 prompt
+  - use Conservative Repair Mode artifacts under `.ai-maintenance/`
+  - preserve existing behavior unless the prompt explicitly requests a behavior change
+  - keep optional fixes on the smallest safe path when a broader schema or contract change is not necessary
+- Milestone 7A: Security and server-boundary hardening
+  - Fixes:
+    - `1.` verify the middleware `payload-token` JWT signature with `PAYLOAD_SECRET` before trusting the expiry claim
+    - `2.` remove the dead `serverEnv.supabaseServiceRoleKey` field instead of broadening the storage client import surface
+    - `3.` set the locale cookie with `secure: process.env.NODE_ENV === 'production'`
+    - `8.` document that null `Origin` is intentionally accepted by `/api/track`
+  - Files likely affected:
+    - `src/middleware.ts`
+    - `tests/unit/middleware-security.test.ts`
+    - `src/lib/env.server.ts`
+    - `src/app/api/track/route.ts`
+  - Dependencies:
+    - JWT verification depends on `PAYLOAD_SECRET` being available in the middleware runtime
+    - tests need a signed HS256 fixture so invalid future tokens and valid future tokens are distinguished
+  - Risks:
+    - accidentally blocking valid dashboard sessions if signature decoding is not base64url-safe
+    - adding `secure` to the locale cookie must not affect development cookies
+  - Validation commands:
+    - `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/api/track.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - forged dashboard JWT cookies no longer bypass the middleware redirect
+    - signed, unexpired dashboard JWT cookies still pass middleware handoff
+    - expired dashboard JWT cookies still redirect
+    - production locale cookies include `Secure`
+    - `/api/track` null-Origin behavior remains intentionally documented
+  - Completion record:
+    - completed fixes:
+      - added Web Crypto HS256 verification for dashboard `payload-token` middleware handoff
+      - added focused middleware tests for signed, forged, and expired dashboard JWT cookies
+      - added production `Secure` flag to the locale cookie and test coverage for it
+      - removed the unused `serverEnv.supabaseServiceRoleKey` field
+      - documented intentional null-Origin acceptance in `/api/track`
+    - files changed:
+      - `src/middleware.ts`
+      - `tests/unit/middleware-security.test.ts`
+      - `src/lib/env.server.ts`
+      - `src/app/api/track/route.ts`
+    - validation results:
+      - `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/api/track.test.ts` passed
+      - `pnpm lint` passed
+      - first `pnpm build` failed on an introduced `Uint8Array<ArrayBufferLike>` Web Crypto type mismatch
+      - fixed the helper return type by constructing a `Uint8Array<ArrayBuffer>`
+      - rerun `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/api/track.test.ts` passed
+      - rerun `pnpm lint` passed
+      - rerun `pnpm build` passed
+    - residual manual QA:
+      - verify dashboard login sessions in a real production-like deployment with the actual Payload cookie
+      - verify production locale cookie behavior on HTTPS
+- Milestone 7B: Cache and translation runtime cleanup
+  - Fixes:
+    - `6.` prune stale translation cache entries periodically instead of on every cache write
+    - `7.` refresh in-memory cache entry insertion order on dev cache hits for LRU-like eviction
+    - `9.` document the typed invariant behind the in-flight cache promise cast
+    - `11.` document the MyMemory `mfe` to French fallback
+  - Files likely affected:
+    - `src/lib/translate.ts`
+    - `src/lib/cache.ts`
+    - `tests/unit/cache-runtime.test.ts`
+    - `tests/unit/translate.test.ts`
+  - Dependencies:
+    - keep Redis production behavior unchanged
+    - keep `getCachedTranslation` TTL enforcement unchanged so delayed cleanup never returns expired values
+  - Risks:
+    - cache test expectations must change from FIFO to LRU-like behavior
+    - periodic cleanup can leave expired translations in memory briefly, though reads still reject them
+  - Validation commands:
+    - `pnpm test -- tests/unit/cache-runtime.test.ts tests/unit/translate.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - hot dev cache entries survive capacity eviction after a cache hit
+    - translation cache writes do not scan all entries on every write
+    - existing translation TTL and size cap behavior remains intact
+    - `mfe` fallback behavior is explicit in code
+  - Completion record:
+    - completed fixes:
+      - added periodic stale-entry cleanup for the translation cache
+      - documented MyMemory's `mfe` fallback to French
+      - refreshed dev in-memory cache insertion order on fresh and stale hits
+      - documented the in-flight cache promise type invariant
+      - updated cache runtime coverage from FIFO eviction to least-recently-used eviction
+    - files changed:
+      - `src/lib/translate.ts`
+      - `src/lib/cache.ts`
+      - `tests/unit/cache-runtime.test.ts`
+    - validation results:
+      - `pnpm test -- tests/unit/cache-runtime.test.ts tests/unit/translate.test.ts` passed
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual manual QA:
+      - none required beyond optional dev-cache smoke testing under repeated hot-key reads
+- Milestone 7C: UI and CMS coherence fixes
+  - Fixes:
+    - `4.` include the item index as a key tiebreaker in `DetailCards`
+    - `5.` correct the Notices attachments description to images-only to avoid an unrequested polymorphic relationship migration
+    - `10.` add cross-field `expiryDate` validation to Documents
+  - Files likely affected:
+    - `src/components/ui/detail-cards.tsx`
+    - `src/collections/Notices.ts`
+    - `src/collections/Documents.ts`
+  - Dependencies:
+    - preserve the existing single-relation Notices attachments schema
+    - keep document audit fields and hooks unchanged
+  - Risks:
+    - changing Notices relation type would require Payload typegen and migration work, so this plan avoids it
+    - document date validation must tolerate invalid or missing date inputs without throwing
+  - Validation commands:
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - duplicate detail-card keys are avoided
+    - Notices admin copy no longer promises document attachments
+    - Documents rejects expiry dates on or before the effective date
+  - Completion record:
+    - completed fixes:
+      - changed `DetailCards` keys to include an index tiebreaker
+      - changed Notices attachment admin description to images-only while preserving the `media` relationship
+      - added guarded Documents `expiryDate` validation against `effectiveDate`
+    - files changed:
+      - `src/components/ui/detail-cards.tsx`
+      - `src/collections/Notices.ts`
+      - `src/collections/Documents.ts`
+    - validation results:
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual manual QA:
+      - verify the Documents admin form shows the expiry/effective date validation message as expected
+      - verify Notices editors still see existing media attachments normally
+- Stop-and-fix rule:
+  - run the validation commands after each milestone
+  - if validation fails, fix only issues introduced by the current milestone before continuing
+  - document any pre-existing validation blocker separately from introduced regressions
+- Final completion record:
+  - completed fixes:
+    - all requested fixes `1-11` were implemented
+    - Conservative Repair Mode artifacts were created under `.ai-maintenance/`
+    - three sub agents were used for independent middleware/security, cache/env/translation, and UI/CMS reviews
+  - validation results:
+    - Milestone 7A: focused middleware/track tests passed, lint passed, build passed after fixing an introduced Web Crypto type mismatch
+    - Milestone 7B: focused cache/translation tests passed, lint passed, build passed
+    - Milestone 7C: lint passed, build passed
+    - final `pnpm test` passed with 45 files and 192 tests
+  - residual risks / manual QA:
+    - verify a real Payload dashboard cookie in a production-like runtime
+    - verify production HTTPS locale cookie behavior
+    - verify Documents admin date validation message
+    - verify Notices editors still attach media as expected
+
+## Milestone 8: Production Readiness Phase 2
+- Status: Completed
+- Source: `PRODUCTION_READINESS_PROMPT.md` and approved implementation plan from April 16, 2026
+- Scope:
+  - add production Let's Encrypt support while preserving the self-signed Nginx fallback
+  - add CI-gated production deploy workflow using the GHCR image
+  - add protected service status visibility and external health probe script
+  - add unit coverage for storage, status, top UI helpers, and weather integration
+  - add scheduled compressed database backups with retention
+- Files likely affected:
+  - `nginx/conf.d/default.conf.template`
+  - `scripts/init-letsencrypt.sh`
+  - `scripts/health-probe.sh`
+  - `scripts/backup-cron.sh`
+  - `.github/workflows/deploy.yml`
+  - `docker-compose.prod.yml`
+  - `package.json`
+  - `src/app/api/status/route.ts`
+  - `src/lib/env.server.ts`
+  - `.env.example`
+  - `.gitignore`
+  - `.dockerignore`
+  - new tests under `tests/unit/api`, `tests/unit/storage`, `tests/unit/ui`, and `tests/unit/integrations`
+- Dependencies:
+  - keep `nginx/nginx.conf` intact as the fallback config
+  - use `getSupabaseAdminClient`, `getSignedURL`, and `getSignedURLs` as currently exported instead of changing storage contracts
+  - keep `/api/health` response shape unchanged and add `/api/status` as a separate protected endpoint
+  - preserve existing dirty worktree edits outside this milestone
+- Risks:
+  - Nginx templating must not replace built-in Nginx variables such as `$host`
+  - GHCR deployment requires the production server to already have image pull access
+  - the deploy migration step is intentionally warning-only and needs operator review if it fails
+  - Let’s Encrypt issuance still depends on DNS, port 80, `DOMAIN`, and email configuration
+  - backup cron timing and cert renewal should be smoke-tested in a production-like container
+- Validation commands:
+  - after each milestone batch: `pnpm exec tsc --noEmit`, `pnpm test`, `pnpm lint`, `pnpm build`
+  - infra/script checks: `docker compose -f docker-compose.prod.yml config`, `bash -n scripts/init-letsencrypt.sh`, `sh -n scripts/health-probe.sh scripts/backup-cron.sh scripts/backup-db.sh`
+  - status check: `pnpm test -- tests/unit/api/status.test.ts`
+  - coverage check: `pnpm test -- --coverage`
+- Stop-and-fix rule:
+  - if validation fails, stop the next batch, fix only issues introduced by this milestone, rerun the failing command, and document results in this section and `.ai-maintenance`
+- Acceptance criteria:
+  - all prompt-listed files exist
+  - `docker-compose.prod.yml`, `src/lib/env.server.ts`, `.env.example`, `.gitignore`, `.dockerignore`, and `package.json` contain the planned updates
+  - `/api/status` is bearer-protected and returns per-service status without crashing on dependency failures
+  - coverage exists for storage, `DetailCards`, `PageHero`, weather, and status
+  - final `pnpm exec tsc --noEmit`, `pnpm test`, `pnpm lint`, and `pnpm build` pass
+- Completion record:
+  - completed fixes:
+    - added conditional Let's Encrypt Nginx template activation with self-signed fallback preserved
+    - added certbot renewal service and initialization script
+    - added GHCR-backed deploy workflow and `migrate` script
+    - added protected `/api/status` service checks for database, Redis, and Supabase Storage
+    - added external health probe and scheduled compressed backup service
+    - added focused tests for status, storage client, storage buckets/upload utilities, detail cards, page hero, and weather integration
+  - files changed or added by this milestone:
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260416-141855-production-readiness-phase-2.md`
+    - `.github/workflows/deploy.yml`
+    - `.dockerignore`
+    - `.env.example`
+    - `.gitignore`
+    - `docker-compose.prod.yml`
+    - `nginx/conf.d/default.conf.template`
+    - `package.json`
+    - `scripts/init-letsencrypt.sh`
+    - `scripts/health-probe.sh`
+    - `scripts/backup-cron.sh`
+    - `src/app/api/status/route.ts`
+    - `src/lib/env.server.ts`
+    - `tests/unit/api/status.test.ts`
+    - `tests/unit/storage/buckets.test.ts`
+    - `tests/unit/storage/supabase-client.test.ts`
+    - `tests/unit/storage/upload.test.ts`
+    - `tests/unit/ui/detail-cards.test.tsx`
+    - `tests/unit/ui/page-hero.test.tsx`
+    - `tests/unit/integrations/weather.test.ts`
+  - validation results:
+    - infra/script checks passed: `bash -n scripts/init-letsencrypt.sh`, `sh -n scripts/health-probe.sh scripts/backup-cron.sh scripts/backup-db.sh` via Bash, `docker compose --env-file .env.example -f docker-compose.prod.yml config --quiet`
+    - status focused test passed: `pnpm test -- tests/unit/api/status.test.ts`
+    - storage/UI/weather focused tests passed
+    - final TypeScript passed: `pnpm exec tsc --noEmit`
+    - final test suite passed: `pnpm test` with 52 files and 232 tests
+    - final lint passed: `pnpm lint`
+    - final build passed: `pnpm build`
+    - coverage passed: `pnpm test -- --coverage`; `src/lib/storage` reached 95.08% line coverage, `detail-cards.tsx`, `page-hero.tsx`, and `src/lib/integrations/weather` are covered
+  - stop-and-fix notes:
+    - fixed an introduced Bash syntax issue in `scripts/init-letsencrypt.sh`
+    - fixed the Redis constructor mock in the status route test
+    - replaced flaky dynamic module mocks in storage/weather tests with hoisted static mocks
+    - added focused `upload.ts` tests after the first coverage run showed `src/lib/storage` at 57.37%, below the 60% target
+  - residual risks / manual QA:
+    - verify the production host has GHCR pull access if the repository image is private
+    - run `scripts/init-letsencrypt.sh` only after DNS and ports 80/443 are correctly configured
+    - manually smoke-test cert renewal, Nginx reload, deploy migration warnings, and backup cron behavior in a production-like container
+
+## Milestone 9: Production Readiness Phase 3
+- Status: Completed
+- Source: `PRODUCTION_READINESS_PROMPT.md`
+- Scope:
+  - add deploy rollback behavior and deploy failure notification wiring
+  - add reusable webhook alerting for health probe and backup failures
+  - add focused tests for six critical UI components
+  - add workflow status badges, server-side deploy audit logging, and `deploy.log` ignore coverage
+  - add Artillery load and stress test configuration with package scripts and dev dependency
+- Milestone 9A: Deploy rollback and deploy failure visibility
+  - Fixes:
+    - replace the deploy SSH script with the requested rollback-aware script
+    - append successful and rollback deploy events to `deploy.log`
+    - add optional failure notification through `DEPLOY_WEBHOOK_URL`
+    - document `DEPLOY_WEBHOOK_URL` in `.env.example`
+  - Files likely affected:
+    - `.github/workflows/deploy.yml`
+    - `.env.example`
+  - Dependencies:
+    - preserve the Phase 2 workflow trigger, deploy job condition, environment, and SSH action fields
+    - keep migration failures warning-only as in Phase 2
+  - Risks:
+    - rollback is limited to the current host's Docker Compose files and prior checked-out commit
+    - optional webhook secret must not become required for deploy success or notification failure handling
+  - Validation commands:
+    - `pnpm exec tsc --noEmit`
+    - `pnpm test`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - failed health checks no longer leave the attempted deploy as the only running state without rollback
+    - successful deploys and rollback outcomes are appended to `deploy.log`
+    - missing or failing deploy webhook does not mask the original deploy result
+- Milestone 9B: Health and backup alerting
+  - Fixes:
+    - create executable `scripts/alert.sh`
+    - replace `scripts/health-probe.sh` with alerting and optional `/api/status` check support
+    - call `alert.sh` from `scripts/backup-cron.sh` when backups fail
+    - add `ALERT_WEBHOOK_URL` to `.env.example` and the backup service environment
+  - Files likely affected:
+    - `scripts/alert.sh`
+    - `scripts/health-probe.sh`
+    - `scripts/backup-cron.sh`
+    - `docker-compose.prod.yml`
+    - `.env.example`
+  - Dependencies:
+    - keep health and backup failures observable through exit codes and existing log files
+    - keep alerts optional and non-fatal when the webhook is unavailable
+  - Risks:
+    - shell portability across Alpine `/bin/sh`
+    - webhook payloads must remain simple enough for Discord and Slack-compatible receivers
+  - Validation commands:
+    - `sh -n scripts/alert.sh scripts/health-probe.sh scripts/backup-cron.sh`
+    - `pnpm exec tsc --noEmit`
+    - `pnpm test`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - alerting is reusable, optional, and non-fatal on webhook send failure
+    - health probe still exits nonzero on health failures
+    - backup failures still exit nonzero after sending/logging an alert
+- Milestone 9C: Critical UI component test coverage
+  - Fixes:
+    - add tests for notice card, emergency banner, filter chips, section list, rich text, and quick actions
+    - preserve existing component source and existing test files
+  - Files likely affected:
+    - `tests/unit/ui/notice-card.test.tsx`
+    - `tests/unit/ui/emergency-banner.test.tsx`
+    - `tests/unit/ui/filter-chips.test.tsx`
+    - `tests/unit/ui/section-list.test.tsx`
+    - `tests/unit/ui/rich-text.test.tsx`
+    - `tests/unit/ui/quick-actions.test.tsx`
+  - Dependencies:
+    - match current Vitest and Testing Library patterns from `detail-cards` and `page-hero`
+    - mocks must reflect the current component imports
+  - Risks:
+    - tests can become brittle if they assert incidental markup instead of requested behavior
+    - server and client components need compatible mocks under Vitest
+  - Validation commands:
+    - `pnpm test -- tests/unit/ui/notice-card.test.tsx tests/unit/ui/emergency-banner.test.tsx tests/unit/ui/filter-chips.test.tsx tests/unit/ui/section-list.test.tsx tests/unit/ui/rich-text.test.tsx tests/unit/ui/quick-actions.test.tsx`
+    - `pnpm exec tsc --noEmit`
+    - `pnpm test`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - the six requested test files exist
+    - all prompt-listed cases are covered without editing existing tests or UI source
+- Milestone 9D: README badges and deploy audit log ignore
+  - Fixes:
+    - add CI, Deploy, and Docker status badges at the top of `README.md`
+    - add `deploy.log` to `.gitignore`
+  - Files likely affected:
+    - `README.md`
+    - `.gitignore`
+  - Dependencies:
+    - preserve existing README content and status from Phase 2
+  - Risks:
+    - badge repository path must match the prompt's GitHub organization/repo
+  - Validation commands:
+    - `pnpm exec tsc --noEmit`
+    - `pnpm test`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - badges point to the requested workflow badge URLs
+    - local server deploy logs cannot be committed accidentally
+- Milestone 9E: Load testing configuration
+  - Fixes:
+    - add Artillery baseline and stress YAML files
+    - add load testing README
+    - add `test:load` and `test:load:stress` package scripts
+    - add Artillery as a dev dependency through `pnpm`
+  - Files likely affected:
+    - `tests/load/baseline.yml`
+    - `tests/load/stress.yml`
+    - `tests/load/README.md`
+    - `package.json`
+    - `pnpm-lock.yaml`
+  - Dependencies:
+    - use `APP_URL` as the runtime target input for Artillery
+    - keep load tests opt-in and out of CI by default
+  - Risks:
+    - package lock update may be large but should be tool-generated
+    - Artillery should not run against production unintentionally
+  - Validation commands:
+    - `pnpm add -D artillery`
+    - `pnpm exec tsc --noEmit`
+    - `pnpm test`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - load configs and docs exist
+    - package scripts run Artillery against the requested config files
+    - Artillery dependency is recorded in `package.json` and lockfile
+- Stop-and-fix rule:
+  - run the listed validation commands after each milestone batch where feasible
+  - if validation fails, stop the next batch and repair only issues introduced by the current batch
+  - document any pre-existing blocker separately from introduced regressions
+- Final validation checklist:
+  - `pnpm exec tsc --noEmit`
+  - `pnpm test`
+  - `pnpm lint`
+  - `pnpm build`
+- Completion record:
+  - completed fixes:
+    - replaced the deploy SSH health-failure path with rollback-aware behavior and append-only `deploy.log` writes
+    - added optional deploy failure notification through `DEPLOY_WEBHOOK_URL`
+    - added reusable `scripts/alert.sh` and integrated it with health probe and backup failure paths
+    - passed `ALERT_WEBHOOK_URL` into the backup service environment
+    - added six requested UI component test files
+    - added README workflow badges and ignored `deploy.log`
+    - added Artillery baseline/stress configs, load-test docs, package scripts, and dev dependency
+  - files changed or added by this milestone:
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260416-151336-production-readiness-phase-3-*.md`
+    - `.ai-maintenance/fix-ledgers/20260416-152206-production-readiness-phase-3-fix-ledger.md`
+    - `.ai-maintenance/verification-reports/20260416-152206-production-readiness-phase-3-verification.md`
+    - `.ai-maintenance/regression-checks/20260416-152206-production-readiness-phase-3-regression.md`
+    - `.ai-maintenance/final-status/20260416-152206-production-readiness-phase-3-final-status.md`
+    - `.github/workflows/deploy.yml`
+    - `.env.example`
+    - `.gitignore`
+    - `README.md`
+    - `docker-compose.prod.yml`
+    - `package.json`
+    - `pnpm-lock.yaml`
+    - `scripts/alert.sh`
+    - `scripts/health-probe.sh`
+    - `scripts/backup-cron.sh`
+    - `tests/unit/ui/notice-card.test.tsx`
+    - `tests/unit/ui/emergency-banner.test.tsx`
+    - `tests/unit/ui/filter-chips.test.tsx`
+    - `tests/unit/ui/section-list.test.tsx`
+    - `tests/unit/ui/rich-text.test.tsx`
+    - `tests/unit/ui/quick-actions.test.tsx`
+    - `tests/load/baseline.yml`
+    - `tests/load/stress.yml`
+    - `tests/load/README.md`
+  - validation results:
+    - focused UI tests passed: 6 files, 28 tests
+    - shell syntax passed through Bash: `bash -n scripts/alert.sh scripts/health-probe.sh scripts/backup-cron.sh scripts/backup-db.sh`
+    - Docker Compose config passed: `docker compose --env-file .env.example -f docker-compose.prod.yml config --quiet`
+    - formatting passed: `pnpm format:check` and targeted `pnpm exec prettier --check`
+    - final TypeScript passed: `pnpm exec tsc --noEmit`
+    - final test suite passed: `pnpm test` with 58 files and 260 tests
+    - final lint passed: `pnpm lint`
+    - final build passed: `pnpm build`
+    - final post-build TypeScript passed: `pnpm exec tsc --noEmit`
+    - Artillery CLI resolved: `pnpm exec artillery --version` reported 2.0.30
+  - stop-and-fix notes:
+    - initial `sh -n` validation could not run because `sh` is not on this Windows PATH; reran the same shell syntax validation through Bash successfully
+    - an extra Prettier check reported formatting drift in YAML/Markdown, so those files were normalized and rechecked
+  - residual risks / manual QA:
+    - deploy rollback behavior should be smoke-tested on a staging host with real Docker images and health failures
+    - webhook delivery should be tested with the actual Discord or Slack endpoint configured in production
+    - Artillery load tests are intentionally opt-in and were not run against a live service during implementation
+    - `NoticeCard` category tests preserve the current untranslated-category fallback behavior rather than changing component behavior solely to match the prompt mock expectation
+
+## Milestone 10: Live Flight Board Refresh Resilience
+- Status: Completed
+- Source: April 20, 2026 request to fix live flight display disappearing after refresh
+- Scope:
+  - prevent AirLabs live schedule fetches from being reused by Next fetch caching across the wrong Mauritius day
+  - preserve previously available `FlightBoardLive` data when a refresh fails
+  - keep `/api/flight-board` response shapes and app-level cache behavior stable unless existing local edits require test expectation updates
+  - add focused regression coverage for provider fetch options, full live-board error rendering, and route cache headers/response expectations
+- Milestone 10A: Provider and API cache safety
+  - Fixes:
+    - replace the AirLabs provider fetch `next: { revalidate: 2600 }` option with `cache: 'no-store'`
+    - keep `cachedFetch('flights:rotations', 2600, ...)` as the controlled app-level cache layer
+    - review route cache headers so degraded/error responses remain `no-store`
+    - only add extra empty-snapshot cache protection if code review shows the provider fix does not prevent known-bad live empties
+  - Files likely affected:
+    - `src/lib/integrations/flights/index.ts`
+    - `src/app/api/flight-board/route.ts`
+    - `tests/unit/flights-runtime.test.ts`
+    - `tests/unit/api/flight-board.test.ts`
+  - Dependencies:
+    - preserve the existing `FlightBoardResponse` contract
+    - preserve the route-level stale-while-revalidate cache for healthy snapshots
+  - Risks:
+    - changing provider caching increases live upstream requests, so the route-level cache must remain intact
+    - dirty local route edits may already have changed status/body expectations and tests must reflect current local intent without broadening the API
+  - Validation commands:
+    - `pnpm test -- tests/unit/flights-runtime.test.ts tests/unit/api/flight-board.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - AirLabs provider fetch calls include `cache: 'no-store'` and do not include Next `revalidate`
+    - degraded and error route responses remain `Cache-Control: no-store`
+    - healthy route responses keep `public, s-maxage=2600, stale-while-revalidate=7200`
+- Milestone 10B: Full live-board stale-data UI
+  - Fixes:
+    - change `FlightBoardLive` to keep rendering last known `data` when `useLiveApiData` reports a refresh error
+    - show the small stale-data warning used by `FlightBoardPreviewLive`
+    - add focused component coverage for the error path with existing initial records
+  - Files likely affected:
+    - `src/components/ui/flight-board-live.tsx`
+    - `tests/unit/flight-board-live.test.tsx`
+  - Dependencies:
+    - keep `useLiveApiData` behavior unchanged for successful refreshes
+    - keep `FlightBoard` rendering and translations intact
+  - Risks:
+    - duplicate warning copy can drift from preview copy; keep it identical unless a shared constant becomes necessary
+    - component mocks must not hide the real `FlightBoard` rendering path
+  - Validation commands:
+    - `pnpm test -- tests/unit/flight-board-live.test.tsx tests/unit/flight-board-preview-live.test.tsx`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - refresh errors no longer replace populated boards with the unavailable card
+    - users see a stale-data warning while last available records remain visible
+- Stop-and-fix rule:
+  - run targeted validation after each milestone batch
+  - if validation fails, stop and repair only issues introduced by the current milestone before continuing
+  - document any pre-existing unrelated validation failures with command output evidence
+- Final validation checklist:
+  - `pnpm test -- tests/unit/flights-runtime.test.ts`
+  - `pnpm test -- tests/unit/api/flight-board.test.ts tests/unit/flight-board-live.test.tsx tests/unit/flight-board-preview-live.test.tsx`
+  - `pnpm lint`
+  - `pnpm build`
+- Completion record:
+  - completed fixes:
+    - changed AirLabs provider fetches to use `cache: 'no-store'` and removed provider-level Next revalidation
+    - kept `/api/flight-board` route-level `cachedFetch('flights:rotations', 2600, ...)` as the controlled cache layer
+    - confirmed route degraded/error responses remain `Cache-Control: no-store`
+    - changed `FlightBoardLive` to preserve last known board data on refresh errors and show the stale-data warning used by the preview board
+    - added focused regression coverage for provider fetch options and full live-board stale-error rendering
+    - updated `/api/flight-board` tests to match existing local response status/body edits while preserving no-store expectations
+  - files changed or added by this milestone:
+    - `PLANS.md`
+    - `.ai-maintenance/prompt-log/20260420-092206-live-flight-board-refresh.md`
+    - `.ai-maintenance/baseline-reports/20260420-092206-live-flight-board-refresh.md`
+    - `.ai-maintenance/review-reports/20260420-092206-live-flight-board-refresh-pre-fix.md`
+    - `.ai-maintenance/fix-ledgers/20260420-092206-live-flight-board-refresh.md`
+    - `.ai-maintenance/impact-comparisons/20260420-092206-live-flight-board-refresh.md`
+    - `.ai-maintenance/regression-checks/20260420-092206-live-flight-board-refresh.md`
+    - `.ai-maintenance/verification-reports/20260420-092206-live-flight-board-refresh.md`
+    - `.ai-maintenance/final-status/20260420-092206-live-flight-board-refresh.md`
+    - `src/lib/integrations/flights/index.ts`
+    - `src/components/ui/flight-board-live.tsx`
+    - `tests/unit/flights-runtime.test.ts`
+    - `tests/unit/api/flight-board.test.ts`
+    - `tests/unit/flight-board-live.test.tsx`
+  - validation results:
+    - `pnpm test -- tests/unit/flights-runtime.test.ts tests/unit/api/flight-board.test.ts` passed with 2 files and 14 tests
+    - `pnpm test -- tests/unit/flight-board-live.test.tsx tests/unit/flight-board-preview-live.test.tsx` passed with 2 files and 2 tests
+    - `pnpm lint` passed
+    - `pnpm build` failed before page generation because local `.env` is missing `STATUS_SECRET`, causing `/api/status` to throw `STATUS_SECRET must be at least 16 characters in production`
+    - `$env:STATUS_SECRET='local-build-status-secret-123'; pnpm build` passed, confirming the flight-board changes build when the unrelated status secret prerequisite is present
+  - residual risks / manual QA:
+    - configure a production-length `STATUS_SECRET` in local or deployment env before relying on plain `pnpm build`
+    - smoke-test the live flight status page against real AirLabs data to confirm records persist across refreshes and day rollover
+
+## Milestone 11: Verified Audit Issues 1-17 Repair Pass
+- Status: Completed
+- Source: April 20, 2026 verified audit issue list for TypeScript / Next.js 15 / Payload CMS
+- Scope:
+  - implement all 17 listed fixes with minimum necessary changes
+  - preserve existing API response shapes unless a listed fix explicitly changes behavior
+  - keep authorization, validation, middleware, service/cache behavior, and public-read globals conservative
+  - run `pnpm test` and `pnpm lint` after each individual fix as requested
+- Milestone 11A: Critical security and workflow fixes
+  - Fixes:
+    - `1.` make document PDF magic-byte validation fail closed on create when `req.file` or a file Buffer is missing, while allowing metadata-only updates without a file
+    - `2.` compute workflow approval metadata before mutating to the published status and assign the published status once
+  - Files likely affected:
+    - `src/collections/Documents.ts`
+    - `src/collections/workflowStatus.ts`
+    - `tests/unit/status-sync.test.ts`
+    - possible focused document upload hook test
+  - Dependencies:
+    - update workflow test expectations before or alongside the workflow hook change
+  - Risks:
+    - create uploads with malformed request bodies must now fail instead of silently passing validation
+    - workflow changes must not weaken publish gates for non-approvers
+  - Validation commands after each fix:
+    - `pnpm test`
+    - `pnpm lint`
+  - Acceptance criteria:
+    - document create without a parseable PDF body fails validation
+    - document metadata-only update without a file still succeeds
+    - workflow publish sets `lastApprovedBy` when approval conditions are met and keeps non-approver publish rejection intact
+- Milestone 11B: High-priority correctness, access, and validation fixes
+  - Fixes:
+    - `3.` use `usePathname()`'s `pathname` value for analytics page-view tracking and return when it is null
+    - `4.` remove redundant unused locale validation calls from signed-attachment content helpers
+    - `5.` restrict hard-delete on `Pages` and `Notices` to `isAdmin`
+    - `6.` relax phone validation to allow 7 total characters
+  - Files likely affected:
+    - `src/components/analytics/tracker.tsx`
+    - `src/lib/content.ts`
+    - `src/collections/Pages.ts`
+    - `src/collections/Notices.ts`
+    - `src/fields/validators.ts`
+    - affected focused tests where existing assertions encode old analytics path behavior
+  - Dependencies:
+    - access change intentionally overrides current approver delete capability per the latest prompt
+  - Risks:
+    - analytics tests may need to reflect App Router pathname behavior instead of visible URL reads
+    - delete access is semi-breaking for approvers and should be product-reviewed before merge
+  - Validation commands after each fix:
+    - `pnpm test`
+    - `pnpm lint`
+  - Acceptance criteria:
+    - SPA page-view payloads use the current App Router pathname
+    - signed-attachment helpers no longer carry unused locale validation calls
+    - approvers can publish/unpublish but cannot hard-delete pages or notices unless they are admins
+    - phone numbers with 7 total accepted characters pass validation
+- Milestone 11C: Medium-priority consistency, cache, UI, and env fixes
+  - Fixes:
+    - `7.` use shared `isSuperAdmin` helper for user role updates and user deletion
+    - `8.` replace per-secret redaction regex recompilation with direct string replacement
+    - `9.` prune expired translation cache entries before applying the size cap
+    - `10.` memoize header dropdown link arrays
+    - `11.` replace page hero insight index keys with stable keys
+    - `12.` prefer trimmed dashboard `fullName` before email
+    - `13.` return a build-time unset sentinel from `requireEnv()` and warn once per missing key
+  - Files likely affected:
+    - `src/collections/Users.ts`
+    - `src/lib/redaction.ts`
+    - `src/lib/translate.ts`
+    - `src/components/layout/header.tsx`
+    - `src/components/ui/page-hero.tsx`
+    - `src/lib/dashboard-auth.ts`
+    - `src/lib/env.server.ts`
+    - focused tests for translation, dashboard auth, env, and hero behavior as needed
+  - Dependencies:
+    - env sentinel must preserve no-throw behavior during `NEXT_OUTPUT_MODE`
+  - Risks:
+    - translation cache changes must keep TTL behavior and batch concurrency stable
+    - build-time env sentinel must not become a runtime default outside build output mode
+  - Validation commands after each fix:
+    - `pnpm test`
+    - `pnpm lint`
+  - Acceptance criteria:
+    - shared role helper is the single source for super-admin checks in `Users`
+    - redaction behavior remains equivalent without regex construction per secret
+    - expired translations do not consume cache capacity on insertion
+    - UI key and memo changes do not alter rendered labels or routes
+    - dashboard display names prefer populated full names
+    - missing build-time server env reads return `__BUILD_TIME_UNSET__` with a one-shot warning
+- Milestone 11D: Low-priority cleanup, shared rate-limit helper, and observability
+  - Fixes:
+    - `14.` remove unreachable UUID fallback in `autoSlug`
+    - `15.` document Payload boolean-or-Where access return shape
+    - `16.` extract shared rate-limit key derivation to `src/lib/rate-limit.ts` and reuse it from middleware and Payload REST route
+    - `17.` log overlong pathname truncation with host and path length
+  - Files likely affected:
+    - `src/hooks/autoSlug.ts`
+    - `src/access/roles.ts`
+    - `src/lib/rate-limit.ts`
+    - `src/middleware.ts`
+    - `src/app/api/[[...slug]]/route.ts`
+    - `src/lib/middleware-routing.ts`
+    - focused routing/rate-limit tests
+  - Dependencies:
+    - do `16` last among code behavior fixes so shared extraction does not entangle earlier patches
+  - Risks:
+    - middleware helper imports must remain edge-safe
+    - route-rate limiter must keep fail-open behavior on Redis errors
+    - truncation logging must not include the full overlong path
+  - Validation commands after each fix:
+    - `pnpm test`
+    - `pnpm lint`
+  - Acceptance criteria:
+    - `autoSlug` fallback is simplified without changing generated slug format
+    - access helper comment explains the boolean-or-Where pattern
+    - middleware and Payload REST route use the same validated IP/fallback fingerprint logic
+    - overlong pathnames still normalize to `/` and emit an observability warning
+- Stop-and-fix rule:
+  - after every individual fix, run `pnpm test` and `pnpm lint`
+  - if either command fails, stop the next fix and repair only the issue introduced by that fix or document a pre-existing blocker with evidence
+  - after each priority milestone, run `pnpm build`; if the known `STATUS_SECRET` local prerequisite blocks plain build, retry with a local build secret and document it
+- Final validation checklist:
+  - `pnpm test`
+  - `pnpm lint`
+  - `pnpm build`
+- Residual manual QA notes:
+  - confirm the approver hard-delete removal for `Pages` and `Notices` with product before merge because it intentionally changes editor permissions
+- Completion record:
+  - completed fixes:
+    - `1.` document PDF upload validation fails closed on create when file data is missing or not a Buffer, while update-only metadata edits may omit the file
+    - `2.` workflow publish approval metadata is computed before published-status mutation and status is assigned once
+    - `3.` analytics page views use the App Router `pathname` value and skip null pathnames
+    - `4.` redundant unused locale validation calls were removed from signed-attachment content helpers
+    - `5.` `Pages` and `Notices` hard-delete access now uses `isAdmin`
+    - `6.` phone validation now allows 7 total accepted characters
+    - `7.` `Users` role update/delete checks use shared `isSuperAdmin`
+    - `8.` redaction uses direct string replacement instead of per-secret regex compilation
+    - `9.` translation cache prunes expired entries before applying the size cap
+    - `10.` header dropdown link arrays are memoized
+    - `11.` page hero insight keys use stable data
+    - `12.` dashboard display names prefer populated `fullName` before email
+    - `13.` build-time missing env reads return `__BUILD_TIME_UNSET__` and warn once per key
+    - `14.` `autoSlug` removed the unreachable UUID fallback
+    - `15.` `publishedFieldOrAdmin` documents Payload's boolean-or-Where access shape
+    - `16.` middleware and Payload REST route share `src/lib/rate-limit.ts`
+    - `17.` overlong path truncation logs host and path length
+  - files changed or added by this milestone:
+    - `PLANS.md`
+    - `.ai-maintenance/prompt-log/20260420-095425-verified-audit-issues-1-17.md`
+    - `.ai-maintenance/baseline-reports/20260420-095425-verified-audit-issues-1-17.md`
+    - `.ai-maintenance/review-reports/20260420-095425-verified-audit-issues-1-17-pre-fix.md`
+    - `.ai-maintenance/impact-comparisons/20260420-095425-verified-audit-issues-1-17.md`
+    - `.ai-maintenance/fix-ledgers/20260420-095425-verified-audit-issues-1-17.md`
+    - `.ai-maintenance/regression-checks/20260420-095425-verified-audit-issues-1-17.md`
+    - `.ai-maintenance/verification-reports/20260420-095425-verified-audit-issues-1-17.md`
+    - `.ai-maintenance/final-status/20260420-095425-verified-audit-issues-1-17.md`
+    - `src/access/roles.ts`
+    - `src/app/api/[[...slug]]/route.ts`
+    - `src/collections/Documents.ts`
+    - `src/collections/Notices.ts`
+    - `src/collections/Pages.ts`
+    - `src/collections/Users.ts`
+    - `src/collections/workflowStatus.ts`
+    - `src/components/analytics/tracker.tsx`
+    - `src/components/layout/header.tsx`
+    - `src/components/ui/page-hero.tsx`
+    - `src/fields/validators.ts`
+    - `src/hooks/autoSlug.ts`
+    - `src/lib/content.ts`
+    - `src/lib/dashboard-auth.ts`
+    - `src/lib/env.server.ts`
+    - `src/lib/middleware-routing.ts`
+    - `src/lib/rate-limit.ts`
+    - `src/lib/redaction.ts`
+    - `src/lib/translate.ts`
+    - `src/middleware.ts`
+    - `tests/unit/analytics-tracker.test.tsx`
+    - `tests/unit/dashboard-auth.test.ts`
+    - `tests/unit/documents-upload.test.ts`
+    - `tests/unit/env.test.ts`
+    - `tests/unit/middleware-routing.test.ts`
+    - `tests/unit/rate-limit.test.ts`
+    - `tests/unit/status-sync.test.ts`
+  - validation results:
+    - `pnpm test` was run after each individual fix; final and repeated full-suite runs fail only on the same 11 pre-existing API response-shape assertions in `tests/unit/api/status.test.ts`, `tests/unit/api/revalidate.test.ts`, and `tests/unit/api/track.test.ts`
+    - `pnpm lint` passed after each individual fix
+    - `git diff --check` passed with only Windows checkout line-ending warnings
+    - plain `pnpm build` failed because local `STATUS_SECRET` is missing or shorter than 16 characters for `/api/status`
+    - `$env:STATUS_SECRET='local-build-status-secret-123'; pnpm build` passed
+  - residual risks / manual QA:
+    - product/security should confirm the intentional removal of non-admin approver hard-delete on `Pages` and `Notices`
+    - update or repair the pre-existing API route response-shape tests separately
+    - configure `STATUS_SECRET` before relying on plain local or deployment production builds
+
+## Milestone 12: Career Page With Downloadable Vacancy Notice
+- Status: Superseded by Milestone 12B
+- Source: April 20, 2026 request to create a Career page in the same format as News & Events and Airport Project, with a downloadable document link for the provided Safety and Health Officer vacancy.
+- Scope:
+  - add a public `/career` page using the existing `PageHero` and `news-feed` listing/download pattern
+  - add the vacancy notice as a downloadable static document under `public/documents`
+  - add localized navigation/page labels for the new route
+  - expose the route in header, mobile menu, footer, and sitemap
+- Files likely affected:
+  - `src/app/(frontend)/career/page.tsx`
+  - `src/components/layout/header.tsx`
+  - `src/components/layout/footer.tsx`
+  - `src/app/sitemap.ts`
+  - `src/i18n/dictionaries/en.json`
+  - `src/i18n/dictionaries/fr.json`
+  - `src/i18n/dictionaries/mfe.json`
+  - `src/styles/components/news-feed.css`
+  - `public/documents/full-time-safety-health-officer-contract.txt`
+- Dependencies:
+  - reuse existing route localization via `localePath`
+  - keep the vacancy content static because no CMS Career collection exists and no uploaded CMS document was available in the repository
+- Risks:
+  - the provided screenshot only contains the short notice text, so the downloadable document will contain the same available notice details unless a full official PDF is later supplied
+  - adding one more desktop nav item may affect tight header widths and should be visually checked
+- Validation commands:
+  - `pnpm lint`
+  - `pnpm build`
+  - if plain build is blocked by the known local `STATUS_SECRET` prerequisite, retry with a temporary local value and document it
+- Acceptance criteria:
+  - `/career` renders a Career page using the same listing/download visual language as News & Events and Airport Project
+  - the vacancy notice has a same-origin link with the `download` attribute
+  - header, mobile menu, footer, and sitemap include the Career route
+  - lint passes and the production build succeeds when local required env prerequisites are present
+- Stop-and-fix rule:
+  - if validation fails, fix issues introduced by this milestone before ending the task
+- Completion record:
+  - completed fixes:
+    - added `/career` as a public localized frontend route
+    - rendered the vacancy in the same `PageHero` plus `news-feed` listing/download visual language used by News & Events and Airport Project
+    - added a same-origin downloadable vacancy notice at `/documents/full-time-safety-health-officer-contract.txt`
+    - added Career links to desktop header navigation, mobile navigation, footer, and sitemap
+    - added localized dictionary keys for English, French, and Kreol
+  - files changed or added by this milestone:
+    - `PLANS.md`
+    - `public/documents/full-time-safety-health-officer-contract.txt`
+    - `src/app/(frontend)/career/page.tsx`
+    - `src/app/sitemap.ts`
+    - `src/components/layout/footer.tsx`
+    - `src/components/layout/header.tsx`
+    - `src/i18n/dictionaries/en.json`
+    - `src/i18n/dictionaries/fr.json`
+    - `src/i18n/dictionaries/mfe.json`
+    - `src/styles/components/news-feed.css`
+  - validation results:
+    - dictionary JSON parse check passed for `en`, `fr`, and `mfe`
+    - `pnpm lint` passed
+    - plain `pnpm build` failed on the pre-existing local `STATUS_SECRET` requirement for `/api/status`
+    - `$env:STATUS_SECRET='local-build-status-secret-123'; pnpm build` passed and included `/career`
+    - `curl.exe -k -L https://localhost:3000/en/career` returned HTTP 200 and rendered the CMS empty state
+    - `git diff --check` passed with only existing Windows checkout line-ending warnings
+    - local dev server started at `https://localhost:3000`; `https://localhost:3000/en/career` contains the career post and download link, and the document URL returns the notice content
+  - residual risks / manual QA:
+    - replace the static text notice with the official PDF if a full original vacancy document is supplied later
+    - visually check desktop header spacing because Career adds one more top-level nav link
+
+## Milestone 12B: CMS-Managed Career Notices
+- Status: Completed
+- Source: April 20, 2026 correction that Career documents must be uploaded and managed in the CMS.
+- Scope:
+  - replace the static Career notice document with a Payload-managed `careers` collection
+  - use the existing protected `documents` upload collection for downloadable PDFs
+  - render `/career` from published CMS career notices with signed document URLs
+  - keep the existing Career navigation, sitemap entry, and listing visual style
+- Files likely affected:
+  - `src/collections/Careers.ts`
+  - `payload.config.ts`
+  - `src/lib/content.ts`
+  - `src/app/(frontend)/career/page.tsx`
+  - `src/i18n/dictionaries/en.json`
+  - `src/i18n/dictionaries/fr.json`
+  - `src/i18n/dictionaries/mfe.json`
+  - `src/payload-types.ts`
+  - `public/documents/full-time-safety-health-officer-contract.txt`
+- Dependencies:
+  - reuse existing `documents` protected upload handling and signed URL generation
+  - reuse existing editorial workflow helpers and access helpers
+  - regenerate Payload types after registering the new collection
+- Risks:
+  - the production database will need a Payload migration before the new collection can store entries
+  - signed document URLs require the existing Supabase document storage configuration at runtime
+- Validation commands:
+  - `pnpm generate:types`
+  - `pnpm lint`
+  - `pnpm build`
+  - if plain build is blocked by the known local `STATUS_SECRET` prerequisite, retry with a temporary local value and document it
+- Acceptance criteria:
+  - CMS editors can create Career notices and upload/link the vacancy PDF through Payload
+  - public `/career` lists only published Career notices
+  - downloadable Career links use server-generated signed URLs from the protected documents bucket
+  - no static public vacancy document remains
+- Stop-and-fix rule:
+  - if validation fails, fix issues introduced by this milestone before ending the task
+- Completion record:
+  - completed fixes:
+    - added a Payload `careers` collection for CMS-managed vacancy notices
+    - required at least one protected `documents` upload attachment on each Career notice
+    - registered the collection in `payload.config.ts`
+    - regenerated `src/payload-types.ts`
+    - changed `/career` to read published CMS Career notices and render signed document links
+    - removed the static public vacancy document from `public/documents`
+    - removed hardcoded Career post title/summary dictionary keys and added empty-state copy
+  - files changed or added by this milestone:
+    - `PLANS.md`
+    - `src/collections/Careers.ts`
+    - `payload.config.ts`
+    - `src/lib/content.ts`
+    - `src/app/(frontend)/career/page.tsx`
+    - `src/i18n/dictionaries/en.json`
+    - `src/i18n/dictionaries/fr.json`
+    - `src/i18n/dictionaries/mfe.json`
+    - `src/payload-types.ts`
+    - `public/documents/full-time-safety-health-officer-contract.txt`
+  - validation results:
+    - `pnpm generate:types` passed
+    - dictionary JSON parse check passed for `en`, `fr`, and `mfe`
+    - `pnpm lint` passed
+    - plain `pnpm build` failed on the pre-existing local `STATUS_SECRET` requirement for `/api/status`
+    - `$env:STATUS_SECRET='local-build-status-secret-123'; pnpm build` passed and included `/career`
+    - `git diff --check` passed with only existing Windows checkout line-ending warnings
+  - residual risks / manual QA:
+    - generate and apply a Payload/Postgres migration before using the new `careers` collection in production
+    - create a Career notice in CMS, upload the official PDF through the Documents upload field, publish it, and smoke-test the signed link on `/career`
+    - visually check desktop header spacing because Career adds one more top-level nav link
+
+## Milestone 13: Admin Login And Dashboard Production Repair
+- Status: Completed
+- Source: April 20, 2026 focused audit of admin panel and dashboard login flow.
+- Scope:
+  - implement all 13 listed fixes with minimum necessary changes
+  - preserve Payload CSRF protection, middleware request flow, API response shapes, and dashboard authorization behavior
+  - document the browser certificate trust step because the self-signed TLS interstitial is environment state, not a source-code fix
+- Milestone 13A: Login, CSP, database pooler, status, health, and env hygiene
+  - Status: Completed
+  - Fixes:
+    - `1.` change local runtime `NEXT_PUBLIC_SITE_URL` to `https://localhost` so Payload `cors` and `csrf` match the nginx browser origin
+    - `2.` record the required local browser action or trusted certificate replacement for the self-signed nginx certificate
+    - `3.` allow Payload Gravatar avatar hosts in both app and admin CSP `img-src`
+    - `5.` preserve PgBouncer intent while parsing `DATABASE_URL` and apply the minimal pool option for pooler-safe planning
+    - `6.` configure a production-length local `STATUS_SECRET` and keep `.env.example` documenting generation
+    - `7.` support comma-separated `NEXT_PUBLIC_SITE_URLS` with trim and dedupe fallback to `NEXT_PUBLIC_SITE_URL`
+    - `9.` cache imported dashboard JWT HMAC keys at module scope without weakening signature verification
+    - `12.` make shallow `/api/health` report Payload-init failure after one cached initialization attempt
+    - `13.` move the alternate AirLabs key comment to its own line so dotenv values stay clean
+  - Files likely affected:
+    - `.env`
+    - `.env.example`
+    - `payload.config.ts`
+    - `src/middleware.ts`
+    - `src/app/api/health/route.ts`
+    - `tests/unit/middleware-security.test.ts`
+    - `tests/unit/api/health.test.ts`
+  - Dependencies:
+    - fix `7` must remain compatible with fix `1` and the existing production assertion
+    - fix `5` must keep Supabase SSL/SNI behavior from the existing manual URL parser
+    - fix `9` must not cache forged-token success or skip expiry checks
+    - fix `12` must not turn Docker liveness into a deep database check
+  - Risks:
+    - changing CORS/CSRF origins can block admin login if the nginx public origin is not listed
+    - Payload DB pool options are adapter-sensitive and must remain narrowly scoped
+    - middleware changes affect every dashboard request in production
+    - shallow health can surface Payload-init failure sooner but must not query the database on every request
+  - Validation commands:
+    - `pnpm lint`
+    - `pnpm build`
+    - focused tests where practical: middleware security and health route tests
+  - Acceptance criteria:
+    - local `https://localhost` POSTs are allowed by Payload CSRF/CORS configuration
+    - CSP for `/admin` and app routes includes `https://www.gravatar.com` and `https://secure.gravatar.com`
+    - PgBouncer connection URLs keep pooler intent and apply `options: '-c plan_cache_mode=force_custom_plan'`
+    - `/api/status` can authorize with a configured 32-byte hex secret
+    - shallow `/api/health` returns 503 after cached Payload initialization failure and remains O(1) after success
+    - AirLabs key value no longer includes an inline comment
+  - Completion record:
+    - completed fixes: `1`, `2` documentation/manual QA note, `3`, `5`, `6`, `7`, `9`, `12`, and `13`
+    - files changed:
+      - `.env`
+      - `.env.example`
+      - `payload.config.ts`
+      - `src/middleware.ts`
+      - `src/app/api/health/route.ts`
+      - `tests/unit/middleware-security.test.ts`
+      - `tests/unit/api/health.test.ts`
+    - validation results:
+      - `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/api/health.test.ts` passed with 2 files and 16 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed with local `.env` now containing a production-length `STATUS_SECRET`
+    - residual risks / manual QA:
+      - browser must trust the local nginx certificate for the session, or nginx must use a trusted localhost certificate, before retrying admin login
+      - production containers still need rebuild/restart after `NEXT_PUBLIC_*`, middleware, and Payload config changes
+      - verify deep health and absence of prepared-statement errors inside the running app container
+- Milestone 13B: Dashboard route coherence, language, database-failure surfacing, and root layout cleanup
+  - Status: Completed
+  - Fixes:
+    - `4.` change dashboard error-boundary home link to `/dashboard` while retaining localized labels
+    - `8.` set dashboard `<html lang>` from an authenticated user preferred locale when present, otherwise the `locale` cookie, otherwise the default locale
+    - `10.` throw from the dashboard overview when all core Payload count queries fail so `error.tsx` handles database outage instead of rendering an empty dashboard
+    - `11.` return a fragment from the root layout instead of asserting `children` to `ReactElement`
+  - Files likely affected:
+    - `src/app/(dashboard)/dashboard/error.tsx`
+    - `src/app/(dashboard)/dashboard/layout.tsx`
+    - `src/app/(dashboard)/dashboard/page.tsx`
+    - `src/app/layout.tsx`
+    - `src/lib/dashboard-auth.ts`
+    - `tests/unit/dashboard-auth.test.ts`
+    - `tests/unit/dashboard-overview.test.tsx`
+  - Dependencies:
+    - fix `8` depends on the existing `locale` cookie and `src/i18n/config.ts` locale guard
+    - fix `10` must only throw when the core database-dependent counts all fail, not when flight-provider calls fail
+  - Risks:
+    - dashboard layout changes must preserve Payload admin separation and dashboard auth redirects
+    - throwing on total DB failure intentionally changes empty-dashboard behavior only for clear outage cases
+  - Validation commands:
+    - `pnpm lint`
+    - `pnpm build`
+    - focused dashboard auth and overview tests where practical
+  - Acceptance criteria:
+    - dashboard error reset home link cannot accumulate locale prefixes
+    - dashboard document language reflects `en`, `fr`, or `mfe`
+    - dashboard overview still tolerates partial failures but throws on complete core DB failure
+    - root layout no longer bypasses runtime shape through a type assertion
+  - Completion record:
+    - completed fixes: `4`, `8`, `10`, and `11`
+    - files changed:
+      - `src/app/(dashboard)/dashboard/error.tsx`
+      - `src/app/(dashboard)/dashboard/layout.tsx`
+      - `src/app/(dashboard)/dashboard/page.tsx`
+      - `src/app/layout.tsx`
+      - `src/lib/dashboard-auth.ts`
+      - `tests/unit/dashboard-auth.test.ts`
+      - `tests/unit/dashboard-overview.test.tsx`
+    - validation results:
+      - `pnpm test -- tests/unit/dashboard-auth.test.ts tests/unit/dashboard-overview.test.tsx` passed with 2 files and 9 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - Next.js production server-component errors may still redact original error messages in some cases; the dashboard error boundary renders the database-specific state when the error message is available
+      - browser login should be retested only after trusting/replacing the local nginx TLS certificate and rebuilding containers
+- Stop-and-fix rule:
+  - after each milestone, run the listed validation commands
+  - if validation fails, stop the next milestone and fix only issues introduced by the current milestone, or document a pre-existing blocker with evidence
+- Final validation:
+  - `pnpm test` passed with 62 files and 291 tests
+  - `pnpm lint` passed
+  - `pnpm build` passed
+  - `docker compose -f docker-compose.prod.yml up --build -d` passed and recreated the app containers; all app replicas reported healthy
+  - `docker compose -f docker-compose.prod.yml exec app node -e "fetch('http://localhost:3000/api/health?deep=true')..."` returned HTTP 200 with `database: "ok"`
+  - `docker compose -f docker-compose.prod.yml logs app --tail=500 | Select-String -Pattern 'prepared statement'` returned no matches
+  - `git diff --check` on scoped changed files reported no whitespace errors; Git printed CRLF normalization warnings
+- Final manual QA:
+  - before retrying `/admin` or `/dashboard`, visit `https://localhost` directly and trust the local certificate for the browser session, or replace the cert with a trusted `mkcert localhost` certificate
+  - retry `/admin` login and `/dashboard` in the browser after the certificate interstitial is cleared
+
+## Milestone 14: Remaining Medium And Low Production Repair Follow-Ups
+- Status: Completed
+- Source: April 20, 2026 request to implement the remaining medium/low audit fixes after prior critical and high-priority fixes were already applied.
+- Scope:
+  - use a locally trusted `mkcert` certificate for nginx localhost TLS when tooling is available
+  - preserve the existing prior audit fixes and only patch still-missing medium/low items
+  - verify already-satisfied requested items without rewriting them
+- Fixes grouped by milestone:
+  - `14A.` Replace `nginx/ssl/selfsigned.crt` and `nginx/ssl/selfsigned.key` with a locally trusted `mkcert` localhost certificate if `mkcert` can be installed or is already available.
+  - `14B.` Update Payload CORS/CSRF allow-list construction so `NEXT_PUBLIC_SITE_URL` remains the canonical first origin while comma-separated extra origins from `NEXT_PUBLIC_SITE_URLS` and `ADDITIONAL_ALLOWED_ORIGINS` are merged and deduped.
+  - `14C.` Cache the dashboard JWT HMAC `CryptoKey` at module scope with a secret-value guard, preserving token validity cache and expiry checks.
+  - `14D.` Derive middleware CSP provider `connect-src` origins from configured flight and weather provider endpoints instead of hard-coded provider hosts.
+  - `14E.` Verify the already-applied dashboard `<html lang>`, `STATUS_SECRET`, shallow health, `FLIGHT_PROVIDER_API_KEY` comment, and Payload `serverURL` fixes remain in place.
+  - `14F.` Stop-and-fix from runtime smoke: make the server-only Supabase storage client read the runtime Supabase URL dynamically so standalone builds do not use the Docker build placeholder for `/api/status` storage checks.
+- Files likely affected:
+  - `PLANS.md`
+  - `.ai-maintenance/**`
+  - `.env`
+  - `.env.example`
+  - `payload.config.ts`
+  - `src/middleware.ts`
+  - `src/lib/env.server.ts`
+  - `tests/unit/middleware-security.test.ts`
+  - `tests/unit/env.test.ts`
+  - `src/lib/storage/supabase-client.ts`
+  - `tests/unit/storage/supabase-client.test.ts`
+  - `nginx/ssl/selfsigned.crt`
+  - `nginx/ssl/selfsigned.key`
+- Dependencies:
+  - `mkcert -install` may require local trust-store permissions outside the repository
+  - Payload `serverURL` must continue to use `siteUrlAllowList[0]`
+  - middleware must not import modules that break the middleware runtime or require unrelated secrets too early
+  - CSP origin parsing must tolerate missing or malformed provider endpoint configuration
+- Risks:
+  - changing CORS/CSRF ordering can affect canonical URL generation and admin login if the public origin is omitted
+  - middleware changes affect all production dashboard and public app routes
+  - Docker rebuild/restart depends on local Docker availability and running external services
+- Validation commands:
+  - focused tests after the code batch:
+    - `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/env.test.ts`
+  - default validation after the milestone:
+    - `pnpm lint`
+    - `pnpm build`
+  - runtime smoke after rebuild:
+    - `docker compose -f docker-compose.prod.yml up --build -d`
+    - `curl -k https://localhost/api/health`
+    - `curl -k -H "Authorization: Bearer $STATUS_SECRET" https://localhost/api/status`
+- Acceptance criteria:
+  - Chrome can load `https://localhost` without a self-signed certificate interstitial when local trust-store setup succeeds
+  - Payload CORS/CSRF allow-list keeps `NEXT_PUBLIC_SITE_URL` first and includes deduped extra allowed origins
+  - dashboard JWT HMAC key import happens once per active `PAYLOAD_SECRET`
+  - CSP `connect-src` follows configured flight/weather provider origins and still includes Supabase/self
+  - already-applied fixes for dashboard language, status secret, health, flight key comment, and serverURL remain unchanged
+- Stop-and-fix rule:
+  - after each validation phase, fix issues introduced by this milestone before continuing
+  - if a command is blocked by missing local tooling or external service state, document the blocker with evidence and continue only where safe
+- Completion record:
+  - completed fixes:
+    - generated a locally trusted mkcert localhost certificate for nginx at `nginx/ssl/selfsigned.crt` and `nginx/ssl/selfsigned.key`
+    - added `ADDITIONAL_ALLOWED_ORIGINS` support while preserving existing `NEXT_PUBLIC_SITE_URLS` compatibility and keeping `NEXT_PUBLIC_SITE_URL` canonical first
+    - added provider endpoint/base URL aliases and derived middleware CSP provider origins from configured endpoint values
+    - cached the dashboard JWT HMAC `CryptoKey` at module scope with a secret-value guard and preserved the existing token verification cache
+    - verified the existing dashboard language, status secret, health route, flight key comment, and Payload `serverURL` fixes
+    - fixed the runtime `/api/status` storage check by avoiding baked Docker build-time `NEXT_PUBLIC_SUPABASE_URL` placeholder use in the server-only storage client
+  - files changed or added by this milestone:
+    - `PLANS.md`
+    - `.ai-maintenance/**`
+    - `.env`
+    - `.env.example`
+    - `payload.config.ts`
+    - `src/lib/provider-endpoints.ts`
+    - `src/lib/env.server.ts`
+    - `src/lib/storage/supabase-client.ts`
+    - `src/middleware.ts`
+    - `tests/unit/middleware-security.test.ts`
+    - `tests/unit/env.test.ts`
+    - `tests/unit/storage/supabase-client.test.ts`
+    - `nginx/ssl/selfsigned.crt`
+    - `nginx/ssl/selfsigned.key`
+  - validation results:
+    - `mkcert -install` passed; local CA was already installed
+    - `mkcert -cert-file nginx/ssl/selfsigned.crt -key-file nginx/ssl/selfsigned.key localhost 127.0.0.1 ::1` passed; certificate expires on 2028-07-20
+    - `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/env.test.ts` passed with 2 files and 20 tests before the stop-and-fix
+    - `pnpm test -- tests/unit/api/health.test.ts tests/unit/api/status.test.ts tests/unit/dashboard-auth.test.ts` passed with 3 files and 17 tests
+    - after the stop-and-fix, `pnpm test -- tests/unit/storage/supabase-client.test.ts tests/unit/middleware-security.test.ts tests/unit/env.test.ts tests/unit/api/status.test.ts` passed with 4 files and 37 tests
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - `docker compose -f docker-compose.prod.yml up --build -d` passed after the final rebuild; all four app replicas reported healthy
+    - `curl -k https://localhost/api/health` returned HTTP 200 with `{ "ok": true }`
+    - `curl -k -H "Authorization: Bearer $STATUS_SECRET" https://localhost/api/status` returned HTTP 200 with `status: "healthy"` and database, Redis, and storage all `ok`
+    - `git diff --check` on the scoped files reported no whitespace errors; Git printed existing Windows checkout line-ending warnings
+  - residual risks / manual QA:
+    - Docker image build still emits existing build-time `VISITOR_HASH_SALT` placeholder warnings because the Dockerfile intentionally injects runtime secrets later via `.env`
+    - nginx TLS files are ignored/untracked by git in this workspace, so the local mkcert certificate is an environment artifact rather than a committed source change
+    - browser login should still be manually retried in Chrome at `https://localhost/admin` and `/dashboard` to confirm the browser profile trusts the mkcert root
+- Milestone 13C: Follow-up Review Fixes For Dashboard Database State And Locale Persistence
+  - Status: Completed
+  - Source: April 20, 2026 full code review of the last admin/dashboard repair changes.
+  - Scope:
+    - fix the three review findings without refactoring surrounding dashboard, auth, or collection code
+    - preserve dashboard role enforcement, Payload user access control, and existing partial-failure dashboard fallbacks
+  - Fixes:
+    - render the dashboard database-unavailable state directly from the server page when all core DB counts fail, instead of depending on a production-redacted Server Component error message
+    - add a real persisted `preferredLocale` user field, migration, and generated Payload types for the dashboard language path
+    - log each failed core dashboard count with the original `Error` reason so the logger preserves database failure detail
+  - Files likely affected:
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260420-144442-dashboard-follow-up-review-fixes.md`
+    - `src/app/(dashboard)/dashboard/page.tsx`
+    - `src/app/(dashboard)/dashboard/error.tsx`
+    - `src/collections/Users.ts`
+    - `src/migrations/index.ts`
+    - `src/migrations/20260420_144442_add_users_preferred_locale.ts`
+    - `src/payload-types.ts`
+    - `tests/unit/dashboard-overview.test.tsx`
+    - `tests/unit/collections/Users.test.ts`
+  - Dependencies:
+    - the user locale schema change must be followed by `pnpm generate:types`
+    - the database-unavailable UI must not alter partial failure behavior for recent notices, emergency banners, or flight feeds
+  - Risks:
+    - production database must run the new Payload/Postgres migration before persisted preferred locales can be edited
+    - dashboard fallback UI must stay within the existing dashboard layout and not bypass section access checks
+  - Validation commands:
+    - `pnpm generate:types`
+    - `pnpm test -- tests/unit/dashboard-auth.test.ts tests/unit/dashboard-overview.test.tsx tests/unit/collections/Users.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - a total core-count database outage renders a dashboard database-unavailable state without relying on `error.tsx` message text
+    - each core count rejection logs its original error object
+    - user preferred locale is present in Payload collection config, migration, generated types, and tests
+    - focused tests, lint, and build pass
+  - Stop-and-fix rule:
+    - if validation fails, stop and repair only regressions introduced by this follow-up milestone before continuing
+  - Completion record:
+    - completed fixes:
+      - rendered the database-unavailable dashboard state directly from `src/app/(dashboard)/dashboard/page.tsx` when all core DB counts fail
+      - changed total core-count outage logging to preserve each original `Error` reason
+      - removed the database-message branch from `src/app/(dashboard)/dashboard/error.tsx` so production redaction cannot hide the intended outage state
+      - added `preferredLocale` to the Users collection, generated Payload types, a Postgres migration, and collection coverage
+      - updated dashboard overview tests to assert rendered outage UI and error-preserving logs
+    - files changed or added by this milestone:
+      - `PLANS.md`
+      - `.ai-maintenance/prompt-log/20260420-144442-dashboard-follow-up-review-fixes.md`
+      - `.ai-maintenance/baseline-reports/20260420-144442-dashboard-follow-up-review-fixes.md`
+      - `.ai-maintenance/review-reports/20260420-144442-dashboard-follow-up-review-fixes-pre-fix.md`
+      - `.ai-maintenance/review-reports/20260420-144442-dashboard-follow-up-review-fixes-post-fix.md`
+      - `.ai-maintenance/impact-comparisons/20260420-144442-dashboard-follow-up-review-fixes.md`
+      - `.ai-maintenance/fix-ledgers/20260420-144442-dashboard-follow-up-review-fixes.md`
+      - `.ai-maintenance/regression-checks/20260420-144442-dashboard-follow-up-review-fixes.md`
+      - `.ai-maintenance/verification-reports/20260420-144442-dashboard-follow-up-review-fixes.md`
+      - `.ai-maintenance/final-status/20260420-144442-dashboard-follow-up-review-fixes.md`
+      - `src/app/(dashboard)/dashboard/page.tsx`
+      - `src/app/(dashboard)/dashboard/error.tsx`
+      - `src/collections/Users.ts`
+      - `src/migrations/index.ts`
+      - `src/migrations/20260420_144442_add_users_preferred_locale.ts`
+      - `src/payload-types.ts`
+      - `tests/unit/dashboard-overview.test.tsx`
+      - `tests/unit/collections/Users.test.ts`
+    - validation results:
+      - `pnpm generate:types` passed
+      - `pnpm test -- tests/unit/dashboard-auth.test.ts tests/unit/dashboard-overview.test.tsx tests/unit/collections/Users.test.ts` passed with 3 files and 10 tests
+      - `pnpm lint` passed
+      - initial parallel `pnpm build` failed with a missing `.next/server/next-font-manifest.json`; rerunning `pnpm build` by itself passed
+      - `pnpm test` passed with 63 files and 295 tests
+      - scoped `git diff --check` passed with only CRLF normalization warnings
+    - residual risks / manual QA:
+      - run `pnpm migrate` or the deployment migration workflow before editing user preferred locales in production
+      - browser certificate trust from Milestone 13 still remains a manual local-environment step before retrying admin login
+
+## Milestone 15: April 21 Priority Audit Repairs
+- Status: Planned
+- Source: April 21, 2026 prioritized audit prompt covering 16 critical/high/medium/low fixes for workflow access, TLS, rate limits, dashboard coherence, media reads, health, typing, and maintenance comments.
+- Scope:
+  - Implement all requested fixes with minimal local edits.
+  - Preserve API response shapes unless the request explicitly changes behavior.
+  - Do not weaken authorization, validation, Redis fail-open behavior, media deletion rules, or existing dashboard section access.
+  - Work in low-blast-radius milestones and stop to repair any validation failure before continuing.
+- Milestone 15A: Workflow and user access-control hardening
+  - Fixes:
+    - `1.` Require approver role and approved custom workflow state before Notices can publish.
+    - `2.` Require approver role promotion before Pages can publish, adding an `in_review` workflow state and status field access.
+    - `5.` Block self-delete and deletion of the last `super_admin` through a Users `beforeDelete` hook while keeping the existing super-admin delete gate.
+    - `8.` Relabel `mfaRequired` as advisory and explicitly document that it is not enforced.
+    - `12.` Stamp `lastApprovedBy` only when the acting user has an approver role.
+    - `14.` Add role-assignment coverage confirming non-super-admins cannot create privileged roles.
+  - Files likely affected:
+    - `src/collections/workflowStatus.ts`
+    - `src/collections/Notices.ts`
+    - `src/collections/Pages.ts`
+    - `src/collections/Users.ts`
+    - `tests/unit/status-sync.test.ts`
+    - `tests/unit/collections/Users.test.ts`
+  - Dependencies:
+    - Fix `12` lands before Notices and Pages call-site expectations.
+    - Notices and Pages field access must use shared `@/access` helpers.
+    - Users delete hook must query target user data with `overrideAccess: true` before checking last-super-admin count.
+  - Risks:
+    - Existing editorial workflows may rely on a one-step publish action; the requested security change intentionally requires review-state promotion.
+    - Payload field-access callbacks receive `siblingData` differently depending on nesting, so tests should cover the local config callback behavior.
+  - Validation commands:
+    - `pnpm generate:types`
+    - `pnpm test -- tests/unit/status-sync.test.ts tests/unit/collections/Users.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Non-approvers cannot publish Notices or Pages through Payload `_status: published`.
+    - Non-approvers cannot set Notice status to `approved`, `published`, `expired`, or `archived`; non-approvers cannot set Page status to `published`.
+    - `lastApprovedBy` is not stamped for non-approvers.
+    - Users cannot self-delete, and the only remaining super admin cannot be deleted.
+    - MFA field copy no longer implies enforcement.
+  - Completion record:
+    - completed fixes: `1`, `2`, `5`, `8`, `12`, and config-level coverage for `14`.
+    - files changed:
+      - `src/collections/workflowStatus.ts`
+      - `src/collections/Notices.ts`
+      - `src/collections/Pages.ts`
+      - `src/collections/Users.ts`
+      - `src/payload-types.ts`
+      - `tests/unit/status-sync.test.ts`
+      - `tests/unit/collections/Users.test.ts`
+    - validation results:
+      - `pnpm generate:types` passed
+      - `pnpm test -- tests/unit/status-sync.test.ts tests/unit/collections/Users.test.ts` passed with 2 files and 19 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - full HTTP login/Payload REST publish integration is not present in this repo's current unit suite; direct hook/config coverage was added instead
+      - manually exercise Notices and Pages publish flows with `operations_editor` and `approver` accounts
+- Milestone 15B: Runtime security and infrastructure resilience
+  - Fixes:
+    - `3.` Require `DATABASE_CA_CERT` in production for remote Postgres TLS verification outside standalone build output.
+    - `4.` In production, coalesce missing/invalid IP rate-limit keys to `anon:no-ip` and keep rich anonymous fingerprints only outside production.
+    - `10.` Evict expired dev Payload REST rate-limit buckets when the dev map grows beyond 1000 entries.
+    - `13.` Tighten IPv6 rate-limit validation so non-address strings like `abc` or `:::` do not get unique trusted buckets.
+    - Documentation: update README and `.env.example` for the production `DATABASE_CA_CERT` requirement.
+  - Files likely affected:
+    - `payload.config.ts`
+    - `src/lib/rate-limit.ts`
+    - `src/app/api/[[...slug]]/route.ts`
+    - `tests/unit/rate-limit.test.ts`
+    - `README.md`
+    - `.env.example`
+  - Dependencies:
+    - Rate-limit key changes must stay edge-compatible because `src/middleware.ts` imports the helper.
+    - TLS changes must keep localhost and build-time placeholder behavior unchanged.
+  - Risks:
+    - Importing server-only or Node-only IP helpers into middleware would break the edge runtime; use a small edge-safe validator.
+    - Payload config validation must not fail during `NEXT_OUTPUT_MODE=standalone` builds.
+  - Validation commands:
+    - `pnpm test -- tests/unit/rate-limit.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Production requests without a valid proxy IP share one anonymous bucket.
+    - Development still gets stable rich anonymous fingerprints for local testing.
+    - Remote production DB config refuses to boot without a CA certificate unless running build output mode.
+    - Dev Payload REST buckets remove expired entries once the map exceeds the cap.
+  - Completion record:
+    - completed fixes: `3`, `4`, `10`, `13`, and `DATABASE_CA_CERT` operator documentation.
+    - files changed:
+      - `payload.config.ts`
+      - `src/lib/rate-limit.ts`
+      - `src/app/api/[[...slug]]/route.ts`
+      - `tests/unit/rate-limit.test.ts`
+      - `.env.example`
+      - `README.md`
+    - validation results:
+      - `pnpm test -- tests/unit/rate-limit.test.ts` passed with 1 file and 5 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - operators must provide a real Supabase/Postgres CA certificate in production runtime environments
+      - dev Payload REST bucket cleanup is covered by static review rather than a direct private-map unit test
+- Milestone 15C: Dashboard, media, health, and frontend correctness
+  - Fixes:
+    - `6.` Render a degraded data banner for rejected dashboard sources and show `—` instead of `0` for rejected critical counts.
+    - `7.` Remove fabricated Recent Activity entries from the dashboard overview.
+    - `9.` Make media metadata reads public, documenting that image bytes are already public through Supabase bucket policy.
+    - `11.` Replace requested `any` map callbacks in home page sliders and flight board with generated/local types.
+    - `15.` Make shallow `/api/health` liveness return 200 without Payload initialization; keep deep checks unchanged.
+    - `16.` Add the requested clarifying auto-slug comment.
+  - Files likely affected:
+    - `src/app/(dashboard)/dashboard/page.tsx`
+    - `tests/unit/dashboard-overview.test.tsx`
+    - `src/collections/Media.ts`
+    - `src/app/(frontend)/page.tsx`
+    - `src/components/ui/flight-board.tsx`
+    - `src/app/api/health/route.ts`
+    - `tests/unit/api/health.test.ts`
+    - `src/hooks/autoSlug.ts`
+  - Dependencies:
+    - Dashboard changes must preserve the existing complete-database-outage UI while adding partial-degradation signaling.
+    - Media read access must not loosen create/update/delete or protected Documents access.
+  - Risks:
+    - Dashboard stat values mix numbers and unavailable markers; keep rendering local and avoid public API shape changes.
+    - Public media metadata may expose filenames/alt text intentionally; this is aligned with public bucket image access.
+  - Validation commands:
+    - `pnpm test -- tests/unit/dashboard-overview.test.tsx tests/unit/api/health.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Partial dashboard count failures are visible and cannot be misread as zero.
+    - Dashboard Recent Activity no longer claims fabricated create/update/publish events.
+    - Public media metadata reads are allowed, while media writes/deletes remain restricted.
+    - Shallow health no longer calls `getPayloadClient()`, while deep health still verifies Payload/database.
+    - Requested `any` callbacks are replaced with typed callbacks.
+  - Completion record:
+    - completed fixes: `6`, `7`, `9`, `11`, `15`, and `16`.
+    - files changed:
+      - `src/app/(dashboard)/dashboard/page.tsx`
+      - `tests/unit/dashboard-overview.test.tsx`
+      - `src/collections/Media.ts`
+      - `tests/unit/media.test.ts`
+      - `src/app/(frontend)/page.tsx`
+      - `src/components/ui/flight-board.tsx`
+      - `src/app/api/health/route.ts`
+      - `tests/unit/api/health.test.ts`
+      - `src/hooks/autoSlug.ts`
+    - validation results:
+      - `pnpm test -- tests/unit/dashboard-overview.test.tsx tests/unit/api/health.test.ts tests/unit/media.test.ts tests/unit/flight-board.test.tsx` passed with 4 files and 13 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - browser smoke test `/`, `/news-events`, `/airport-project`, and `/airlines` for public image population
+      - dashboard activity overview intentionally omits Recent Activity until a real audit source is wired in; the dedicated audit page remains the real activity surface
+- Cross-cutting review:
+  - Grep all `syncWorkflowStatus` call sites and verify NewsEvents, AirportProject, Careers, Notices, and Pages are intentionally gated.
+  - Update `.ai-maintenance/` prompt, baseline, review, fix-ledger, impact, verification, regression, and final-status records for this task.
+- Stop-and-fix rule:
+  - After each milestone, run the listed focused test command plus `pnpm lint` and `pnpm build`.
+  - If validation fails, stop the next milestone and fix only issues introduced by the current milestone, or document a pre-existing blocker with evidence.
+- Final validation:
+  - `pnpm test`
+  - `pnpm lint`
+  - `pnpm build`
+- Final validation results:
+  - `pnpm test` passed with 63 files and 310 tests
+  - `pnpm lint` passed
+  - `pnpm build` passed
+  - scoped `git diff --check` passed with only Windows checkout CRLF normalization warnings
+- Manual QA notes:
+  - Browser smoke test `/`, `/news-events`, `/airport-project`, and `/airlines` after media access changes.
+  - Exercise admin publish flows for Notices and Pages with `operations_editor` and `approver` accounts.
+
+## Milestone 16: April 21 Verified Audit Follow-Up Fixes
+- Status: Planned
+- Source: April 21, 2026 verified audit prompt covering 19 findings across revalidation throttling, upload validation, Notice workflow fields, provider endpoint validation, middleware/cache resilience, analytics visitor hashes, collection slug limits, frontend render safety, translation telemetry, logging, redaction, and header state handling.
+- Scope:
+  - Implement all requested fixes that are still applicable in the current worktree with the minimum necessary changes.
+  - Preserve API response shapes unless the finding explicitly changes a response value.
+  - Preserve authorization strength; do not broaden permissions.
+  - Treat #7 as a self-audit item because the prompt states no code fix is required if confirmed safe.
+  - Treat already-satisfied findings (#12 airport-project guard, #16 MFA advisory copy) as confirmed completions and document the evidence.
+- Milestone 16A: Critical security, upload validation, and Notice workflow fields
+  - Fixes:
+    - `1.` Add local in-process cooldown fallback when Redis cooldown state is unknowable in `src/app/api/revalidate/route.ts`, with warning and Sentry breadcrumb.
+    - `2.` Guard PDF buffer inspection in `src/collections/Documents.ts` so malformed buffers return false instead of crashing validation.
+    - `3.` Add `access.update: canSetNoticeStatus` to `publishedAt`, `expiresAt`, and `promoteToBanner` in `src/collections/Notices.ts`.
+  - Files likely affected:
+    - `src/app/api/revalidate/route.ts`
+    - `src/collections/Documents.ts`
+    - `src/collections/Notices.ts`
+    - `tests/unit/api/revalidate.test.ts`
+    - `tests/unit/documents-upload.test.ts`
+    - `tests/unit/status-sync.test.ts`
+    - `src/payload-types.ts`
+  - Dependencies:
+    - Notices field access must keep the existing `canSetNoticeStatus` policy and not weaken approver checks.
+    - Payload types must be regenerated after collection field access changes.
+  - Risks:
+    - Redis outage fallback is process-local only and does not coordinate across replicas; this is explicitly the requested fallback when Redis is unavailable.
+    - Field access tests exercise collection config callbacks rather than a full Payload admin session.
+  - Validation commands:
+    - `pnpm generate:types`
+    - `pnpm test -- tests/unit/api/revalidate.test.ts tests/unit/documents-upload.test.ts tests/unit/status-sync.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - First revalidate request during Redis outage can pass; second matching request within cooldown returns 429.
+    - Malformed PDF buffer operations cannot crash the Documents hook.
+    - Non-approver editors cannot update Notice publish/banner workflow fields protected by `canSetNoticeStatus`.
+  - Stop-and-fix rule:
+    - If validation fails, stop before Milestone 16B and repair only regressions introduced by Milestone 16A unless a pre-existing blocker is proven.
+  - Completion record:
+    - completed fixes:
+      - added a process-local fallback cooldown when Redis revalidate cooldown checks throw, with warning and Sentry breadcrumb
+      - wrapped Documents PDF header/trailer inspection in `try/catch` so malformed buffer operations return false
+      - added Notice field-level update access to `publishedAt`, `expiresAt`, and `promoteToBanner`
+      - added focused coverage for Redis outage fallback throttling and Notice protected publish/banner fields
+    - files changed:
+      - `src/app/api/revalidate/route.ts`
+      - `src/collections/Documents.ts`
+      - `src/collections/Notices.ts`
+      - `tests/unit/api/revalidate.test.ts`
+      - `tests/unit/status-sync.test.ts`
+      - `src/payload-types.ts`
+      - `PLANS.md`
+      - `.ai-maintenance/prompt-log/20260421-133938-verified-audit-fixes.md`
+      - `.ai-maintenance/baseline-reports/20260421-133938-verified-audit-fixes.md`
+      - `.ai-maintenance/review-reports/20260421-133938-verified-audit-fixes-pre-fix.md`
+      - `.ai-maintenance/impact-comparisons/20260421-133938-verified-audit-fixes.md`
+      - `.ai-maintenance/fix-ledgers/20260421-133938-batch-16a-critical.md`
+      - `.ai-maintenance/regression-checks/20260421-133938-batch-16a-critical.md`
+      - `.ai-maintenance/verification-reports/20260421-133938-batch-16a-critical.md`
+    - validation results:
+      - `pnpm generate:types` passed
+      - initial focused test run failed because the new Redis test mock was not constructable; the test harness was fixed
+      - `pnpm test -- tests/unit/api/revalidate.test.ts tests/unit/documents-upload.test.ts tests/unit/status-sync.test.ts` passed with 3 files and 27 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - local revalidate fallback is process-local and should be manually smoke tested under Redis outage
+      - Notice field access is covered at config callback level; manually verify a non-approver admin/API update cannot set publish/banner fields
+- Milestone 16B: Runtime/API/cache/provider resilience
+  - Fixes:
+    - `4.` Report deep health catch branch `services.app` as `degraded`.
+    - `5.` Store `visitorHash: null` when no valid client IP is available.
+    - `6.` Validate provider endpoint env vars centrally in `src/lib/provider-endpoints.ts`; allow `https:` always and `http:` only outside production; reject invalid schemes at module load/startup.
+    - `7.` Confirm the revalidate secret compare ordering is safe and leave code unchanged if confirmed.
+    - `8.` Remove per-request full dev limiter cleanup by moving cleanup to dev-only interval and/or bounded insert eviction.
+    - `13.` Keep stale in-memory cache entries after refresh failures using `refreshFailedAt` and a retry-after window.
+    - `14.` Warn once per Kreol/French fallback key in translation.
+  - Files likely affected:
+    - `src/app/api/health/route.ts`
+    - `src/app/api/track/route.ts`
+    - `src/lib/provider-endpoints.ts`
+    - `src/middleware.ts`
+    - `src/lib/cache.ts`
+    - `src/lib/translate.ts`
+    - focused runtime tests under `tests/unit/`
+  - Dependencies:
+    - Provider endpoint validation must stay edge-compatible because middleware imports `provider-endpoints`.
+    - Analytics visitor hash `null` must preserve the existing optional/null analytics contract.
+    - Cache failure behavior must not turn Redis failures or fetch failures into request crashes.
+  - Risks:
+    - Provider endpoint validation changes startup behavior for invalid production env values intentionally.
+    - Cache retry-after behavior requires timer-sensitive tests.
+  - Validation commands:
+    - `pnpm test -- tests/unit/api/health.test.ts tests/unit/api/track.test.ts tests/unit/middleware-security.test.ts tests/unit/cache-runtime.test.ts tests/unit/translate.test.ts tests/unit/env.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Health deep failure reports app degraded.
+    - No-IP analytics events do not share a daily anonymous hash bucket.
+    - Invalid `file:` provider endpoints fail at startup/module load, while dev `http:` endpoints remain allowed.
+    - Dev rate-limit cleanup avoids a single request scanning the full map on a timer boundary.
+    - Stale memory cache survives refresh failure and is served during retry backoff.
+    - `mfe` translation fallback emits one warning per unique fallback pair.
+  - Stop-and-fix rule:
+    - If validation fails, stop before Milestone 16C and repair only regressions introduced by Milestone 16B unless a pre-existing blocker is proven.
+  - Completion record:
+    - completed fixes:
+      - changed deep health failure `services.app` to `degraded`
+      - changed no-IP or invalid-IP analytics events to write `visitorHash: null`
+      - added central provider endpoint URL/scheme validation with production HTTPS enforcement and dev HTTP allowance
+      - confirmed #7 is safe because the configured secret presence/length checks short-circuit before constant-time comparison
+      - replaced request-window full dev rate-limit cleanup with bounded oldest-bucket eviction on insert
+      - preserved stale in-memory cache entries during a 15s refresh-failure retry window
+      - added one-time warning telemetry for `mfe` translation fallback to French
+    - files changed:
+      - `src/app/api/health/route.ts`
+      - `src/app/api/track/route.ts`
+      - `src/lib/provider-endpoints.ts`
+      - `src/middleware.ts`
+      - `src/lib/cache.ts`
+      - `src/lib/translate.ts`
+      - `tests/unit/api/health.test.ts`
+      - `tests/unit/api/track.test.ts`
+      - `tests/unit/provider-endpoints.test.ts`
+      - `tests/unit/cache-runtime.test.ts`
+      - `tests/unit/translate.test.ts`
+      - `PLANS.md`
+      - `.ai-maintenance/fix-ledgers/20260421-133938-batch-16b-runtime.md`
+      - `.ai-maintenance/regression-checks/20260421-133938-batch-16b-runtime.md`
+      - `.ai-maintenance/verification-reports/20260421-133938-batch-16b-runtime.md`
+    - validation results:
+      - `pnpm test -- tests/unit/api/health.test.ts tests/unit/api/track.test.ts tests/unit/provider-endpoints.test.ts tests/unit/middleware-security.test.ts tests/unit/cache-runtime.test.ts tests/unit/translate.test.ts tests/unit/env.test.ts` passed with 7 files and 54 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - invalid provider endpoint startup should be smoke tested in the production runtime command with `FLIGHT_PROVIDER_ENDPOINT=file:///etc/passwd`
+      - dev limiter bounded eviction is verified by static review rather than direct private-map tests
+- Milestone 16C: Collection consistency, frontend safety, logging, and redaction
+  - Fixes:
+    - `9.` Add `maxLength: 120` to existing slug fields and add a migration to constrain matching DB slug columns. Current `Airlines` and `FAQs` configs have no slug field, so do not add new slug fields solely for this audit item.
+    - `10.` Remove index-based key fallbacks on home page Notice and News maps.
+    - `11.` Sync `use-live-api-data` visibility after subscribing by firing the handler once after listener registration.
+    - `12.` Add the missing RichText null guard to `news-events`; confirm `airport-project` is already guarded.
+    - `15.` Change FAQs delete access to `isAdmin` and document the delete rule in `src/access/roles.ts`.
+    - `16.` Confirm MFA flag copy is already advisory and not represented as an enforced security control.
+    - `17.` Pass original `Error` objects to `console.error` so runtime stack traces are preserved.
+    - `18.` Replace redaction secret split/join loop with one escaped regex alternation.
+    - `19.` Move/scope `openRef` synchronization in `NavDropdown` so document handlers observe stable open state.
+  - Files likely affected:
+    - `src/collections/AirportProject.ts`
+    - `src/collections/Careers.ts`
+    - `src/collections/NewsEvents.ts`
+    - `src/collections/Notices.ts`
+    - `src/collections/Pages.ts`
+    - `src/collections/FAQs.ts`
+    - `src/access/roles.ts`
+    - `src/app/(frontend)/page.tsx`
+    - `src/app/(frontend)/news-events/[slug]/page.tsx`
+    - `src/hooks/use-live-api-data.ts`
+    - `src/components/layout/header.tsx`
+    - `src/lib/logger.ts`
+    - `src/lib/redaction.ts`
+    - `src/migrations/index.ts`
+    - a new migration under `src/migrations/`
+    - `src/payload-types.ts`
+    - focused unit tests under `tests/unit/`
+  - Dependencies:
+    - Payload types must be regenerated after slug and FAQ access config changes.
+    - Migration must be registered in `src/migrations/index.ts`.
+    - Logger changes must retain existing redaction and Sentry behavior.
+  - Risks:
+    - `maxLength` limits may reject existing overlong slugs until operators clean data; the migration should be narrow and explicit.
+    - Existing pages may still contain `any` in unrelated attachment maps; do not broaden this task beyond requested fixes.
+  - Validation commands:
+    - `pnpm generate:types`
+    - `pnpm test -- tests/unit/collections/FAQs.test.ts tests/unit/static-params-build-mode.test.ts tests/unit/logger.test.ts tests/unit/translate.test.ts tests/unit/cache-runtime.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Existing slug fields enforce a 120-character maximum in Payload config and DB migration.
+    - Home page list keys use Payload ids directly.
+    - Detail pages render cleanly with missing body content.
+    - FAQ deletion matches the admin-only delete rule used by comparable collections.
+    - Error stack traces are printed from original `Error` objects.
+    - Redaction handles multiple explicit secrets in one regex replace pass.
+  - Stop-and-fix rule:
+    - If validation fails, repair only regressions introduced by Milestone 16C or document a pre-existing blocker with evidence.
+  - Completion record:
+    - completed fixes:
+      - added `maxLength: 120` to existing slug fields for AirportProject, Careers, NewsEvents, Notices, and Pages; current Airlines and FAQs configs have no slug field
+      - added slug auto-generation truncation and unique-suffix length handling so generated slugs stay within the cap
+      - added a registered migration with DB slug length check constraints for existing slug/version_slug columns
+      - removed home page index-key fallbacks for Notices and News
+      - changed live API hook setup to subscribe before syncing current visibility and added coverage for hidden-to-visible mount behavior
+      - confirmed airport-project already had a RichText guard and added the missing news-events guard
+      - changed FAQs delete access to `isAdmin` and documented admin-only destructive delete policy in `src/access/roles.ts`
+      - preserved the advisory MFA collection copy and changed the dashboard users table to avoid enforced `Required`/`Optional` wording
+      - changed logger console error output to pass original `Error` objects
+      - replaced explicit secret redaction split/join with one escaped regex alternation
+      - moved dropdown `openRef` synchronization into the document-listener effect
+    - files changed:
+      - `src/hooks/autoSlug.ts`
+      - `src/collections/AirportProject.ts`
+      - `src/collections/Careers.ts`
+      - `src/collections/NewsEvents.ts`
+      - `src/collections/Notices.ts`
+      - `src/collections/Pages.ts`
+      - `src/collections/FAQs.ts`
+      - `src/access/roles.ts`
+      - `src/migrations/20260421_133938_add_slug_length_checks.ts`
+      - `src/migrations/index.ts`
+      - `src/app/(frontend)/page.tsx`
+      - `src/app/(frontend)/news-events/[slug]/page.tsx`
+      - `src/hooks/use-live-api-data.ts`
+      - `src/components/layout/header.tsx`
+      - `src/app/(dashboard)/dashboard/users/page.tsx`
+      - `src/lib/logger.ts`
+      - `src/lib/redaction.ts`
+      - `src/payload-types.ts`
+      - focused tests added or updated under `tests/unit/`
+      - `.ai-maintenance/fix-ledgers/20260421-133938-batch-16c-frontend-collections.md`
+      - `.ai-maintenance/regression-checks/20260421-133938-batch-16c-frontend-collections.md`
+      - `.ai-maintenance/verification-reports/20260421-133938-batch-16c-frontend-collections.md`
+    - validation results:
+      - `pnpm generate:types` passed
+      - initial focused test run failed because the new slug cap test expected exactly 120 chars, but separator trimming can produce a shorter valid slug; assertion was corrected to the invariant `<= 120`
+      - `pnpm test -- tests/unit/collections/FAQs.test.ts tests/unit/collections/Users.test.ts tests/unit/autoSlug.test.ts tests/unit/redaction.test.ts tests/unit/logger.test.ts tests/unit/use-live-api-data.test.tsx tests/unit/static-params-build-mode.test.ts tests/unit/ui/rich-text.test.tsx` passed with 8 files and 31 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - run the new slug length migration in a staging database and inspect any pre-existing overlong slugs before validating constraints
+      - browser smoke test header dropdown Escape/outside-click behavior and hidden-to-visible live refresh behavior
+- Cross-cutting review:
+  - Re-run focused grep checks for revalidate cooldown, Notice field access, provider endpoint callers, slug fields, `visitorHash`, `RichText data={item.body}`, and home page index-key fallbacks.
+  - Update `.ai-maintenance/` prompt, baseline, review, fix-ledger, impact, verification, regression, and final-status records for this task.
+- Final validation:
+  - `pnpm test`
+  - `pnpm lint`
+  - `pnpm build`
+- Final validation results:
+  - `pnpm test` passed with 66 files and 324 tests
+  - `pnpm lint` passed
+  - `pnpm build` passed
+  - `git diff --check` passed with only Windows checkout CRLF normalization warnings
+- Manual QA notes:
+  - Simulate Redis outage and confirm repeated revalidation is throttled within the local cooldown.
+  - Exercise Notice publish/banner field edits as `operations_editor` and `approver`.
+  - Start with `FLIGHT_PROVIDER_ENDPOINT=file:///etc/passwd` in production mode and confirm startup/module load fails.
+  - Browser smoke test home, news detail with missing body, airport-project detail with missing body, and header dropdown close behavior.
+  - Run `pnpm migrate` or the deployment migration flow for `20260421_133938_add_slug_length_checks` after checking for legacy overlong slugs.
+
+## Milestone 17: Admin And Dashboard Runtime Recovery
+- Status: Completed
+- Source: April 21, 2026 admin/dashboard runtime failure report with production Server Components error page.
+- Scope:
+  - Recover `/admin` and `/dashboard` for the currently configured database.
+  - Prefer applying existing registered migrations over changing application code.
+  - Keep admin, dashboard auth, access control, and API response behavior unchanged.
+- Findings:
+  - Local reproduction against the current `.env` showed Payload failing on `column users.preferred_locale does not exist`.
+  - `pnpm exec payload migrate:status` shows `20260420_144442_add_users_preferred_locale` is registered but not applied.
+  - The same database also has earlier registered migrations still pending.
+- Fixes:
+  - `1.` Apply pending Payload migrations in order with `pnpm migrate`.
+  - `2.` Re-check migration status and smoke test `/admin`, `/admin/login`, and unauthenticated `/dashboard` redirect.
+  - `3.` Only edit migration code if an existing migration fails to apply safely.
+- Files likely affected:
+  - No application source file changes expected.
+  - `PLANS.md`
+  - `.ai-maintenance/*/20260421-145824-admin-dashboard-runtime-recovery.md`
+- Dependencies:
+  - The configured database must be reachable.
+  - Pending migrations must be compatible with the current schema.
+  - A local dev server is used only for smoke testing.
+- Risks:
+  - Pending schema migrations affect the connected database, not just local files.
+  - The `20260409_120000_news_events_documents` migration drops old FK constraint names without `IF EXISTS`; if the connected schema already differs, it may require a narrow migration repair.
+  - Admin/dashboard may still fail if runtime cookies are stale or if production has a different database than the local `.env`.
+- Validation commands:
+  - `pnpm exec payload migrate:status`
+  - `pnpm migrate`
+  - `pnpm exec payload migrate:status`
+  - `curl.exe -k -I https://localhost:3000/admin`
+  - `curl.exe -k -I https://localhost:3000/admin/login`
+  - `curl.exe -k -I https://localhost:3000/dashboard`
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - The `users.preferred_locale` column exists through the registered migration.
+  - Pending migrations report as applied.
+  - `/admin` and `/admin/login` return 200 in local smoke tests.
+  - `/dashboard` redirects unauthenticated users to `/admin/login?redirect=%2Fdashboard` instead of throwing.
+  - Lint and production build pass.
+- Stop-and-fix rule:
+  - If a migration fails, stop route smoke testing, inspect only the failed migration and current schema, then repair the smallest migration compatibility issue before retrying.
+- Completion record:
+  - completed fixes:
+    - confirmed the runtime failure was caused by pending Payload migrations, specifically the missing `users.preferred_locale` column
+    - applied all registered pending migrations with `pnpm migrate`
+    - confirmed migration status now reports all migrations as applied
+    - smoke tested `/admin`, `/admin/login`, and `/dashboard` in development and production-server modes
+  - files changed:
+    - `PLANS.md`
+    - `.ai-maintenance/prompt-log/20260421-145824-admin-dashboard-runtime-recovery.md`
+    - `.ai-maintenance/baseline-reports/20260421-145824-admin-dashboard-runtime-recovery.md`
+    - `.ai-maintenance/review-reports/20260421-145824-admin-dashboard-runtime-recovery-pre-fix.md`
+    - `.ai-maintenance/fix-ledgers/20260421-145824-admin-dashboard-runtime-recovery.md`
+    - `.ai-maintenance/regression-checks/20260421-145824-admin-dashboard-runtime-recovery.md`
+    - `.ai-maintenance/verification-reports/20260421-145824-admin-dashboard-runtime-recovery.md`
+    - `.ai-maintenance/final-status/20260421-145824-admin-dashboard-runtime-recovery.md`
+  - database changes:
+    - applied `20260409_120000_news_events_documents`
+    - applied `20260417_090000_page_views_lifecycle`
+    - applied `20260420_105000_add_documents_visibility`
+    - applied `20260420_144442_add_users_preferred_locale`
+    - applied `20260421_133938_add_slug_length_checks`
+  - validation results:
+    - `pnpm exec payload migrate:status` showed the five migrations above as pending before the fix
+    - `pnpm migrate` passed and applied all five pending migrations
+    - `pnpm exec payload migrate:status` passed and showed all migrations as applied
+    - development smoke: `/admin` 200, `/admin/login` 200, `/dashboard` 307 to `/admin/login?redirect=%2Fdashboard`
+    - production smoke after `pnpm build` and `pnpm start`: `/admin` 200, `/admin/login` 200, `/dashboard` 307 to `/admin/login?redirect=%2Fdashboard`
+    - `pnpm lint` passed
+    - `pnpm build` passed
+  - residual risks / manual QA:
+    - authenticated dashboard rendering was not browser-tested because no admin session cookie was available in this terminal
+    - if production points at a different database, run the same `pnpm migrate` or deployment migration step against that database
+
+## Milestone 18: Access, Dashboard, Runtime, And Coherence Audit Repairs
+- Status: Completed
+- Source: April 21, 2026 audit prompt requesting fixes #1-#11 with `conservative-repair-mode` and multiple AI agents.
+- Scope:
+  - Implement the requested high, medium, and low priority fixes with minimum necessary code changes.
+  - Preserve existing API response shapes unless explicitly requested.
+  - Do not weaken authorization, validation, cache failure behavior, or middleware request flow.
+- Dependencies:
+  - Apply NewsEvents status field access before Notice `promoteToBanner` create access.
+  - Apply dashboard cached flight-board fetch after collection access fixes.
+  - Treat the current visitor-hash fallback request as newer explicit intent overriding the prior no-IP `visitorHash: null` behavior from Milestone 16B.
+  - Confirm `canAccess` and `getNavForRole` usage before removing exports; leave them unchanged if any caller exists.
+- Risks:
+  - Payload field access changes can affect editor/approver publish workflows.
+  - Dashboard data-fetch changes can break mocked tests if cached flight-board snapshot shape is not preserved.
+  - Slug collision mitigation can change newly generated slug shape if the safer forced-suffix fallback is used.
+  - Deep health authorization must not break shallow liveness checks used by Docker.
+  - The worktree is already heavily dirty; preserve unrelated existing changes.
+- Stop-and-fix rule:
+  - After each batch, run the batch validation commands.
+  - If validation fails, stop before the next batch and repair only regressions introduced by the current batch unless a pre-existing blocker is proven.
+- Batch 18A: Collection workflow/access controls
+  - Fixes:
+    - `1.` Add `NewsEvents.status` field-level create/update access mirroring Pages so non-approvers cannot persist `status: 'published'`.
+    - `3.` Add `create` access to `Notices.promoteToBanner`.
+  - Files likely affected:
+    - `src/collections/NewsEvents.ts`
+    - `src/collections/Notices.ts`
+    - `tests/unit/status-sync.test.ts`
+  - Validation commands:
+    - `pnpm test -- tests/unit/status-sync.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Non-approvers cannot create or update NewsEvents with `status: 'published'`.
+    - Approvers retain status publish access.
+    - Non-approvers cannot create or update `promoteToBanner` when protected Notice status data is being set.
+  - Completion record:
+    - completed fixes:
+      - added `NewsEvents.status` field create/update access using a Pages-style approver gate
+      - added a value-aware Notice banner field access helper and applied it to `promoteToBanner` create/update
+      - extended workflow/status field-access unit coverage for NewsEvents and Notice banner creation
+    - files changed:
+      - `src/collections/NewsEvents.ts`
+      - `src/collections/Notices.ts`
+      - `tests/unit/status-sync.test.ts`
+    - validation results:
+      - `pnpm test -- tests/unit/status-sync.test.ts` passed with 1 file and 12 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - Field access was verified at config callback level; manually verify non-approver admin/API create/update attempts in a real Payload session.
+- Batch 18B: Dashboard data-fetch scalability and cache use
+  - Fixes:
+    - `2.` Replace direct dashboard `getFlightBoard()` calls with one `cachedFetch('flights:rotations', 2600, getFlightBoards, ...)` snapshot call.
+    - `4.` Filter dashboard users with Payload `where` for the active tab and compute counts with parallel `payload.count` calls.
+  - Files likely affected:
+    - `src/app/(dashboard)/dashboard/page.tsx`
+    - `src/app/(dashboard)/dashboard/users/page.tsx`
+    - `tests/unit/dashboard-overview.test.tsx`
+    - new or updated dashboard users test if practical
+  - Validation commands:
+    - `pnpm test -- tests/unit/dashboard-overview.test.tsx`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Dashboard uses the same Redis-backed flight snapshot cache as `/api/flight-board`.
+    - Flight-board failures show one degraded source named `flight boards`.
+    - User list query is scoped by active tab when applicable.
+    - Role counts are not derived from the capped user list.
+  - Completion record:
+    - completed fixes:
+      - replaced dashboard overview per-board `getFlightBoard()` calls with one shared `cachedFetch('flights:rotations', 2600, getFlightBoards, ...)` snapshot
+      - derived arrivals/departures boards from the shared snapshot and report one `flight boards` degraded source on failure
+      - added role-tab `where` filters to dashboard users and replaced truncated-list-derived counts with `payload.count` calls
+      - added focused dashboard users coverage and updated overview cache/degraded-source coverage
+    - files changed:
+      - `src/app/(dashboard)/dashboard/page.tsx`
+      - `src/app/(dashboard)/dashboard/users/page.tsx`
+      - `tests/unit/dashboard-overview.test.tsx`
+      - `tests/unit/dashboard-users.test.tsx`
+    - validation results:
+      - initial focused run exposed a duplicate text assertion in the new users test; the test was corrected to assert duplicate stat/tab badge counts
+      - `pnpm test -- tests/unit/dashboard-overview.test.tsx tests/unit/dashboard-users.test.tsx` passed with 2 files and 5 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - The dashboard flights detail page still has a similar direct `getFlightBoard()` pattern but was outside the requested file scope; consider a follow-up audit item if dashboard provider-cost reduction should apply there too.
+- Batch 18C: Runtime/API security and analytics correctness
+  - Fixes:
+    - `5.` Mitigate auto-slug check-then-create races by using a forced unique suffix for generated create slugs in collision-prone Payload collections.
+    - `6.` Hash an IP-less visitor fingerprint from user-agent, accept-language, and date using the existing salt.
+    - `8.` Require the `/api/status` Bearer authorization pattern for `/api/health?deep=true` while keeping shallow health public.
+  - Files likely affected:
+    - `src/hooks/autoSlug.ts`
+    - `src/app/api/track/route.ts`
+    - `src/app/api/health/route.ts`
+    - `tests/unit/autoSlug.test.ts`
+    - `tests/unit/api/track.test.ts`
+    - `tests/unit/api/health.test.ts`
+  - Validation commands:
+    - `pnpm test -- tests/unit/autoSlug.test.ts tests/unit/api/track.test.ts tests/unit/api/health.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Generated create slugs for collection-backed autoSlug uses cannot collide under concurrent same-title creates.
+    - IP-less tracking events store a non-null daily hash from a weaker fingerprint.
+    - Deep health without a valid Bearer token returns 401 and does not initialize Payload.
+  - Completion record:
+    - completed fixes:
+      - added forced 8-character hash suffixes to collection-backed generated create slugs while preserving existing collision suffix behavior and the 120-character cap
+      - changed IP-less tracking events to store a salted daily user-agent/accept-language fingerprint hash
+      - protected `/api/health?deep=true` with a status-style Bearer token check while keeping shallow health public
+      - updated focused tests for slug create suffixes, IP-less visitor hashes, and unauthorized deep health
+    - files changed:
+      - `src/hooks/autoSlug.ts`
+      - `src/app/api/track/route.ts`
+      - `src/app/api/health/route.ts`
+      - `tests/unit/autoSlug.test.ts`
+      - `tests/unit/api/track.test.ts`
+      - `tests/unit/api/health.test.ts`
+    - validation results:
+      - `pnpm test -- tests/unit/autoSlug.test.ts tests/unit/api/track.test.ts tests/unit/api/health.test.ts` passed with 3 files and 20 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - Newly generated create slugs now include a short suffix; confirm this URL shape is acceptable to editors.
+      - Monitoring clients using deep health must send `Authorization: Bearer $STATUS_SECRET`.
+- Batch 18D: Coherence and documentation cleanup
+  - Fixes:
+    - `7.` Run `rg "canAccess\\b|getNavForRole\\b"` and remove exports only if no callers exist.
+    - `9.` Include `.` in secret-like redaction values.
+    - `10.` Clarify CSP provider-origin env vars are read at edge cold start and require restart/rolling deploy.
+    - `11.` Add the Redis/CDN cache relationship comment above the flight-board response.
+  - Files likely affected:
+    - `src/lib/dashboard.ts` only if no callers exist
+    - `src/lib/redaction.ts`
+    - `src/middleware.ts`
+    - `src/app/api/flight-board/route.ts`
+    - `tests/unit/redaction.test.ts`
+  - Validation commands:
+    - `pnpm test -- tests/unit/redaction.test.ts tests/unit/api/flight-board.test.ts tests/unit/dashboard.test.ts`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - JWT-like dotted bare strings redact in free-form text.
+    - CSP and flight-board cache comments document operational assumptions.
+    - `canAccess` and `getNavForRole` are left untouched if any caller remains.
+  - Completion record:
+    - completed fixes:
+      - confirmed `canAccess` and `getNavForRole` still have `tests/unit/dashboard.test.ts` callers and left exports unchanged
+      - updated secret-like redaction to allow dotted values and added bare JWT-like free-form redaction coverage
+      - clarified provider endpoint CSP origins are read at edge cold start and require restart/rolling deploy to update
+      - documented the Redis/CDN dual-cache relationship in the flight-board route
+    - files changed:
+      - `src/lib/redaction.ts`
+      - `src/middleware.ts`
+      - `src/app/api/flight-board/route.ts`
+      - `tests/unit/redaction.test.ts`
+      - `PLANS.md`
+    - validation results:
+      - `rg -n "canAccess\\b|getNavForRole\\b" src tests -S` found callers in `tests/unit/dashboard.test.ts`; no export removal was performed
+      - `pnpm test -- tests/unit/redaction.test.ts tests/unit/api/flight-board.test.ts tests/unit/dashboard.test.ts tests/unit/middleware-security.test.ts` passed with 4 files and 37 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - Free-form JWT-like redaction is intentionally broader for dotted token shapes; review logs if operators rely on long dotted diagnostic identifiers.
+- Final validation:
+  - `pnpm test`
+  - `pnpm lint`
+  - `pnpm build`
+  - `docker compose -f docker-compose.prod.yml up --build -d`
+- Final acceptance criteria:
+  - All requested fixes are implemented or conditionally confirmed as no-code.
+  - Focused tests, full Vitest, lint, build, and Docker production compose verification pass or any real blocker is documented with evidence.
+- Final validation results:
+  - `pnpm test` passed with 67 files and 329 tests
+  - `pnpm lint` passed
+  - `pnpm build` passed
+  - `docker compose -f docker-compose.prod.yml up --build -d` built the production image and started four app containers healthy
+  - `git diff --check` passed with Git CRLF normalization warnings only
+- Final residual risks / manual QA:
+  - Manually verify Payload admin/API field access as `operations_editor` and `approver`.
+  - Confirm newly generated create slugs with short suffixes are acceptable for editorial URLs.
+  - Update external deep health monitors to send `Authorization: Bearer $STATUS_SECRET`.
+  - A similar direct flight-board pattern exists on the dashboard flights detail page but was outside this prompt's named file scope.
+
+## Milestone 19: Payload CMS Backend And Frontend Wiring Audit Repairs
+- Status: Completed
+- Source: April 22, 2026 Payload CMS backend/frontend audit prompt requesting critical, high, medium, and low fixes.
+- Scope:
+  - Fix private document attachment signing for airport project frontend pages.
+  - Repair Pages workflow submit-for-review behavior without weakening publish authorization.
+  - Add approver-on-publish guards for draft-enabled public globals and make public globals anonymously readable.
+  - Remove duplicate Payload REST rate limiting at the route handler.
+  - Align NewsEvents, AirportProject, and Careers workflow approval metadata with Notices.
+  - Extract duplicated global approval-history hook logic.
+  - Clarify or repair low-priority user-role and analytics behavior.
+- Dependencies:
+  - Airport project signed attachments depend on the existing `signDocumentAttachmentURLs` and Supabase signed URL helper remaining unchanged.
+  - Pages workflow must preserve `requiredStatusForPublish: 'in_review'` while removing the editor-blocking approval transition.
+  - Global publish guards must run before approval-history appenders where both are present.
+  - Payload REST route exports must stay compatible with `@payloadcms/next/routes` generated handlers.
+- Risks:
+  - Access-control changes can accidentally broaden edit/publish permissions if guards are too loose.
+  - Global read access intentionally changes anonymous REST behavior from 403 to public reads for public-site content.
+  - Adding `lastApprovedBy` fields changes Payload generated types and may require `pnpm generate:types`.
+  - The worktree is already heavily dirty; preserve unrelated existing changes.
+- Milestone 19A: Critical attachment signing and Pages workflow
+  - Fixes:
+    - Add airport-project signed attachment content exports.
+    - Use signed airport-project fetchers in listing and detail pages, leaving static params unsigned.
+    - Remove `approvalStatus: 'in_review'` from Pages workflow, add `setPublishedAt: true`, and make `status` required.
+  - Files likely affected:
+    - `src/lib/content.ts`
+    - `src/app/(frontend)/airport-project/page.tsx`
+    - `src/app/(frontend)/airport-project/[slug]/page.tsx`
+    - `src/collections/Pages.ts`
+  - Validation commands:
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Airport project attachment links use signed private document URLs on listing and detail pages.
+    - Editors can move Pages from draft to in-review.
+    - Only approvers can publish reviewed Pages.
+  - Completion record:
+    - completed fixes:
+      - added airport-project signed attachment content fetchers
+      - switched airport-project listing/detail render and metadata fetches to signed attachment fetchers
+      - kept static params on unsigned `getAirportProjectItems(100)` because slugs do not need signed URLs
+      - removed the editor-blocking Pages `approvalStatus: 'in_review'`
+      - made Pages `status` required and added `setPublishedAt: true`
+    - files changed:
+      - `src/lib/content.ts`
+      - `src/app/(frontend)/airport-project/page.tsx`
+      - `src/app/(frontend)/airport-project/[slug]/page.tsx`
+      - `src/collections/Pages.ts`
+    - validation results:
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - manually open a live airport-project attachment link to confirm signed document URL access against Supabase.
+- Milestone 19B: Global access, publish guards, and approval history
+  - Fixes:
+    - Add shared `enforceApproverOnPublish` helper.
+    - Add shared `appendApprovalHistoryHook` helper.
+    - Register publish guards on Regulations, UsageFees, ManagementStaff, WorkingHoursDirections, UsefulLinks, and VIPLounge.
+    - Replace Regulations and LegalPages local approval-history hooks with the shared helper.
+    - Change listed public globals to `read: () => true`, preserving field-level `internalNotes`/sensitive reads.
+  - Files likely affected:
+    - `src/globals/approvalGuards.ts`
+    - `src/globals/approvalHistory.ts`
+    - public globals under `src/globals/`
+  - Validation commands:
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Draft-enabled public globals can be drafted by editors but only published by approver roles.
+    - Anonymous REST reads work for public globals.
+    - Approval history behavior remains unchanged for Regulations and LegalPages.
+  - Completion record:
+    - completed fixes:
+      - added `src/globals/approvalGuards.ts`
+      - added `src/globals/approvalHistory.ts`
+      - registered approver publish guards on Regulations, UsageFees, ManagementStaff, WorkingHoursDirections, UsefulLinks, and VIPLounge
+      - replaced local Regulations and LegalPages approval-history hooks with the shared helper
+      - changed the 13 named public globals to `read: () => true`, preserving EmergencyServices field-level restricted reads
+    - files changed:
+      - `src/globals/approvalGuards.ts`
+      - `src/globals/approvalHistory.ts`
+      - `src/globals/AirportMap.ts`
+      - `src/globals/WorkingHoursDirections.ts`
+      - `src/globals/AccessibilityInfo.ts`
+      - `src/globals/VIPLounge.ts`
+      - `src/globals/PassengerGuide.ts`
+      - `src/globals/TransportParking.ts`
+      - `src/globals/SiteSettings.ts`
+      - `src/globals/UsefulLinks.ts`
+      - `src/globals/ManagementStaff.ts`
+      - `src/globals/UsageFees.ts`
+      - `src/globals/Regulations.ts`
+      - `src/globals/LegalPages.ts`
+      - `src/globals/EmergencyServices.ts`
+    - validation results:
+      - `pnpm lint` passed
+      - `pnpm build` passed
+    - residual risks / manual QA:
+      - smoke-test anonymous `GET /api/globals/<slug>` for the changed globals.
+      - manually verify editor draft save and non-approver publish rejection for draft-enabled public globals.
+- Milestone 19C: REST limiter, collection workflow metadata, and low-priority follow-ups
+  - Fixes:
+    - Remove route-level Payload REST rate-limit wrapper and export plain REST handlers.
+    - Add `approvalStatus: 'in_review'`, `setLastApprovedBy: true`, and `lastApprovedBy` fields to NewsEvents, AirportProject, and Careers.
+    - Let content admins assign non-`super_admin` roles at user creation/update while keeping `super_admin` role changes super-admin-only.
+    - Preserve analytics referrer behavior and document the intentional first-pageview-only `document.referrer` use.
+  - Files likely affected:
+    - `src/app/api/[[...slug]]/route.ts`
+    - `src/collections/NewsEvents.ts`
+    - `src/collections/AirportProject.ts`
+    - `src/collections/Careers.ts`
+    - `src/collections/Users.ts`
+    - `src/components/analytics/tracker.tsx`
+  - Validation commands:
+    - `pnpm generate:types`
+    - `pnpm lint`
+    - `pnpm build`
+  - Acceptance criteria:
+    - Payload REST requests are capped by one middleware limiter instead of two Redis checks.
+    - Approval metadata is explicit and populated for the three workflow collections.
+    - `content_admin` can create/update non-super-admin users with roles but cannot assign `super_admin`.
+    - SPA analytics keeps the existing "internal navigation is direct" contract with a code comment.
+  - Completion record:
+    - completed fixes:
+      - removed the Payload REST route-level limiter wrapper and exported plain REST handlers
+      - added `lastApprovedBy` fields to NewsEvents, AirportProject, and Careers
+      - updated `syncWorkflowStatus` so approver publish transitions from the required review state populate `lastApprovedBy`
+      - enabled `setLastApprovedBy: true` on the three workflow collections without adding `approvalStatus: 'in_review'`, because that would reintroduce the editor submit-for-review block documented in this prompt
+      - allowed content admins to create/update non-super-admin role assignments while blocking super-admin assignment and edits to super-admin users
+      - documented the analytics first-pageview-only external referrer behavior
+      - regenerated Payload types
+    - files changed:
+      - `src/app/api/[[...slug]]/route.ts`
+      - `src/collections/workflowStatus.ts`
+      - `src/collections/NewsEvents.ts`
+      - `src/collections/AirportProject.ts`
+      - `src/collections/Careers.ts`
+      - `src/collections/Users.ts`
+      - `src/components/analytics/tracker.tsx`
+      - `src/payload-types.ts`
+    - validation results:
+      - `pnpm generate:types` passed
+      - `pnpm test -- tests/unit/status-sync.test.ts tests/unit/content.test.ts tests/unit/analytics-tracker.test.tsx` passed with 3 files and 20 tests
+      - `pnpm lint` passed
+      - `pnpm build` passed
+      - `git diff --check` passed with Git CRLF normalization warnings only
+    - residual risks / manual QA:
+      - smoke-test heavy Payload admin/API use to confirm requests are limited only by middleware.
+      - manually verify content-admin user creation/update cannot assign `super_admin`.
+      - manually verify `lastApprovedBy` is populated when an approver publishes NewsEvents, AirportProject, and Careers from In Review.
+- Stop-and-fix rule:
+  - After each milestone, run the listed validation commands.
+  - If validation fails, repair only regressions introduced by that milestone before continuing.
+
+## Milestone 20: Docker Build-Time Visitor Salt Placeholder
+- Fixes:
+  - Add a build-stage `VISITOR_HASH_SALT` placeholder in `Dockerfile` so `next build` inside `docker compose -f docker-compose.prod.yml up --build -d` does not warn about the missing required production salt.
+  - Preserve runtime secret injection through `.env` / `docker-compose.prod.yml` and do not bake the real local salt into the image.
+- Files likely affected:
+  - `Dockerfile`
+- Dependencies:
+  - Existing `.env` / deployment environment must still provide the real `VISITOR_HASH_SALT` at runtime.
+- Risks:
+  - Accidentally using a real secret as a build arg would leak it into image metadata; use only a non-secret placeholder.
+- Validation commands:
+  - `pnpm lint`
+  - `pnpm build`
+  - `docker compose -f docker-compose.prod.yml build app`
+- Acceptance criteria:
+  - Local lint and build still pass.
+  - Docker app image build completes without `Missing required environment variable VISITOR_HASH_SALT during build` warnings.
+  - Runtime `VISITOR_HASH_SALT` remains sourced from the compose `.env` file.
+- Stop-and-fix rule:
+  - If validation fails, repair only regressions introduced by this milestone before continuing.

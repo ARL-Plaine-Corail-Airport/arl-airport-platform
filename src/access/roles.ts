@@ -14,6 +14,9 @@ const EDITOR_ROLES: Role[] = [...APPROVER_ROLES, 'operations_editor', 'translato
 const DOCUMENT_READER_ROLES: Role[] = [...APPROVER_ROLES, 'operations_editor']
 const ALL_ROLES: Role[] = [...EDITOR_ROLES, 'viewer_auditor']
 
+// Destructive collection deletes use isAdmin unless a collection documents a
+// narrower exception; approval rights alone should not imply delete rights.
+
 function getRoles(user: unknown): Role[] {
   if (!user || typeof user !== 'object') return []
 
@@ -32,6 +35,8 @@ function hasAnyRole(user: unknown, allowedRoles: readonly Role[]) {
 
 export const isAdmin = ({ req }: AccessArgs) => hasAnyRole(req.user, ADMIN_ROLES)
 
+export const isSuperAdmin = ({ req }: AccessArgs) => hasAnyRole(req.user, ['super_admin'])
+
 export const isApprover = ({ req }: AccessArgs) => hasAnyRole(req.user, APPROVER_ROLES)
 
 export const isEditor = ({ req }: AccessArgs) => hasAnyRole(req.user, EDITOR_ROLES)
@@ -41,6 +46,7 @@ export const isDocumentReader = ({ req }: AccessArgs) =>
 
 function publishedFieldOrAdmin(field: 'status' | '_status') {
   return ({ req }: AccessArgs) => {
+    // Payload access can return true for full access or a Where constraint for scoped access.
     if (hasAnyRole(req.user, ADMIN_ROLES)) return true
     // Unauthenticated / low-privilege users only see published content.
     return { [field]: { equals: 'published' } }

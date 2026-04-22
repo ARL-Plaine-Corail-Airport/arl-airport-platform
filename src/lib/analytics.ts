@@ -44,6 +44,24 @@ type DrizzleExecutor = {
   execute: (query: unknown) => Promise<unknown>
 }
 
+const CONNECTION_ERROR_CODES = new Set([
+  '08000',
+  '08001',
+  '08003',
+  '08004',
+  '08006',
+  '08007',
+  '28P01',
+  '28000',
+  '3D000',
+  '53300',
+  '57P01',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+])
+
 // Period helpers
 
 function getPeriodDays(period: AnalyticsPeriod): number {
@@ -56,12 +74,66 @@ function getPeriodStart(period: AnalyticsPeriod): Date {
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
 }
 
+function getErrorCode(error: unknown): string | undefined {
+  return typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+    ? error.code
+    : undefined
+}
+
+function getErrorName(error: unknown): string | undefined {
+  return typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    typeof error.name === 'string'
+    ? error.name
+    : undefined
+}
+
+function isConnectionOrAuthError(error: unknown): boolean {
+  const code = getErrorCode(error)
+  if (code && CONNECTION_ERROR_CODES.has(code)) return true
+
+  const message = error instanceof Error ? error.message : String(error)
+  return /authentication failed|connection refused|connection terminated|timeout|timed out|enotfound|sasl/i.test(message)
+}
+
+function isExpectedAnalyticsFallbackError(error: unknown): boolean {
+  if (isConnectionOrAuthError(error)) return false
+  if (error instanceof SyntaxError) return true
+
+  const name = getErrorName(error)
+  if (name === 'QueryFailedError') return true
+
+  const code = getErrorCode(error)
+  return Boolean(code && (code.startsWith('22') || code.startsWith('42')))
+}
+
+function getObjectRows(value: unknown, source: string): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    logger.warn(`Unexpected analytics ${source} shape`, 'analytics')
+    return []
+  }
+
+  if (!value.every((row) => row && typeof row === 'object' && !Array.isArray(row))) {
+    logger.warn(`Unexpected analytics ${source} row shape`, 'analytics')
+    return []
+  }
+
+  return value as Record<string, unknown>[]
+}
+
 function getRows(result: unknown): Record<string, unknown>[] {
-  if (Array.isArray(result)) return result as Record<string, unknown>[]
-  if (!result || typeof result !== 'object') return []
+  if (Array.isArray(result)) return getObjectRows(result, 'result')
+  if (!result || typeof result !== 'object') {
+    logger.warn('Unexpected analytics result shape', 'analytics')
+    return []
+  }
 
   const rows = (result as { rows?: unknown }).rows
-  return Array.isArray(rows) ? rows as Record<string, unknown>[] : []
+  return getObjectRows(rows, 'result.rows')
 }
 
 function asNumber(value: unknown): number {
@@ -393,6 +465,10 @@ export async function getAnalytics(period: AnalyticsPeriod = '30d'): Promise<Ana
       truncated: stats.truncated,
     }
   } catch (error) {
+    if (!isExpectedAnalyticsFallbackError(error)) {
+      throw error
+    }
+
     logger.error('Failed to fetch analytics', error, 'analytics')
     return {
       dailyUniqueVisitors: 0,

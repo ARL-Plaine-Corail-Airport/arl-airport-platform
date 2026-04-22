@@ -5,6 +5,7 @@ import { isEditor } from '@/access'
 export const HomePage: GlobalConfig = {
   slug: 'home-page',
   access: {
+    // Public global: the homepage content is intentionally available to unauthenticated clients.
     read: () => true,
     update: isEditor,
   },

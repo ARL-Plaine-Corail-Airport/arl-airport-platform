@@ -15,6 +15,8 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
+import { validatePhone } from '@/fields/validators'
+import { enforceApproverOnPublish } from './approvalGuards'
 
 export const UsageFees: GlobalConfig = {
   slug: 'usage-fees',
@@ -106,7 +108,7 @@ export const UsageFees: GlobalConfig = {
       type: 'group',
       fields: [
         { name: 'name',  label: 'Contact Name / Department', type: 'text' },
-        { name: 'phone', label: 'Phone',                     type: 'text', admin: { placeholder: '+230 831 xxxx' } },
+        { name: 'phone', label: 'Phone',                     type: 'text', validate: validatePhone, admin: { placeholder: '+230 831 xxxx' } },
         { name: 'email', label: 'Email',                     type: 'email', admin: { placeholder: 'fees@arl.aero' } },
       ],
     },
@@ -121,4 +123,9 @@ export const UsageFees: GlobalConfig = {
       },
     },
   ],
+  hooks: {
+    beforeChange: [
+      enforceApproverOnPublish('Only approvers can publish usage fees.'),
+    ],
+  },
 }

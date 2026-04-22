@@ -16,6 +16,7 @@ async function loadCacheModule(options: CacheModuleOptions = {}) {
   vi.resetModules()
 
   const loggerError = vi.fn()
+  const loggerWarn = vi.fn()
   const Redis = vi.fn(function Redis() {
     return {
       get: getMock,
@@ -33,6 +34,7 @@ async function loadCacheModule(options: CacheModuleOptions = {}) {
   vi.doMock('@/lib/logger', () => ({
     logger: {
       error: loggerError,
+      warn: loggerWarn,
     },
   }))
 
@@ -46,6 +48,7 @@ async function loadCacheModule(options: CacheModuleOptions = {}) {
     ...cacheModule,
     Redis,
     loggerError,
+    loggerWarn,
     getMock,
     setMock,
   }
@@ -219,5 +222,52 @@ describe('cachedFetch runtime behavior', () => {
     const freshResult = await cachedFetch('stale-while-revalidate', 1, fetcher)
     expect(freshResult).toEqual({ value: 'fresh' })
     expect(fetcher).toHaveBeenCalledOnce()
+  })
+
+  it('serves stale dev cache entries during the refresh failure retry window', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-09T00:00:00.000Z'))
+
+    const { cachedFetch, loggerWarn } = await loadCacheModule()
+
+    await cachedFetch('stale-refresh-failure', 1, async () => ({ value: 'old' }))
+    vi.setSystemTime(new Date('2026-04-09T00:00:02.000Z'))
+
+    const failingFetcher = vi.fn().mockRejectedValue(new Error('upstream down'))
+    const staleResult = await cachedFetch('stale-refresh-failure', 1, failingFetcher)
+
+    expect(staleResult).toEqual({ value: 'old' })
+    expect(failingFetcher).toHaveBeenCalledOnce()
+
+    await vi.waitFor(() => {
+      expect(loggerWarn).toHaveBeenCalledWith(
+        'Background cache refresh failed for arl:cache:stale-refresh-failure: upstream down',
+        'cache',
+      )
+    })
+
+    const blockedFetcher = vi.fn().mockResolvedValue({ value: 'fresh-too-early' })
+    const retryWindowResult = await cachedFetch(
+      'stale-refresh-failure',
+      1,
+      blockedFetcher,
+    )
+
+    expect(retryWindowResult).toEqual({ value: 'old' })
+    expect(blockedFetcher).not.toHaveBeenCalled()
+
+    vi.setSystemTime(new Date('2026-04-09T00:00:18.000Z'))
+
+    const recoveringFetcher = vi.fn().mockResolvedValue({ value: 'fresh' })
+    const retryResult = await cachedFetch('stale-refresh-failure', 1, recoveringFetcher)
+
+    expect(retryResult).toEqual({ value: 'old' })
+    expect(recoveringFetcher).toHaveBeenCalledOnce()
+
+    await vi.waitFor(async () => {
+      await expect(
+        cachedFetch('stale-refresh-failure', 1, recoveringFetcher),
+      ).resolves.toEqual({ value: 'fresh' })
+    })
   })
 })

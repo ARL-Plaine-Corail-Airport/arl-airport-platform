@@ -15,6 +15,7 @@ import type { FlightBoardResponse, FlightBoardType, FlightRecord } from './types
 
 const CROSS_MIDNIGHT_WINDOW_MS = 2 * 60 * 60 * 1000
 const PLACEHOLDER_REMARKS = 'Awaiting Pair'
+const MAURITIUS_TIME_ZONE = 'Indian/Mauritius'
 
 type AirLabsFlight = {
   airline_iata?: string
@@ -101,19 +102,56 @@ function isWithinWindow(
   return instantMs !== null && instantMs >= startMs && instantMs <= endMs
 }
 
+function getFallbackMauritiusDayRange(): { startOfDay: string; endOfDay: string } {
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: MAURITIUS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now)
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+
+  if (year && month && day) {
+    return {
+      startOfDay: new Date(`${year}-${month}-${day}T00:00:00+04:00`).toISOString(),
+      endOfDay: new Date(`${year}-${month}-${day}T23:59:59.999+04:00`).toISOString(),
+    }
+  }
+
+  const mauritiusNow = new Date(now.getTime() + 4 * 60 * 60 * 1000)
+  const [isoYear, isoMonth, isoDay] = mauritiusNow.toISOString().slice(0, 10).split('-')
+  return {
+    startOfDay: new Date(`${isoYear}-${isoMonth}-${isoDay}T00:00:00+04:00`).toISOString(),
+    endOfDay: new Date(`${isoYear}-${isoMonth}-${isoDay}T23:59:59.999+04:00`).toISOString(),
+  }
+}
+
 function getFlightWindow(): FlightWindow {
-  const { startOfDay, endOfDay } = getMauritiusDayRange()
-  const parsedStartOfDayMs = Date.parse(startOfDay)
-  const parsedEndOfDayMs = Date.parse(endOfDay)
-  const fallbackStartOfDayMs =
-    Math.floor(Date.now() / (24 * 60 * 60 * 1000)) * 24 * 60 * 60 * 1000
-  const fallbackEndOfDayMs = fallbackStartOfDayMs + 24 * 60 * 60 * 1000 - 1
-  const startOfDayMs = Number.isNaN(parsedStartOfDayMs)
-    ? fallbackStartOfDayMs
-    : parsedStartOfDayMs
-  const endOfDayMs = Number.isNaN(parsedEndOfDayMs)
-    ? fallbackEndOfDayMs
-    : parsedEndOfDayMs
+  let { startOfDay, endOfDay } = (() => {
+    try {
+      return getMauritiusDayRange()
+    } catch (error) {
+      logger.warn(
+        `Mauritius day range fallback used: ${error instanceof Error ? error.message : String(error)}`,
+        'flights',
+      )
+      return getFallbackMauritiusDayRange()
+    }
+  })()
+  let startOfDayMs = Date.parse(startOfDay)
+  let endOfDayMs = Date.parse(endOfDay)
+
+  if (Number.isNaN(startOfDayMs) || Number.isNaN(endOfDayMs)) {
+    const fallback = getFallbackMauritiusDayRange()
+    startOfDay = fallback.startOfDay
+    endOfDay = fallback.endOfDay
+    startOfDayMs = Date.parse(startOfDay)
+    endOfDayMs = Date.parse(endOfDay)
+  }
+
   const windowStartMs = startOfDayMs - CROSS_MIDNIGHT_WINDOW_MS
   const windowEndMs = endOfDayMs + CROSS_MIDNIGHT_WINDOW_MS
 
@@ -170,12 +208,38 @@ function toInternalRecord(
   }
 }
 
+function getStableProviderFlightId(
+  flight: AirLabsFlight,
+  boardType: FlightBoardType,
+): string | null {
+  const flightIata = normalizeFlightNumber(flight.flight_iata)
+  if (flightIata) return flightIata
+
+  const dep = flight.dep_iata?.trim().toUpperCase()
+  const arr = flight.arr_iata?.trim().toUpperCase()
+  const scheduled = getProviderScheduledTime(flight, boardType)
+
+  if (!dep || !arr || !scheduled) {
+    return null
+  }
+
+  const flightNumber = normalizeFlightNumber(flight.flight_number)
+  const stableContent = [boardType, dep, arr, scheduled, flightNumber]
+    .filter(Boolean)
+    .join('|')
+  const digest = createHash('sha256').update(stableContent).digest('hex').slice(0, 12)
+
+  return `flight-${dep}-${arr}-${digest}`
+}
+
 function mapFlightRecord(
   flight: AirLabsFlight,
   boardType: FlightBoardType,
-  index: number,
-): InternalFlightRecord {
+): InternalFlightRecord | null {
   const isArrivals = boardType === 'arrivals'
+  const id = getStableProviderFlightId(flight, boardType)
+  if (!id) return null
+
   const route = isArrivals
     ? flight.dep_iata ?? '—'
     : flight.arr_iata ?? '—'
@@ -187,7 +251,7 @@ function mapFlightRecord(
     : flight.dep_estimated ?? flight.dep_actual ?? null
 
   return toInternalRecord({
-    id: flight.flight_iata ?? `flight-${index}`,
+    id,
     airline: flight.airline_iata ?? flight.airline_icao ?? '—',
     flightNumber: flight.flight_iata ?? flight.flight_number ?? '—',
     route,
@@ -299,9 +363,9 @@ async function fetchFromAirLabs(
   }
 
   const response = await fetch(url.toString(), {
+    cache: 'no-store',
     headers: { Accept: 'application/json' },
     signal: AbortSignal.timeout(5000),
-    next: { revalidate: 2600 },
   })
 
   if (!response.ok) {
@@ -379,8 +443,7 @@ async function fetchManualFlights(
       return []
     }
 
-    logger.error('Failed to fetch manual flights', error, 'flights')
-    return []
+    throw error
   }
 }
 
@@ -408,6 +471,12 @@ function mergeFlights(
   )
 
   return [...filtered, ...manualRecords].sort(compareRecords)
+}
+
+function filterMappedRecords(
+  records: Array<InternalFlightRecord | null>,
+): InternalFlightRecord[] {
+  return records.filter((record): record is InternalFlightRecord => record !== null)
 }
 
 function toCandidate(
@@ -683,6 +752,12 @@ function buildFlightBoardResponse(
   }
 }
 
+function formatFlightFailureReason(reason: unknown): string {
+  return reason instanceof Error
+    ? redactSensitiveText(reason.message, [serverEnv.flightProviderApiKey])
+    : 'Unknown error'
+}
+
 const getFlightBoardsSnapshot = cache(async (): Promise<FlightBoardsSnapshot> => {
   const flightWindow = getFlightWindow()
 
@@ -722,6 +797,9 @@ const getFlightBoardsSnapshot = cache(async (): Promise<FlightBoardsSnapshot> =>
   const providerFailureCount =
     Number(providerArrivalsResult.status === 'rejected') +
     Number(providerDeparturesResult.status === 'rejected')
+  const manualFailureCount =
+    Number(manualArrivalsResult.status === 'rejected') +
+    Number(manualDeparturesResult.status === 'rejected')
 
   if (providerArrivalsResult.status === 'rejected') {
     logger.warn(
@@ -744,11 +822,15 @@ const getFlightBoardsSnapshot = cache(async (): Promise<FlightBoardsSnapshot> =>
   }
 
   const mergedArrivals = mergeFlights(
-    providerArrivals.map((flight, index) => mapFlightRecord(flight, 'arrivals', index)),
+    filterMappedRecords(
+      providerArrivals.map((flight) => mapFlightRecord(flight, 'arrivals')),
+    ),
     manualArrivals,
   )
   const mergedDepartures = mergeFlights(
-    providerDepartures.map((flight, index) => mapFlightRecord(flight, 'departures', index)),
+    filterMappedRecords(
+      providerDepartures.map((flight) => mapFlightRecord(flight, 'departures')),
+    ),
     manualDepartures,
   )
   const reconciled = reconcileBoards(
@@ -760,26 +842,28 @@ const getFlightBoardsSnapshot = cache(async (): Promise<FlightBoardsSnapshot> =>
     !!serverEnv.flightProviderApiKey ||
     reconciled.arrivals.length > 0 ||
     reconciled.departures.length > 0
+  const attemptedSourceCount = (serverEnv.flightProviderApiKey ? 2 : 0) + 2
+  const allSourcesFailed =
+    attemptedSourceCount > 0 &&
+    providerFailureCount + manualFailureCount === attemptedSourceCount
+  const hasNoRecords =
+    reconciled.arrivals.length === 0 && reconciled.departures.length === 0
   const errorMessage =
     providerArrivalsResult.status === 'rejected'
-      ? providerArrivalsResult.reason instanceof Error
-        ? redactSensitiveText(providerArrivalsResult.reason.message, [
-            serverEnv.flightProviderApiKey,
-          ])
-        : 'Unknown error'
+      ? formatFlightFailureReason(providerArrivalsResult.reason)
       : providerDeparturesResult.status === 'rejected'
-        ? providerDeparturesResult.reason instanceof Error
-          ? redactSensitiveText(providerDeparturesResult.reason.message, [
-              serverEnv.flightProviderApiKey,
-            ])
-          : 'Unknown error'
-        : undefined
+        ? formatFlightFailureReason(providerDeparturesResult.reason)
+        : manualArrivalsResult.status === 'rejected'
+          ? formatFlightFailureReason(manualArrivalsResult.reason)
+          : manualDeparturesResult.status === 'rejected'
+            ? formatFlightFailureReason(manualDeparturesResult.reason)
+            : undefined
 
   return {
     configured,
     providerLabel: serverEnv.flightProviderLabel,
     fetchedAt: new Date().toISOString(),
-    degraded: providerFailureCount > 0 || undefined,
+    degraded: providerFailureCount > 0 || (allSourcesFailed && hasNoRecords) || undefined,
     providerFailureCount,
     errorMessage,
     arrivals: reconciled.arrivals,

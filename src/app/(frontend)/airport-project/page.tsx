@@ -7,7 +7,7 @@ import { PageHero } from '@/components/ui/page-hero'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
-import { getAirportProjectItems } from '@/lib/content'
+import { getAirportProjectItemsWithSignedAttachments } from '@/lib/content'
 import { buildFrontendMetadata } from '@/lib/metadata'
 
 export const revalidate = 60
@@ -61,7 +61,7 @@ export default async function AirportProjectPage({
   const locale = await getLocale()
   const [dict, items, params] = await Promise.all([
     getDictionary(locale),
-    getAirportProjectItems(24, locale),
+    getAirportProjectItemsWithSignedAttachments(24, locale),
     searchParams,
   ])
   const lp = (path: string) => localePath(path, locale)

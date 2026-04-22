@@ -116,7 +116,7 @@ export function PageHero({
           {insights?.length ? (
             <div className="hero-glance" role="region" aria-label={eyebrow ?? title}>
               {insights.map((insight) => (
-                <HeroInsightCard key={`${insight.label}-${insight.value}`} insight={insight} />
+                <HeroInsightCard key={insight.href ?? insight.label} insight={insight} />
               ))}
             </div>
           ) : null}

@@ -91,7 +91,7 @@ describe('status route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(401)
-    expect(body).toEqual({ ok: false, message: 'Unauthorized' })
+    expect(body).toEqual({ ok: false, error: 'Unauthorized' })
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(getPayloadClient).not.toHaveBeenCalled()
     expect(getSupabaseAdminClient).not.toHaveBeenCalled()
@@ -103,7 +103,7 @@ describe('status route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(401)
-    expect(body).toEqual({ ok: false, message: 'Unauthorized' })
+    expect(body).toEqual({ ok: false, error: 'Unauthorized' })
     expect(getPayloadClient).not.toHaveBeenCalled()
     expect(getSupabaseAdminClient).not.toHaveBeenCalled()
     expect(Redis).not.toHaveBeenCalled()
@@ -114,7 +114,7 @@ describe('status route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(401)
-    expect(body).toEqual({ ok: false, message: 'Unauthorized' })
+    expect(body).toEqual({ ok: false, error: 'Unauthorized' })
     expect(getPayloadClient).not.toHaveBeenCalled()
     expect(getSupabaseAdminClient).not.toHaveBeenCalled()
     expect(Redis).not.toHaveBeenCalled()

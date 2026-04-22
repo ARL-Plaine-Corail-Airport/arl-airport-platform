@@ -9,6 +9,7 @@ import type { CollectionConfig } from 'payload'
 
 import { isAdmin, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
+import { syncWorkflowStatus } from './workflowStatus'
 
 export const AirportProject: CollectionConfig = {
   slug: 'airport-project',
@@ -44,6 +45,7 @@ export const AirportProject: CollectionConfig = {
       type: 'text',
       required: true,
       unique: true,
+      maxLength: 120,
       admin: {
         description: 'Auto-generated from title if left blank. Used in the URL: /airport-project/[slug]',
         placeholder: 'addendum-no-04-extension-of-bids',
@@ -138,6 +140,16 @@ export const AirportProject: CollectionConfig = {
       },
     },
     {
+      name: 'lastApprovedBy',
+      type: 'relationship',
+      relationTo: 'users',
+      admin: {
+        description: 'Auto-populated when an approver publishes from In Review.',
+        readOnly: true,
+        position: 'sidebar',
+      },
+    },
+    {
       name: 'isPinned',
       label: 'Pinned',
       type: 'checkbox',
@@ -173,20 +185,15 @@ export const AirportProject: CollectionConfig = {
   hooks: {
     beforeValidate: [autoSlug('title')],
     beforeChange: [
-      ({ data, operation }) => {
-        if (operation === 'create' || operation === 'update') {
-          if (data._status === 'published' && data.status !== 'published') {
-            throw new Error('Set status to Published before using Publish.')
-          }
-          if (data._status === 'draft' && data.status === 'published') {
-            data.status = 'draft'
-          }
-          if (data.status === 'published' && !data.publishedAt) {
-            data.publishedAt = new Date().toISOString()
-          }
-        }
-        return data
-      },
+      syncWorkflowStatus({
+        collection: 'airport-project',
+        requiredStatusForPublish: 'in_review',
+        publishedStatus: 'published',
+        publishError: 'Only approvers can publish airport project updates after review.',
+        requireApproverToPublish: true,
+        setPublishedAt: true,
+        setLastApprovedBy: true,
+      }),
     ],
   },
 }

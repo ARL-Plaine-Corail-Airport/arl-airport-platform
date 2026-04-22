@@ -56,6 +56,7 @@ Edit `.env` and fill in your credentials:
 | Variable                        | Description                                             |
 | ------------------------------- | ------------------------------------------------------- |
 | `DATABASE_URL`                  | Supabase pooled connection string (port 6543)           |
+| `DATABASE_CA_CERT`              | Required in production for remote Postgres TLS verification |
 | `PAYLOAD_SECRET`                | Random secret, min 32 chars (`openssl rand -base64 48`) |
 | `NEXT_PUBLIC_SUPABASE_URL`      | Your Supabase project URL                               |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key                                |

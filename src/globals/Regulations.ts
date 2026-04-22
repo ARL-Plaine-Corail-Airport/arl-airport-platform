@@ -8,6 +8,8 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
+import { enforceApproverOnPublish } from './approvalGuards'
+import { appendApprovalHistoryHook } from './approvalHistory'
 
 export const Regulations: GlobalConfig = {
   slug: 'regulations',
@@ -86,5 +88,47 @@ export const Regulations: GlobalConfig = {
         description: 'Optional disclaimer text shown at the bottom of the regulations page.',
       },
     },
+    {
+      name: 'approvalNotes',
+      label: 'Approval Notes',
+      type: 'textarea',
+      admin: {
+        position: 'sidebar',
+        description: 'Optional note to include in the approval history when publishing.',
+      },
+    },
+    {
+      name: 'approvalHistory',
+      label: 'Approval History',
+      type: 'array',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+      },
+      fields: [
+        {
+          name: 'approvedBy',
+          label: 'Approved By',
+          type: 'relationship',
+          relationTo: 'users',
+        },
+        {
+          name: 'approvedAt',
+          label: 'Approved At',
+          type: 'date',
+        },
+        {
+          name: 'notes',
+          label: 'Notes',
+          type: 'textarea',
+        },
+      ],
+    },
   ],
+  hooks: {
+    beforeChange: [
+      enforceApproverOnPublish('Only approvers can publish regulations.'),
+      appendApprovalHistoryHook(),
+    ],
+  },
 }

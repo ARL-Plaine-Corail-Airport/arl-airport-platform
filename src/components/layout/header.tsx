@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
 import { useI18n } from '@/i18n/provider'
@@ -75,6 +75,7 @@ function NavDropdown({
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([])
+  const openRef = useRef(false)
 
   const close = useCallback(() => {
     setOpen(false)
@@ -82,27 +83,25 @@ function NavDropdown({
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    openRef.current = open
 
     function handleClick(event: MouseEvent) {
+      if (!openRef.current) return
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setOpen(false)
       }
     }
 
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-
     function handleKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') close()
+      if (openRef.current && event.key === 'Escape') close()
     }
 
+    document.addEventListener('mousedown', handleClick)
     document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
   }, [close, open])
 
   function handleTriggerKeyDown(event: React.KeyboardEvent) {
@@ -180,15 +179,17 @@ function NavDropdown({
 export function SiteHeader({ phone }: { phone?: string }) {
   const pathname = usePathname() ?? '/'
   const [menuOpen, setMenuOpen] = useState(false)
-  const { t, localePath: lp } = useI18n()
+  const menuOpenRef = useRef(menuOpen)
+  const { t, locale, localePath: lp } = useI18n()
+  menuOpenRef.current = menuOpen
 
-  const flightLinks = [
+  const flightLinks = useMemo(() => [
     { href: lp('/arrivals'), label: t('nav.arrivals') },
     { href: lp('/departures'), label: t('nav.departures') },
     { href: lp('/flight-status'), label: t('nav.flight_status') },
-  ]
+  ], [lp, t])
 
-  const passengerLinks = [
+  const passengerLinks = useMemo(() => [
     { href: lp('/passenger-guide'), label: t('nav.passenger_guide') },
     { href: lp('/airport-map'), label: t('nav.airport_map') },
     { href: lp('/duty-free'), label: t('nav.duty_free') },
@@ -196,7 +197,7 @@ export function SiteHeader({ phone }: { phone?: string }) {
     { href: lp('/vip-lounge'), label: t('nav.vip_lounge') },
     { href: lp('/accessibility'), label: t('nav.accessibility') },
     { href: lp('/faq'), label: t('nav.faq') },
-  ]
+  ], [lp, t])
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
@@ -206,15 +207,13 @@ export function SiteHeader({ phone }: { phone?: string }) {
   }, [menuOpen])
 
   useEffect(() => {
-    if (!menuOpen) return
-
     function handleKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setMenuOpen(false)
+      if (menuOpenRef.current && event.key === 'Escape') setMenuOpen(false)
     }
 
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [menuOpen])
+  }, [])
 
   useEffect(() => {
     setMenuOpen(false)
@@ -315,6 +314,12 @@ export function SiteHeader({ phone }: { phone?: string }) {
               {t('nav.airport_project')}
             </Link>
             <Link
+              href={lp('/career')}
+              className={`nav-link${isPathActive(pathname, '/career') ? ' nav-link--active' : ''}`}
+            >
+              {t('nav.career')}
+            </Link>
+            <Link
               href={lp('/contact')}
               className={`nav-link${isPathActive(pathname, '/contact') ? ' nav-link--active' : ''}`}
             >
@@ -323,7 +328,7 @@ export function SiteHeader({ phone }: { phone?: string }) {
           </nav>
 
           <div className="header-actions">
-            <LanguageSwitcher />
+            <LanguageSwitcher currentLocale={locale} currentPathname={pathname} />
 
             <button
               type="button"
@@ -395,6 +400,7 @@ export function SiteHeader({ phone }: { phone?: string }) {
             <Link href={lp('/notices')} className="mobile-nav-link">{t('nav.notices')}</Link>
             <Link href={lp('/news-events')} className="mobile-nav-link">{t('nav.news_events')}</Link>
             <Link href={lp('/airport-project')} className="mobile-nav-link">{t('nav.airport_project')}</Link>
+            <Link href={lp('/career')} className="mobile-nav-link">{t('nav.career')}</Link>
             <Link href={lp('/contact')} className="mobile-nav-link">{t('nav.contact')}</Link>
           </div>
         </nav>

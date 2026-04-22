@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AnalyticsTracker } from '@/components/analytics/tracker'
 
-let currentPathname = '/contact'
+let currentPathname: string | null = '/contact'
 
 vi.mock('next/navigation', () => ({
   usePathname: () => currentPathname,
@@ -19,7 +19,7 @@ describe('AnalyticsTracker', () => {
     vi.restoreAllMocks()
   })
 
-  it('sends the browser-visible locale-prefixed pathname', async () => {
+  it('sends the App Router pathname', async () => {
     const sendBeacon = vi.fn((_: string, data?: BodyInit | null) => Boolean(data))
     Object.defineProperty(window.navigator, 'sendBeacon', {
       configurable: true,
@@ -39,7 +39,7 @@ describe('AnalyticsTracker', () => {
     }
     const payload = JSON.parse(await body.text())
 
-    expect(payload.path).toBe('/fr/contact')
+    expect(payload.path).toBe('/contact')
     expect(payload.type).toBe('pageview')
   })
 
@@ -68,7 +68,20 @@ describe('AnalyticsTracker', () => {
     }
     const payload = JSON.parse(await body.text())
 
-    expect(payload.path).toBe('/fr/faq')
+    expect(payload.path).toBe('/faq')
     expect(payload.type).toBe('pageview')
+  })
+
+  it('does not track when the App Router pathname is unavailable', async () => {
+    const sendBeacon = vi.fn((_: string, data?: BodyInit | null) => Boolean(data))
+    Object.defineProperty(window.navigator, 'sendBeacon', {
+      configurable: true,
+      value: sendBeacon,
+    })
+    currentPathname = null
+
+    render(<AnalyticsTracker />)
+
+    await waitFor(() => expect(sendBeacon).not.toHaveBeenCalled())
   })
 })

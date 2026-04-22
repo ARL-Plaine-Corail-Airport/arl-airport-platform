@@ -1,4 +1,5 @@
 import { defaultLocale, isValidLocale, type Locale } from '@/i18n/config'
+import { logger } from '@/lib/logger'
 
 export type MiddlewarePathInfo = {
   locale: Locale | null
@@ -7,17 +8,26 @@ export type MiddlewarePathInfo = {
 
 const MAX_PATHNAME_LENGTH = 2048
 
-function normalizePathname(pathname: string): string {
+function normalizePathname(pathname: string, host?: string | null): string {
   if (!pathname) return '/'
   if (pathname === '/') return '/'
-  if (pathname.length > MAX_PATHNAME_LENGTH) return '/'
+  if (pathname.length > MAX_PATHNAME_LENGTH) {
+    logger.warn(
+      `Truncated overlong pathname host=${host ?? 'unknown'} pathLength=${pathname.length}`,
+      'middleware-routing',
+    )
+    return '/'
+  }
 
   const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`
   return normalized.replace(/\/{2,}/g, '/').replace(/\/$/, '') || '/'
 }
 
-export function getMiddlewarePathInfo(pathname: string): MiddlewarePathInfo {
-  const normalizedPathname = normalizePathname(pathname)
+export function getMiddlewarePathInfo(
+  pathname: string,
+  host?: string | null,
+): MiddlewarePathInfo {
+  const normalizedPathname = normalizePathname(pathname, host)
   const segments = normalizedPathname.split('/').filter(Boolean)
   const maybeLocale = segments[0]
 

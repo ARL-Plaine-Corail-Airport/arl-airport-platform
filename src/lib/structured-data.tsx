@@ -11,8 +11,12 @@ export function buildOrganizationSchema(site: {
   phone?: string
   email?: string
   address?: string
-  socialLinks?: Array<{ url: string }>
+  socialLinks?: Array<{ url?: string | null } | null>
 }) {
+  const socialUrls = site.socialLinks
+    ?.filter((link): link is { url: string } => Boolean(link?.url))
+    .map((link) => link.url)
+
   return [
     {
       '@context': 'https://schema.org',
@@ -28,8 +32,8 @@ export function buildOrganizationSchema(site: {
           streetAddress: site.address,
         },
       }),
-      ...(site.socialLinks?.length && {
-        sameAs: site.socialLinks.map((l) => l.url),
+      ...(socialUrls?.length && {
+        sameAs: socialUrls,
       }),
     },
     {

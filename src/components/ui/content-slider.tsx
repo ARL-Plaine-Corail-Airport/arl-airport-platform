@@ -37,10 +37,6 @@ export function ContentSlider({
       el.removeEventListener('scroll', checkScroll)
       ro.disconnect()
     }
-  }, [checkScroll])
-
-  useEffect(() => {
-    checkScroll()
   }, [checkScroll, childCount])
 
   function scroll(dir: 'left' | 'right') {

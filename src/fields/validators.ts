@@ -7,6 +7,7 @@ type ValidateURLOptions = {
 }
 
 const DEFAULT_URL_PROTOCOLS = ['http:', 'https:'] as const
+const PHONE_PATTERN = /^\+?[0-9][0-9\s().-]{5,24}$/
 
 export const validateURL = (
   value: string | null | undefined,
@@ -38,10 +39,10 @@ export const validateMapEmbedURL: TextFieldValidation = (value) => {
 
   try {
     const url = new URL(trimmedValue)
-    const allowedHosts = ['google.com', 'www.google.com', 'maps.google.com', 'openstreetmap.org', 'www.openstreetmap.org']
+    const allowedHosts = ['google.com', 'maps.google.com']
 
-    if (!allowedHosts.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))) {
-      return 'Only Google Maps and OpenStreetMap embed URLs are allowed.'
+    if (!allowedHosts.includes(url.hostname)) {
+      return 'Only Google Maps embed URLs from google.com or maps.google.com are allowed.'
     }
 
     if (url.protocol !== 'https:') {
@@ -53,3 +54,17 @@ export const validateMapEmbedURL: TextFieldValidation = (value) => {
     return 'Please enter a valid URL.'
   }
 }
+
+export function validatePhoneValue(value: string | null | undefined) {
+  const trimmedValue = value?.trim()
+
+  if (!trimmedValue) return true
+
+  if (!PHONE_PATTERN.test(trimmedValue)) {
+    return 'Enter a valid phone number (e.g. +230 832 78 88).'
+  }
+
+  return true
+}
+
+export const validatePhone: TextFieldValidation = (value) => validatePhoneValue(value)

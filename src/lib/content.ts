@@ -3,6 +3,7 @@ import 'server-only'
 import { cache } from 'react'
 import type { Where } from 'payload'
 
+import { isValidLocale, type Locale } from '@/i18n/config'
 import { isBuildTimeDbDisabledError } from '@/lib/build-db'
 import { defaultHomePage, defaultSiteSettings, emptySectionsPage } from '@/lib/defaults'
 import { serverEnv } from '@/lib/env.server'
@@ -14,7 +15,13 @@ import type { Notice } from '@/payload-types'
 
 // All content functions accept an optional `locale` parameter.
 // When provided, Payload returns field values for that locale.
-type Loc = 'en' | 'fr' | 'mfe' | 'all'
+type Loc = Locale | 'all'
+
+function getPayloadLocale(locale?: string): Loc | undefined {
+  if (locale === undefined) return undefined
+  if (locale === 'all' || isValidLocale(locale)) return locale
+  throw new Error(`Invalid content locale: ${locale}`)
+}
 
 function logContentError(message: string, error: unknown) {
   if (isBuildTimeDbDisabledError(error)) return
@@ -49,7 +56,7 @@ function getDocumentStoragePath(file: {
   return file.prefix ? `${file.prefix}/${file.filename}` : file.filename
 }
 
-async function signNewsEventAttachmentURLs<T extends {
+async function signDocumentAttachmentURLs<T extends {
   attachments?: Array<{ file?: unknown } | null> | null
 }>(items: T[]): Promise<T[]> {
   const storagePaths = Array.from(new Set(
@@ -95,16 +102,17 @@ async function signNewsEventAttachmentURLs<T extends {
       }) ?? item.attachments,
     }))
   } catch (error) {
-    logContentError('Failed to sign news event attachments', error)
+    logContentError('Failed to sign document attachments', error)
     return items
   }
 }
 
 export const getSiteSettings = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const settings =
-      (await payload.findGlobal({ slug: 'site-settings', depth: 1, locale: locale as Loc })) ||
+      (await payload.findGlobal({ slug: 'site-settings', depth: 1, locale: payloadLocale })) ||
       defaultSiteSettings
 
     return normalizeSiteSettings(settings)
@@ -115,9 +123,10 @@ export const getSiteSettings = cache(async (locale?: string) => {
 })
 
 export const getHomePage = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'home-page', depth: 1, locale: locale as Loc })) || defaultHomePage
+    return (await payload.findGlobal({ slug: 'home-page', depth: 1, locale: payloadLocale })) || defaultHomePage
   } catch (error) {
     logContentError('Failed to fetch home page', error)
     return defaultHomePage
@@ -125,9 +134,10 @@ export const getHomePage = cache(async (locale?: string) => {
 })
 
 export const getPassengerGuide = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'passenger-guide', depth: 1, locale: locale as Loc })) || emptySectionsPage
+    return (await payload.findGlobal({ slug: 'passenger-guide', depth: 1, locale: payloadLocale })) || emptySectionsPage
   } catch (error) {
     logContentError('Failed to fetch passenger guide', error)
     return emptySectionsPage
@@ -135,9 +145,10 @@ export const getPassengerGuide = cache(async (locale?: string) => {
 })
 
 export const getTransportParking = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'transport-parking', depth: 1, locale: locale as Loc })) || emptySectionsPage
+    return (await payload.findGlobal({ slug: 'transport-parking', depth: 1, locale: payloadLocale })) || emptySectionsPage
   } catch (error) {
     logContentError('Failed to fetch transport parking', error)
     return emptySectionsPage
@@ -145,9 +156,10 @@ export const getTransportParking = cache(async (locale?: string) => {
 })
 
 export const getAccessibilityInfo = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'accessibility-info', depth: 1, locale: locale as Loc })) || emptySectionsPage
+    return (await payload.findGlobal({ slug: 'accessibility-info', depth: 1, locale: payloadLocale })) || emptySectionsPage
   } catch (error) {
     logContentError('Failed to fetch accessibility info', error)
     return emptySectionsPage
@@ -155,10 +167,11 @@ export const getAccessibilityInfo = cache(async (locale?: string) => {
 })
 
 export const getAirportMap = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     return (
-      (await payload.findGlobal({ slug: 'airport-map', depth: 1, locale: locale as Loc })) || {
+      (await payload.findGlobal({ slug: 'airport-map', depth: 1, locale: payloadLocale })) || {
         introTitle: 'Airport map',
         introSummary: 'Map data will appear here once editorial content is configured.',
         mapEmbedURL: null,
@@ -177,10 +190,11 @@ export const getAirportMap = cache(async (locale?: string) => {
 })
 
 export const getContactInfo = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     return (
-      (await payload.findGlobal({ slug: 'contact-info', depth: 1, locale: locale as Loc })) || {
+      (await payload.findGlobal({ slug: 'contact-info', depth: 1, locale: payloadLocale })) || {
         helpDeskTitle: 'Contact and help desk',
         helpDeskSummary: 'Official support details will appear here.',
         cards: [],
@@ -197,6 +211,7 @@ export const getContactInfo = cache(async (locale?: string) => {
 })
 
 export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const nowIso = new Date().toISOString()
@@ -204,7 +219,7 @@ export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
       collection: 'notices',
       depth: 1,
       limit,
-      locale: locale as Loc,
+      locale: payloadLocale,
       sort: '-publishedAt',
       where: {
         and: getPublishedNoticeFilters(nowIso),
@@ -222,6 +237,7 @@ export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
 })
 
 export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const nowIso = new Date().toISOString()
@@ -229,7 +245,7 @@ export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
       collection: 'notices',
       depth: 1,
       limit: 1,
-      locale: locale as Loc,
+      locale: payloadLocale,
       sort: '-publishedAt',
       where: {
         and: [
@@ -248,6 +264,7 @@ export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
 })
 
 export const getNoticeBySlug = cache(async (slug: string, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const nowIso = new Date().toISOString()
@@ -255,7 +272,7 @@ export const getNoticeBySlug = cache(async (slug: string, locale?: string) => {
       collection: 'notices',
       depth: 1,
       limit: 1,
-      locale: locale as Loc,
+      locale: payloadLocale,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -272,13 +289,14 @@ export const getNoticeBySlug = cache(async (slug: string, locale?: string) => {
 })
 
 export const getFAQs = cache(async (limit = 100, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'faqs',
       depth: 1,
       limit,
-      locale: locale as Loc,
+      locale: payloadLocale,
       sort: 'order',
       where: {
         status: {
@@ -297,13 +315,14 @@ export const getFAQs = cache(async (limit = 100, locale?: string) => {
 })
 
 export const getPageBySlug = cache(async (slug: string, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'pages',
       depth: 1,
       limit: 1,
-      locale: locale as Loc,
+      locale: payloadLocale,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -320,6 +339,7 @@ export const getPageBySlug = cache(async (slug: string, locale?: string) => {
 })
 
 export const getVIPLounge = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   const fallback = {
     pageTitle: 'VIP Lounge',
     introduction: null as string | null,
@@ -333,7 +353,7 @@ export const getVIPLounge = cache(async (locale?: string) => {
   }
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'vip-lounge', depth: 1, locale: locale as Loc })) || fallback
+    return (await payload.findGlobal({ slug: 'vip-lounge', depth: 1, locale: payloadLocale })) || fallback
   } catch (error) {
     logContentError('Failed to fetch VIP lounge', error)
     return fallback
@@ -341,6 +361,7 @@ export const getVIPLounge = cache(async (locale?: string) => {
 })
 
 export const getUsefulLinks = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   const fallback = {
     pageTitle: 'Useful Links',
     introduction: null as string | null,
@@ -357,7 +378,7 @@ export const getUsefulLinks = cache(async (locale?: string) => {
 
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'useful-links', depth: 1, locale: locale as Loc })) || fallback
+    return (await payload.findGlobal({ slug: 'useful-links', depth: 1, locale: payloadLocale })) || fallback
   } catch (error) {
     logContentError('Failed to fetch useful links', error)
     return fallback
@@ -365,6 +386,7 @@ export const getUsefulLinks = cache(async (locale?: string) => {
 })
 
 export const getEmergencyServices = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   const fallback = {
     pageTitle: 'Emergency Services',
     introduction:
@@ -384,7 +406,7 @@ export const getEmergencyServices = cache(async (locale?: string) => {
 
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'emergency-services', depth: 1, locale: locale as Loc })) || fallback
+    return (await payload.findGlobal({ slug: 'emergency-services', depth: 1, locale: payloadLocale })) || fallback
   } catch (error) {
     logContentError('Failed to fetch emergency services', error)
     return fallback
@@ -392,6 +414,7 @@ export const getEmergencyServices = cache(async (locale?: string) => {
 })
 
 export const getLegalPages = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   const fallback = {
     disclaimer: {
       title: 'Disclaimer',
@@ -420,7 +443,7 @@ export const getLegalPages = cache(async (locale?: string) => {
 
   try {
     const payload = await getPayloadClient()
-    return (await payload.findGlobal({ slug: 'legal-pages', depth: 1, locale: locale as Loc })) || fallback
+    return (await payload.findGlobal({ slug: 'legal-pages', depth: 1, locale: payloadLocale })) || fallback
   } catch (error) {
     logContentError('Failed to fetch legal pages', error)
     return fallback
@@ -428,13 +451,14 @@ export const getLegalPages = cache(async (locale?: string) => {
 })
 
 export const getNewsEvents = cache(async (limit = 24, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'news-events',
       depth: 1,
       limit,
-      locale: locale as Loc,
+      locale: payloadLocale,
       sort: '-publishedAt',
       where: {
         status: {
@@ -453,13 +477,14 @@ export const getNewsEvents = cache(async (limit = 24, locale?: string) => {
 })
 
 export const getNewsEventBySlug = cache(async (slug: string, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'news-events',
       depth: 1,
       limit: 1,
-      locale: locale as Loc,
+      locale: payloadLocale,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -477,25 +502,26 @@ export const getNewsEventBySlug = cache(async (slug: string, locale?: string) =>
 
 export const getNewsEventsWithSignedAttachments = cache(async (limit = 24, locale?: string) => {
   const items = await getNewsEvents(limit, locale)
-  return signNewsEventAttachmentURLs(items)
+  return signDocumentAttachmentURLs(items)
 })
 
 export const getNewsEventBySlugWithSignedAttachments = cache(async (slug: string, locale?: string) => {
   const item = await getNewsEventBySlug(slug, locale)
   if (!item) return null
 
-  const [signedItem] = await signNewsEventAttachmentURLs([item])
+  const [signedItem] = await signDocumentAttachmentURLs([item])
   return signedItem ?? null
 })
 
 export const getAirportProjectItems = cache(async (limit = 24, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'airport-project',
       depth: 1,
       limit,
-      locale: locale as Loc,
+      locale: payloadLocale,
       sort: '-publishedAt',
       where: {
         status: {
@@ -514,13 +540,14 @@ export const getAirportProjectItems = cache(async (limit = 24, locale?: string) 
 })
 
 export const getAirportProjectBySlug = cache(async (slug: string, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'airport-project',
       depth: 1,
       limit: 1,
-      locale: locale as Loc,
+      locale: payloadLocale,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -536,14 +563,59 @@ export const getAirportProjectBySlug = cache(async (slug: string, locale?: strin
   }
 })
 
+export const getAirportProjectItemsWithSignedAttachments = cache(async (limit = 24, locale?: string) => {
+  const items = await getAirportProjectItems(limit, locale)
+  return signDocumentAttachmentURLs(items)
+})
+
+export const getAirportProjectBySlugWithSignedAttachments = cache(async (slug: string, locale?: string) => {
+  const item = await getAirportProjectBySlug(slug, locale)
+  if (!item) return null
+
+  const [signed] = await signDocumentAttachmentURLs([item])
+  return signed ?? null
+})
+
+export const getCareerItems = cache(async (limit = 24, locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
+  try {
+    const payload = await getPayloadClient()
+    const result = await payload.find({
+      collection: 'careers',
+      depth: 1,
+      limit,
+      locale: payloadLocale,
+      sort: '-publishedAt',
+      where: {
+        status: {
+          equals: 'published',
+        },
+      },
+    })
+
+    logTruncationWarning('careers', result)
+
+    return result.docs
+  } catch (error) {
+    logContentError('Failed to fetch career notices', error)
+    return []
+  }
+})
+
+export const getCareerItemsWithSignedAttachments = cache(async (limit = 24, locale?: string) => {
+  const items = await getCareerItems(limit, locale)
+  return signDocumentAttachmentURLs(items)
+})
+
 export const getPublishedPages = cache(async (locale?: string) => {
+  const payloadLocale = getPayloadLocale(locale)
   try {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'pages',
       depth: 0,
       limit: 200,
-      locale: locale as Loc,
+      locale: payloadLocale,
       where: {
         status: {
           equals: 'published',

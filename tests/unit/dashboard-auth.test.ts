@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
+  cookiesMock,
   headersMock,
   redirectMock,
   canAccessAny,
@@ -10,6 +11,7 @@ const {
   getRoleLabel,
   getPayloadClient,
 } = vi.hoisted(() => ({
+  cookiesMock: vi.fn(),
   headersMock: vi.fn(),
   redirectMock: vi.fn((path: string) => {
     throw new Error(`redirect:${path}`)
@@ -23,6 +25,7 @@ const {
 }))
 
 vi.mock('next/headers', () => ({
+  cookies: cookiesMock,
   headers: headersMock,
 }))
 
@@ -44,7 +47,20 @@ vi.mock('@/lib/payload', () => ({
   getPayloadClient,
 }))
 
+function mockLocaleCookie(value?: string) {
+  cookiesMock.mockResolvedValue({
+    get: vi.fn((name: string) => {
+      if (name !== 'locale' || !value) return undefined
+      return { value }
+    }),
+  })
+}
+
 describe('dashboard auth helpers', () => {
+  beforeEach(() => {
+    mockLocaleCookie()
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
@@ -80,7 +96,81 @@ describe('dashboard auth helpers', () => {
       initials: 'AA',
       roleLabel: 'Super Admin',
       roleBadgeClass: 'role-super',
+      locale: 'en',
     })
+  })
+
+  it('prefers a valid dashboard user preferred locale over the locale cookie', async () => {
+    headersMock.mockResolvedValue(new Headers())
+    mockLocaleCookie('fr')
+    getPayloadClient.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({
+        user: {
+          email: 'translator@example.com',
+          fullName: 'Airport Translator',
+          preferredLocale: 'mfe',
+          roles: ['translator'],
+        },
+      }),
+    })
+    getPrimaryRole.mockReturnValue('translator')
+    getInitials.mockReturnValue('AT')
+    getRoleLabel.mockReturnValue('Translator')
+    getRoleBadgeClass.mockReturnValue('role-viewer')
+
+    const { getDashboardSession } = await import('@/lib/dashboard-auth')
+
+    await expect(getDashboardSession()).resolves.toMatchObject({
+      locale: 'mfe',
+    })
+  })
+
+  it('uses a valid locale cookie when the user has no preferred locale', async () => {
+    headersMock.mockResolvedValue(new Headers())
+    mockLocaleCookie('fr')
+    getPayloadClient.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({
+        user: {
+          email: 'approver@example.com',
+          roles: ['approver'],
+        },
+      }),
+    })
+    getPrimaryRole.mockReturnValue('approver')
+    getInitials.mockReturnValue('A')
+    getRoleLabel.mockReturnValue('Approver')
+    getRoleBadgeClass.mockReturnValue('role-editor')
+
+    const { getDashboardSession } = await import('@/lib/dashboard-auth')
+
+    await expect(getDashboardSession()).resolves.toMatchObject({
+      locale: 'fr',
+    })
+  })
+
+  it('falls back to email when the dashboard full name is blank', async () => {
+    headersMock.mockResolvedValue(new Headers())
+    getPayloadClient.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({
+        user: {
+          email: 'admin@example.com',
+          fullName: '   ',
+          roles: ['super_admin'],
+        },
+      }),
+    })
+    getPrimaryRole.mockReturnValue('super_admin')
+    getInitials.mockReturnValue('A')
+    getRoleLabel.mockReturnValue('Super Admin')
+    getRoleBadgeClass.mockReturnValue('role-super')
+
+    const { getDashboardSession } = await import('@/lib/dashboard-auth')
+
+    await expect(getDashboardSession()).resolves.toMatchObject({
+      fullName: 'admin@example.com',
+      initials: 'A',
+    })
+    expect(getInitials).toHaveBeenCalledWith('admin@example.com')
   })
 
   it('redirects unauthenticated users to the admin login', async () => {

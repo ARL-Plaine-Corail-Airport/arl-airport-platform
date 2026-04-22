@@ -12,6 +12,7 @@ import {
 } from '@/lib/dashboard'
 import type { DashboardRole } from '@/lib/dashboard'
 import type { User } from '@/payload-types'
+import type { Where } from 'payload'
 
 export const metadata = { title: 'Users & Roles' }
 
@@ -71,6 +72,45 @@ const ROLE_COLS: { key: keyof Omit<PermRow, 'module'>; label: string }[] = [
   { key: 'translator',        label: 'Translator' },
   { key: 'viewer_auditor',    label: 'Viewer' },
 ]
+
+const EDITOR_ROLES = ['content_admin', 'approver', 'operations_editor'] as const
+const VIEWER_ROLES = ['translator', 'viewer_auditor'] as const
+
+function rolesWhere(roles: readonly string[]): Where {
+  return {
+    or: roles.map((role) => ({
+      roles: {
+        contains: role,
+      },
+    })),
+  }
+}
+
+function getUsersWhere(activeTab: string): Where | undefined {
+  if (activeTab === 'super_admin') {
+    return {
+      roles: {
+        contains: 'super_admin',
+      },
+    }
+  }
+
+  if (activeTab === 'editors') return rolesWhere(EDITOR_ROLES)
+  if (activeTab === 'viewers') return rolesWhere(VIEWER_ROLES)
+
+  return undefined
+}
+
+function getCountValue(
+  result: PromiseSettledResult<{ totalDocs: number }>,
+  fallback: number,
+  label: string,
+): number {
+  if (result.status === 'fulfilled') return result.value.totalDocs
+
+  logger.error(`Failed to fetch ${label} users count`, result.reason, 'dashboard')
+  return fallback
+}
 
 const STATS_GRID_STYLE: React.CSSProperties = {
   gridTemplateColumns: 'repeat(4, 1fr)',
@@ -226,39 +266,58 @@ export default async function UsersPage({
 
   const payload = await getPayloadClient()
   let users: User[] = []
+  const usersWhere = getUsersWhere(activeTab)
 
-  try {
-    const result = await payload.find({
+  const [
+    usersResult,
+    totalUsersResult,
+    superCountResult,
+    editorCountResult,
+    viewerCountResult,
+  ] = await Promise.allSettled([
+    payload.find({
       collection: 'users',
       depth: 0,
       limit: 200,
       sort: 'fullName',
       overrideAccess: true,
-    })
-    users = result.docs
-  } catch (error) { logger.error('Failed to fetch users', error, 'dashboard') }
+      ...(usersWhere ? { where: usersWhere } : {}),
+    }),
+    payload.count({
+      collection: 'users',
+      overrideAccess: true,
+    }),
+    payload.count({
+      collection: 'users',
+      overrideAccess: true,
+      where: {
+        roles: {
+          contains: 'super_admin',
+        },
+      },
+    }),
+    payload.count({
+      collection: 'users',
+      overrideAccess: true,
+      where: rolesWhere(EDITOR_ROLES),
+    }),
+    payload.count({
+      collection: 'users',
+      overrideAccess: true,
+      where: rolesWhere(VIEWER_ROLES),
+    }),
+  ])
 
-  // Filter by tab
-  let filtered = users
-  if (activeTab === 'super_admin') {
-    filtered = users.filter((u) => u.roles?.includes('super_admin'))
-  } else if (activeTab === 'editors') {
-    filtered = users.filter((u) =>
-      u.roles?.some((r: string) => ['content_admin', 'approver', 'operations_editor'].includes(r))
-    )
-  } else if (activeTab === 'viewers') {
-    filtered = users.filter((u) =>
-      u.roles?.some((r: string) => ['translator', 'viewer_auditor'].includes(r))
-    )
+  if (usersResult.status === 'fulfilled') {
+    users = usersResult.value.docs
+  } else {
+    logger.error('Failed to fetch users', usersResult.reason, 'dashboard')
   }
 
-  const superCount = users.filter((u) => u.roles?.includes('super_admin')).length
-  const editorCount = users.filter((u) =>
-    u.roles?.some((r: string) => ['content_admin', 'approver', 'operations_editor'].includes(r))
-  ).length
-  const viewerCount = users.filter((u) =>
-    u.roles?.some((r: string) => ['translator', 'viewer_auditor'].includes(r))
-  ).length
+  const totalCount = getCountValue(totalUsersResult, users.length, 'total')
+  const superCount = getCountValue(superCountResult, 0, 'super admin')
+  const editorCount = getCountValue(editorCountResult, 0, 'editor')
+  const viewerCount = getCountValue(viewerCountResult, 0, 'viewer')
 
   return (
     <main className="page-content">
@@ -282,7 +341,7 @@ export default async function UsersPage({
         <div className="stat-card">
           <div className="stat-info">
             <div className="stat-label">Total Users</div>
-            <div className="stat-value">{users.length}</div>
+            <div className="stat-value">{totalCount}</div>
           </div>
         </div>
         <div className="stat-card">
@@ -309,7 +368,7 @@ export default async function UsersPage({
       <div className="tabs">
         <Link href="/dashboard/users?tab=all" className={`tab${activeTab === 'all' ? ' active' : ''}`}>
           All Users
-          <span className="badge badge-muted" style={TAB_BADGE_STYLE}>{users.length}</span>
+          <span className="badge badge-muted" style={TAB_BADGE_STYLE}>{totalCount}</span>
         </Link>
         <Link href="/dashboard/users?tab=super_admin" className={`tab${activeTab === 'super_admin' ? ' active' : ''}`}>
           Super Admins
@@ -329,7 +388,7 @@ export default async function UsersPage({
       <div className="card" style={USERS_CARD_STYLE}>
         <div className="card-header">
           <h2 className="card-title">
-            {filtered.length} user{filtered.length !== 1 ? 's' : ''}
+            {users.length} user{users.length !== 1 ? 's' : ''}
           </h2>
           <Link
             href="/admin/collections/users"
@@ -341,7 +400,7 @@ export default async function UsersPage({
           </Link>
         </div>
         <div className="table-wrap">
-          {filtered.length === 0 ? (
+          {users.length === 0 ? (
             <div className="empty-state">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"
                 fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -359,14 +418,14 @@ export default async function UsersPage({
                   <th>User</th>
                   <th>Email</th>
                   <th>Roles</th>
-                  <th>MFA</th>
+                  <th>MFA Advisory</th>
                   <th>Status</th>
                   <th>Last Updated</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((user) => {
+                {users.map((user) => {
                   const primaryRole = getPrimaryRole(user.roles ?? [])
                   const initials = getInitials(user.fullName || user.email)
                   return (
@@ -399,9 +458,9 @@ export default async function UsersPage({
                       </td>
                       <td>
                         {user.mfaRequired ? (
-                          <span className="badge badge-success">Required</span>
+                          <span className="badge badge-muted">Flagged</span>
                         ) : (
-                          <span className="badge badge-muted">Optional</span>
+                          <span className="badge badge-muted">Not flagged</span>
                         )}
                       </td>
                       <td>

@@ -36,6 +36,9 @@ export const Flights: CollectionConfig = {
     description:
       'Manual flight entries. Use this to add flights missing from the AirLabs feed or to override incorrect API data. Entries matching an API flight number will replace the API version.',
   },
+  versions: {
+    drafts: false,
+  },
   fields: [
     {
       type: 'row',

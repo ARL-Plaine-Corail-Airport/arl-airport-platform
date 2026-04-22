@@ -19,6 +19,7 @@ type SyncWorkflowStatusOptions = {
   publishedStatus: string
   publishError: string
   approvalStatus?: string
+  requireApproverToPublish?: boolean
   setPublishedAt?: boolean
   setLastApprovedBy?: boolean
 }
@@ -40,8 +41,12 @@ async function getPreviousStatus(input: {
   operation: 'create' | 'update'
   req: PayloadRequest
 }): Promise<string | null | undefined> {
-  if (input.data.status !== undefined || input.operation !== 'update') {
-    return input.data.status
+  if (input.operation !== 'update') {
+    return undefined
+  }
+
+  if (input.originalDoc?.status !== undefined) {
+    return input.originalDoc.status
   }
 
   const id = input.data.id ?? input.originalDoc?.id
@@ -74,12 +79,32 @@ export function syncWorkflowStatus(
       req,
     })
     const effectiveStatus = workflowData.status ?? previousStatus
+    const userHasApproverRole = hasApproverRole(req)
     let approvedByCurrentUser = false
+    const isApprovalTransition = Boolean(options.approvalStatus) &&
+      workflowData.status === options.approvalStatus &&
+      previousStatus !== options.approvalStatus
+
+    if (
+      options.requireApproverToPublish &&
+      isApprovalTransition &&
+      !userHasApproverRole
+    ) {
+      throw new Error(options.publishError)
+    }
 
     if (workflowData._status === 'published') {
-      if (hasApproverRole(req)) {
-        workflowData.status = options.requiredStatusForPublish
-        approvedByCurrentUser = workflowData.status === options.approvalStatus
+      if (options.requireApproverToPublish && !userHasApproverRole) {
+        throw new Error(options.publishError)
+      }
+
+      if (options.requireApproverToPublish && effectiveStatus !== options.requiredStatusForPublish) {
+        throw new Error(options.publishError)
+      }
+
+      if (userHasApproverRole) {
+        approvedByCurrentUser = effectiveStatus === options.requiredStatusForPublish ||
+          (Boolean(options.approvalStatus) && effectiveStatus === options.approvalStatus)
       } else if (effectiveStatus !== options.requiredStatusForPublish) {
         throw new Error(options.publishError)
       }
@@ -102,8 +127,11 @@ export function syncWorkflowStatus(
 
     if (
       options.setLastApprovedBy &&
-      options.approvalStatus &&
-      (workflowData.status === options.approvalStatus || approvedByCurrentUser) &&
+      (
+        (options.approvalStatus !== undefined && workflowData.status === options.approvalStatus) ||
+        approvedByCurrentUser
+      ) &&
+      userHasApproverRole &&
       req.user?.id
     ) {
       workflowData.lastApprovedBy = req.user.id

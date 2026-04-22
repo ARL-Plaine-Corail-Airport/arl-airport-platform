@@ -1,7 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
-import { validateURL } from '@/fields/validators'
+import { validatePhone, validateURL } from '@/fields/validators'
 
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
@@ -36,6 +36,7 @@ export const SiteSettings: GlobalConfig = {
       name: 'primaryPhone',
       type: 'text',
       defaultValue: '+230 832 78 88',
+      validate: validatePhone,
       admin: { placeholder: '+230 832 78 88' },
     },
     {

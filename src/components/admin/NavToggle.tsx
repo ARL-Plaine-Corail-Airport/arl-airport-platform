@@ -1,36 +1,36 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 
 const STORAGE_KEY = 'arl-nav-collapsed'
 
 export default function NavToggle() {
   const [collapsed, setCollapsed] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
-  const applyCollapsedState = (next: boolean) => {
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY) === 'true'
+    document.documentElement.classList.toggle('nav-collapsed', stored)
+    setCollapsed(stored)
+    setHydrated(true)
+
+    return () => {
+      document.documentElement.classList.remove('nav-collapsed')
+    }
+  }, [])
+
+  const apply = (next: boolean) => {
     localStorage.setItem(STORAGE_KEY, String(next))
     document.documentElement.classList.toggle('nav-collapsed', next)
     setCollapsed(next)
   }
 
-  useEffect(() => {
-    setMounted(true)
+  if (!hydrated) return null
 
-    const stored = localStorage.getItem(STORAGE_KEY) === 'true'
-    document.documentElement.classList.toggle('nav-collapsed', stored)
-    setCollapsed(stored)
-  }, [])
-
-  if (!mounted) {
-    return null
-  }
-
-  return createPortal(
+  return (
     <button
       type="button"
-      onClick={() => applyCollapsedState(!collapsed)}
+      onClick={() => apply(!collapsed)}
       className="nav-collapse-btn"
       aria-pressed={collapsed}
       aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -43,15 +43,10 @@ export default function NavToggle() {
         fill="currentColor"
         aria-hidden="true"
       >
-        {collapsed ? (
-          /* chevron-right: expand */
-          <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z" />
-        ) : (
-          /* chevron-left: collapse */
-          <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z" />
-        )}
+        {collapsed
+          ? <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z" />
+          : <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z" />}
       </svg>
-    </button>,
-    document.body,
+    </button>
   )
 }

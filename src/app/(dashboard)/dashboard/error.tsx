@@ -65,7 +65,7 @@ export default function DashboardError({
             {label.retry}
           </button>
           <Link
-            href={`/${locale}/dashboard`}
+            href="/dashboard"
             className="btn btn-outline"
             style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}
           >

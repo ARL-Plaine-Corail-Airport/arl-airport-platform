@@ -12,13 +12,38 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isApprover } from '@/access'
+import { isApprover, isEditor } from '@/access'
+import { validatePhone } from '@/fields/validators'
+
+function enforceEmergencyPublishReview({ data, originalDoc, req }: {
+  data: Record<string, unknown>
+  originalDoc?: Record<string, unknown>
+  req: Parameters<typeof isApprover>[0]['req']
+}) {
+  const nextStatus = data.status ?? originalDoc?.status
+  const previousStatus = originalDoc?.status
+  const isPublishingVersion = data._status === 'published'
+
+  if (isPublishingVersion && nextStatus !== 'published') {
+    throw new Error('Set emergency services workflow status to Published before publishing.')
+  }
+
+  if (
+    (isPublishingVersion || nextStatus === 'published') &&
+    previousStatus !== 'published' &&
+    !isApprover({ req })
+  ) {
+    throw new Error('Emergency services must be approved before publishing.')
+  }
+
+  return data
+}
 
 export const EmergencyServices: GlobalConfig = {
   slug: 'emergency-services',
   access: {
     read:   () => true,
-    update: isApprover, // Emergency content requires elevated access to edit
+    update: isEditor,
   },
   admin: {
     group: 'Site Pages',
@@ -29,6 +54,22 @@ export const EmergencyServices: GlobalConfig = {
     max: 30,
   },
   fields: [
+    {
+      name: 'status',
+      label: 'Workflow Status',
+      type: 'select',
+      required: true,
+      defaultValue: 'draft',
+      options: [
+        { label: 'Draft', value: 'draft' },
+        { label: 'Pending Review', value: 'pending_review' },
+        { label: 'Published', value: 'published' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'Only approvers and admins may transition emergency contacts to Published.',
+      },
+    },
     {
       name: 'pageTitle',
       label: 'Page Title',
@@ -48,6 +89,7 @@ export const EmergencyServices: GlobalConfig = {
       label: 'Primary Emergency Number',
       type: 'text',
       required: true,
+      validate: validatePhone,
       admin: {
         description: 'The single most important emergency contact (e.g. 999). Displayed prominently.',
         placeholder: '999',
@@ -70,13 +112,7 @@ export const EmergencyServices: GlobalConfig = {
           label: 'Phone Number',
           type: 'text',
           required: true,
-          validate: (value: string | null | undefined) => {
-            if (!value) return 'Phone number is required.'
-            if (!/^\+?[\d\s\-()]{7,20}$/.test(value.trim())) {
-              return 'Enter a valid phone number (e.g. +230 831 xxxx).'
-            }
-            return true
-          },
+          validate: validatePhone,
           admin: { placeholder: '+230 831 xxxx' },
         },
         {
@@ -124,10 +160,16 @@ export const EmergencyServices: GlobalConfig = {
       label: 'Verified By',
       type: 'text',
       required: true,
+      access: {
+        read: ({ req }) => isEditor({ req }),
+      },
       admin: {
         position: 'sidebar',
         description: 'Name/role of the person who verified these contacts.',
       },
     },
   ],
+  hooks: {
+    beforeChange: [enforceEmergencyPublishReview],
+  },
 }

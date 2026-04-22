@@ -12,6 +12,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isApprover } from '@/access'
+import { appendApprovalHistoryHook } from './approvalHistory'
 
 export const LegalPages: GlobalConfig = {
   slug: 'legal-pages',
@@ -25,7 +26,7 @@ export const LegalPages: GlobalConfig = {
   },
   versions: {
     drafts: true,
-    max: 50,
+    max: 50, // GlobalConfig still uses `max`, not `maxPerDoc`
   },
   fields: [
     {
@@ -158,5 +159,44 @@ export const LegalPages: GlobalConfig = {
         },
       ],
     },
+    {
+      name: 'approvalNotes',
+      label: 'Approval Notes',
+      type: 'textarea',
+      admin: {
+        position: 'sidebar',
+        description: 'Optional note to include in the approval history when publishing.',
+      },
+    },
+    {
+      name: 'approvalHistory',
+      label: 'Approval History',
+      type: 'array',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+      },
+      fields: [
+        {
+          name: 'approvedBy',
+          label: 'Approved By',
+          type: 'relationship',
+          relationTo: 'users',
+        },
+        {
+          name: 'approvedAt',
+          label: 'Approved At',
+          type: 'date',
+        },
+        {
+          name: 'notes',
+          label: 'Notes',
+          type: 'textarea',
+        },
+      ],
+    },
   ],
+  hooks: {
+    beforeChange: [appendApprovalHistoryHook()],
+  },
 }

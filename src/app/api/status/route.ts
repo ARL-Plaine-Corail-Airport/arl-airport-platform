@@ -21,6 +21,66 @@ type ServiceCheck = {
 }
 
 const noStoreHeaders = { 'Cache-Control': 'no-store' }
+const MIN_STATUS_SECRET_LENGTH = 16
+
+// Skip the assertion during `next build` — secrets are injected at runtime, not
+// at build time. The Dockerfile sets NEXT_OUTPUT_MODE=standalone for the build
+// stage; at runtime it is unset. `isAuthorized` still enforces the length
+// requirement on every request, so runtime misconfiguration fails closed.
+if (
+  process.env.NODE_ENV === 'production' &&
+  !process.env.NEXT_OUTPUT_MODE &&
+  serverEnv.statusSecret.length < MIN_STATUS_SECRET_LENGTH
+) {
+  throw new Error('STATUS_SECRET must be at least 16 characters in production')
+}
+
+let statusRedis: Redis | null | undefined
+
+function getStatusRedisClient(): Redis | null {
+  if (statusRedis !== undefined) return statusRedis
+
+  if (!serverEnv.upstashRedisRestUrl || !serverEnv.upstashRedisRestToken) {
+    statusRedis = null
+    return statusRedis
+  }
+
+  statusRedis = new Redis({
+    url: serverEnv.upstashRedisRestUrl,
+    token: serverEnv.upstashRedisRestToken,
+  })
+
+  return statusRedis
+}
+
+function redactUpstashToken(value: string): string {
+  const token = serverEnv.upstashRedisRestToken
+  return token ? value.split(token).join('[REDACTED]') : value
+}
+
+function redactStatusError(error: unknown): unknown {
+  if (!serverEnv.upstashRedisRestToken) return error
+
+  if (error instanceof Error) {
+    const message = redactUpstashToken(error.message)
+    const stack = error.stack ? redactUpstashToken(error.stack) : undefined
+
+    if (message === error.message && stack === error.stack) {
+      return error
+    }
+
+    const redacted = new Error(message)
+    redacted.name = error.name
+    redacted.stack = stack
+    return redacted
+  }
+
+  if (typeof error === 'string') {
+    return redactUpstashToken(error)
+  }
+
+  return error
+}
 
 function safeCompare(a: string, b: string): boolean {
   const left = Buffer.from(a, 'utf8')
@@ -41,7 +101,7 @@ function isAuthorized(request: NextRequest) {
   const configuredSecret = serverEnv.statusSecret
   const authorization = request.headers.get('authorization') ?? ''
 
-  if (!configuredSecret || configuredSecret.length < 16) return false
+  if (!configuredSecret || configuredSecret.length < MIN_STATUS_SECRET_LENGTH) return false
   if (!authorization.startsWith('Bearer ')) return false
 
   const token = authorization.slice('Bearer '.length).trim()
@@ -76,15 +136,16 @@ async function checkRedis(): Promise<ServiceCheck> {
   }
 
   try {
-    const redis = new Redis({
-      url: serverEnv.upstashRedisRestUrl,
-      token: serverEnv.upstashRedisRestToken,
-    })
+    const redis = getStatusRedisClient()
+
+    if (!redis) {
+      return { status: 'error', latencyMs: latencySince(start) }
+    }
 
     await redis.ping()
     return { status: 'ok', latencyMs: latencySince(start) }
   } catch (error) {
-    logger.error('Status Redis check failed', error, 'status')
+    logger.error('Status Redis check failed', redactStatusError(error), 'status')
     return { status: 'error', latencyMs: latencySince(start) }
   }
 }
@@ -110,7 +171,7 @@ async function checkStorage(): Promise<ServiceCheck> {
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json(
-      { ok: false, message: 'Unauthorized' },
+      { ok: false, error: 'Unauthorized' },
       { status: 401, headers: noStoreHeaders },
     )
   }
@@ -136,6 +197,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(
     {
+      ok: status !== 'unhealthy',
       status,
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(process.uptime()),

@@ -6,7 +6,7 @@ export default function Logo() {
         style={{
           width: 36,
           height: 36,
-          background: 'hsl(210, 80%, 25%)',
+          background: 'hsl(var(--arl-navy-700))',
           borderRadius: 8,
           display: 'flex',
           alignItems: 'center',
@@ -25,7 +25,7 @@ export default function Logo() {
         </svg>
       </div>
       <div style={{ lineHeight: 1.25 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: 'hsl(210, 80%, 25%)', letterSpacing: '-0.01em' }}>
+        <div style={{ fontWeight: 700, fontSize: 14, color: 'hsl(var(--arl-navy-700))', letterSpacing: '-0.01em' }}>
           ARL Admin
         </div>
         <div style={{ fontSize: 10, color: 'hsl(210, 10%, 55%)', letterSpacing: '0.3px' }}>

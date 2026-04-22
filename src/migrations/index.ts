@@ -9,6 +9,10 @@ import * as migration_20260330_112900_sync_pages_notices_seo from './20260330_11
 import * as migration_20260331_113831 from './20260331_113831';
 import * as migration_20260409_120000_news_events_documents from './20260409_120000_news_events_documents';
 import * as migration_20260417_090000_page_views_lifecycle from './20260417_090000_page_views_lifecycle';
+import * as migration_20260420_105000_add_documents_visibility from './20260420_105000_add_documents_visibility';
+import * as migration_20260420_144442_add_users_preferred_locale from './20260420_144442_add_users_preferred_locale';
+import * as migration_20260421_133938_add_slug_length_checks from './20260421_133938_add_slug_length_checks';
+import * as migration_20260422_055322_add_careers_collection from './20260422_055322_add_careers_collection';
 
 export const migrations = [
   {
@@ -54,16 +58,36 @@ export const migrations = [
   {
     up: migration_20260331_113831.up,
     down: migration_20260331_113831.down,
-    name: '20260331_113831'
+    name: '20260331_113831',
   },
   {
     up: migration_20260409_120000_news_events_documents.up,
     down: migration_20260409_120000_news_events_documents.down,
-    name: '20260409_120000_news_events_documents'
+    name: '20260409_120000_news_events_documents',
   },
   {
     up: migration_20260417_090000_page_views_lifecycle.up,
     down: migration_20260417_090000_page_views_lifecycle.down,
-    name: '20260417_090000_page_views_lifecycle'
+    name: '20260417_090000_page_views_lifecycle',
+  },
+  {
+    up: migration_20260420_105000_add_documents_visibility.up,
+    down: migration_20260420_105000_add_documents_visibility.down,
+    name: '20260420_105000_add_documents_visibility',
+  },
+  {
+    up: migration_20260420_144442_add_users_preferred_locale.up,
+    down: migration_20260420_144442_add_users_preferred_locale.down,
+    name: '20260420_144442_add_users_preferred_locale',
+  },
+  {
+    up: migration_20260421_133938_add_slug_length_checks.up,
+    down: migration_20260421_133938_add_slug_length_checks.down,
+    name: '20260421_133938_add_slug_length_checks',
+  },
+  {
+    up: migration_20260422_055322_add_careers_collection.up,
+    down: migration_20260422_055322_add_careers_collection.down,
+    name: '20260422_055322_add_careers_collection'
   },
 ];

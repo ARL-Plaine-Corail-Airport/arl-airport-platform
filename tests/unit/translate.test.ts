@@ -209,4 +209,38 @@ describe('translate', () => {
       'sixth-fr',
     ])
   })
+
+  it('warns once when falling back from Kreol to French translation pairs', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input.toString())
+      return {
+        ok: true,
+        json: async () => ({
+          responseStatus: 200,
+          responseData: {
+            translatedText: `${url.searchParams.get('q')}-fr`,
+            match: 1,
+          },
+        }),
+      }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { translate } = await import('@/lib/translate')
+
+    await expect(translate({ text: 'Hello Kreol fallback', from: 'en', to: 'mfe' }))
+      .resolves.toBe('Hello Kreol fallback-fr')
+    await expect(translate({ text: 'Hello Kreol fallback', from: 'en', to: 'mfe' }))
+      .resolves.toBe('Hello Kreol fallback-fr')
+
+    const url = new URL(fetchMock.mock.calls[0]?.[0] as string)
+    expect(url.searchParams.get('langpair')).toBe('en|fr')
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(
+      warnSpy.mock.calls.filter(([message]) =>
+        String(message).includes('Kreol translation fallback used for en|mfe; using en|fr'),
+      ),
+    ).toHaveLength(1)
+  })
 })

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { logger } from '@/lib/logger'
 
 const MYMEMORY_BASE = 'https://api.mymemory.translated.net/get'
@@ -7,12 +9,10 @@ const TRANSLATION_RATE_LIMIT_MAX_REQUESTS = 20
 const TRANSLATION_RATE_LIMIT_WINDOW_MS = 60_000
 const CACHE_MAX_SIZE = 1000
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const CLEANUP_INTERVAL_MS = 300_000
 const TRANSLATE_BATCH_SIZE = 5
-const translationCache = new Map<string, { value: string; cachedAt: number }>()
-let lastTranslationCacheCleanup = 0
-let translationWindowStart = 0
-let translationRequestsInWindow = 0
+const translationCache = new Map<string, { value: string; expiresAt: number }>()
+const translationRateWindows = new Map<number, number>()
+const warnedMfeFallbacks = new Set<string>()
 
 type TranslateOptions = {
   text: string
@@ -32,48 +32,85 @@ function getCachedTranslation(key: string): string | undefined {
   const entry = translationCache.get(key)
   if (!entry) return undefined
 
-  if (Date.now() - entry.cachedAt > CACHE_TTL_MS) {
+  if (entry.expiresAt <= Date.now()) {
     translationCache.delete(key)
     return undefined
   }
 
+  // Promote to most-recently-used by re-inserting (Map preserves insertion order).
+  translationCache.delete(key)
+  translationCache.set(key, entry)
+
   return entry.value
+}
+
+function pruneExpiredTranslations(now: number): void {
+  for (const [key, entry] of translationCache) {
+    if (entry.expiresAt <= now) {
+      translationCache.delete(key)
+    }
+  }
 }
 
 function setCachedTranslation(key: string, value: string): void {
   const now = Date.now()
 
-  if (now - lastTranslationCacheCleanup > CLEANUP_INTERVAL_MS) {
-    lastTranslationCacheCleanup = now
-    for (const [k, entry] of translationCache) {
-      if (now - entry.cachedAt > CACHE_TTL_MS) {
-        translationCache.delete(k)
-      }
-    }
+  pruneExpiredTranslations(now)
+
+  // Delete existing entry first so the new one lands at the tail (MRU position).
+  translationCache.delete(key)
+
+  while (translationCache.size >= CACHE_MAX_SIZE) {
+    const lruKey = translationCache.keys().next().value
+    if (lruKey === undefined) break
+    translationCache.delete(lruKey)
   }
 
-  if (translationCache.size >= CACHE_MAX_SIZE) {
-    const oldestKey = translationCache.keys().next().value
-    if (oldestKey !== undefined) translationCache.delete(oldestKey)
-  }
+  translationCache.set(key, { value, expiresAt: now + CACHE_TTL_MS })
+}
 
-  translationCache.set(key, { value, cachedAt: now })
+function buildTranslationCacheKey({ text, from, to }: TranslateOptions): string {
+  const digest = createHash('sha256').update(text).digest('hex')
+  return `${from}|${to}|${text.length}|${digest}`
+}
+
+function warnMfeFallbackOnce(input: {
+  cacheKey: string
+  effectiveFrom: string
+  effectiveTo: string
+  from: string
+  to: string
+}) {
+  if (input.from !== 'mfe' && input.to !== 'mfe') return
+
+  const warningKey = `${input.cacheKey}|${input.to}`
+  if (warnedMfeFallbacks.has(warningKey)) return
+  warnedMfeFallbacks.add(warningKey)
+
+  logger.warn(
+    `Kreol translation fallback used for ${input.from}|${input.to}; using ${input.effectiveFrom}|${input.effectiveTo}`,
+    'translate',
+  )
 }
 
 function canTranslate(now = Date.now()): boolean {
-  if (
-    translationWindowStart === 0 ||
-    now - translationWindowStart >= TRANSLATION_RATE_LIMIT_WINDOW_MS
-  ) {
-    translationWindowStart = now
-    translationRequestsInWindow = 0
+  const windowStart =
+    Math.floor(now / TRANSLATION_RATE_LIMIT_WINDOW_MS) *
+    TRANSLATION_RATE_LIMIT_WINDOW_MS
+
+  for (const key of translationRateWindows.keys()) {
+    if (key < windowStart) {
+      translationRateWindows.delete(key)
+    }
   }
 
-  if (translationRequestsInWindow >= TRANSLATION_RATE_LIMIT_MAX_REQUESTS) {
+  const requestsInWindow = translationRateWindows.get(windowStart) ?? 0
+
+  if (requestsInWindow >= TRANSLATION_RATE_LIMIT_MAX_REQUESTS) {
     return false
   }
 
-  translationRequestsInWindow++
+  translationRateWindows.set(windowStart, requestsInWindow + 1)
   return true
 }
 
@@ -88,7 +125,7 @@ export async function translate({ text, from, to }: TranslateOptions): Promise<s
     return text
   }
 
-  const cacheKey = `${from}|${to}|${text}`
+  const cacheKey = buildTranslationCacheKey({ text, from, to })
   const cached = getCachedTranslation(cacheKey)
   if (cached) return cached
 
@@ -102,6 +139,7 @@ export async function translate({ text, from, to }: TranslateOptions): Promise<s
   // Kreol translations via localized fields instead of auto-translation.
   const effectiveTo = to === 'mfe' ? 'fr' : to
   const effectiveFrom = from === 'mfe' ? 'fr' : from
+  warnMfeFallbackOnce({ cacheKey, effectiveFrom, effectiveTo, from, to })
 
   try {
     const params = new URLSearchParams({

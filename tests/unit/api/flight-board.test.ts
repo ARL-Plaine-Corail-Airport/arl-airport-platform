@@ -114,6 +114,11 @@ describe('flight board route', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('no-store')
+    const cacheOptions = cachedFetch.mock.calls[0]?.[3] as {
+      shouldCache: (data: { degraded?: boolean }) => boolean
+    }
+    expect(cacheOptions.shouldCache({ degraded: true })).toBe(false)
+    expect(cacheOptions.shouldCache({ degraded: false })).toBe(true)
   })
 
   it('returns a generic no-store 400 for invalid board types', async () => {
@@ -123,7 +128,7 @@ describe('flight board route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(400)
-    expect(body).toEqual({ error: 'Invalid request' })
+    expect(body).toEqual({ ok: false, error: 'Invalid request' })
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(loggerWarn).toHaveBeenCalledWith(
       expect.stringContaining('Invalid flight board request'),
@@ -132,14 +137,18 @@ describe('flight board route', () => {
     expect(cachedFetch).not.toHaveBeenCalled()
   })
 
-  it('returns a stable 500 response when an unexpected error escapes', async () => {
+  it('returns a stable no-store 503 response when an unexpected error escapes', async () => {
     cachedFetch.mockRejectedValue(new Error('boom'))
 
     const response = await GET(new NextRequest('http://localhost/api/flight-board'))
     const body = await response.json()
 
-    expect(response.status).toBe(500)
-    expect(body).toEqual({ error: 'Internal server error' })
+    expect(response.status).toBe(503)
+    expect(body).toEqual({
+      ok: false,
+      error: 'Flight data temporarily unavailable',
+      degraded: true,
+    })
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(loggerError).toHaveBeenCalledOnce()
   })
@@ -156,7 +165,7 @@ describe('flight board route', () => {
     const body = await response.json()
 
     expect(response.status).toBe(502)
-    expect(body).toEqual({ error: 'Board type unavailable' })
+    expect(body).toEqual({ ok: false, error: 'Board type unavailable' })
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(loggerError).not.toHaveBeenCalled()
   })

@@ -5,6 +5,8 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
+import { validatePhone } from '@/fields/validators'
+import { enforceApproverOnPublish } from './approvalGuards'
 
 export const VIPLounge: GlobalConfig = {
   slug: 'vip-lounge',
@@ -72,6 +74,7 @@ export const VIPLounge: GlobalConfig = {
       name: 'contactPhone',
       label: 'Contact Phone',
       type: 'text',
+      validate: validatePhone,
       admin: { placeholder: '+230 831 xxxx' },
     },
     {
@@ -98,4 +101,9 @@ export const VIPLounge: GlobalConfig = {
       ],
     },
   ],
+  hooks: {
+    beforeChange: [
+      enforceApproverOnPublish('Only approvers can publish VIP lounge content.'),
+    ],
+  },
 }

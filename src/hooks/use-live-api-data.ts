@@ -106,9 +106,13 @@ export function useLiveApiData<T>({
       void refresh('focus')
     }
 
-    const handleVisibilityChange = () => {
+    const refreshWhenVisible = (reason: RefreshReason) => {
       if (document.visibilityState !== 'visible') return
-      void refresh('visibility')
+      void refresh(reason)
+    }
+
+    const handleVisibilityChange = () => {
+      refreshWhenVisible('visibility')
     }
 
     const handleOnline = () => {
@@ -120,8 +124,6 @@ export function useLiveApiData<T>({
       void refresh('pwa-resume')
     }
 
-    void refresh('mount')
-
     const intervalId = window.setInterval(() => {
       void refresh('interval')
     }, refreshIntervalMs)
@@ -130,6 +132,7 @@ export function useLiveApiData<T>({
     window.addEventListener('online', handleOnline)
     window.addEventListener('arl:pwa-resume', handlePwaResume as EventListener)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    refreshWhenVisible('mount')
 
     return () => {
       mountedRef.current = false

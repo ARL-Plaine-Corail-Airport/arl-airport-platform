@@ -1,16 +1,67 @@
-import type { CollectionConfig, FieldAccess } from 'payload'
+import type { CollectionBeforeDeleteHook, CollectionConfig, FieldAccess } from 'payload'
 
-import { isAdmin } from '@/access'
+import { isAdmin, isSuperAdmin } from '@/access'
+import { defaultLocale, type Locale } from '@/i18n/config'
 
-const canUpdateRoles = (({ req }) =>
-  Array.isArray(req.user?.roles) && req.user.roles.includes('super_admin')) satisfies FieldAccess
+const canUpdateRoles = (({ data, doc, req, siblingData }) => {
+  if (isSuperAdmin({ req })) return true
+
+  const nextRoles = (siblingData as { roles?: unknown } | undefined)?.roles
+    ?? (data as { roles?: unknown } | undefined)?.roles
+  const currentRoles = (doc as { roles?: unknown } | undefined)?.roles
+
+  if (Array.isArray(nextRoles) && nextRoles.includes('super_admin')) return false
+  if (Array.isArray(currentRoles) && currentRoles.includes('super_admin')) return false
+
+  return isAdmin({ req })
+}) satisfies FieldAccess
+
+type UserWithRoles = {
+  roles?: unknown
+}
+
+const preventUnsafeUserDelete: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  if (req.user?.id && String(req.user.id) === String(id)) {
+    throw new Error('You cannot delete your own account.')
+  }
+
+  const targetUser = await req.payload.findByID({
+    collection: 'users',
+    id,
+    depth: 0,
+    overrideAccess: true,
+  }) as UserWithRoles | null
+
+  const targetRoles = Array.isArray(targetUser?.roles) ? targetUser.roles : []
+  if (!targetRoles.includes('super_admin')) return
+
+  const superAdminCount = await req.payload.count({
+    collection: 'users',
+    where: {
+      roles: {
+        contains: 'super_admin',
+      },
+    },
+    overrideAccess: true,
+  })
+
+  if (superAdminCount.totalDocs <= 1) {
+    throw new Error('Cannot delete the last super admin.')
+  }
+}
+
+const preferredLocaleOptions = [
+  { label: 'English', value: 'en' },
+  { label: 'French', value: 'fr' },
+  { label: 'Kreol Morisien', value: 'mfe' },
+] satisfies Array<{ label: string; value: Locale }>
 
 export const Users: CollectionConfig = {
   slug: 'users',
   auth: true,
   admin: {
     useAsTitle: 'email',
-    defaultColumns: ['email', 'roles', 'updatedAt'],
+    defaultColumns: ['email', 'roles', 'preferredLocale', 'updatedAt'],
     group: 'System',
   },
   access: {
@@ -22,7 +73,7 @@ export const Users: CollectionConfig = {
     },
     update: isAdmin,
     create: isAdmin,
-    delete: ({ req }) => Array.isArray(req.user?.roles) && req.user.roles.includes('super_admin'),
+    delete: ({ req }) => isSuperAdmin({ req }),
   },
   fields: [
     {
@@ -37,6 +88,7 @@ export const Users: CollectionConfig = {
       required: true,
       defaultValue: ['operations_editor'],
       access: {
+        read: ({ req }) => isAdmin({ req }),
         create: canUpdateRoles,
         update: canUpdateRoles,
       },
@@ -51,11 +103,25 @@ export const Users: CollectionConfig = {
     },
     {
       name: 'mfaRequired',
+      label: 'MFA Required (advisory - not enforced)',
       type: 'checkbox',
       defaultValue: true,
       admin: {
-        description: 'Governance flag. Enforce at the identity-provider or auth layer in production.',
+        description:
+          'This flag is not currently enforced. Do not rely on it as a security control.',
       },
     },
+    {
+      name: 'preferredLocale',
+      type: 'select',
+      defaultValue: defaultLocale,
+      admin: {
+        description: 'Preferred dashboard language.',
+      },
+      options: preferredLocaleOptions,
+    },
   ],
+  hooks: {
+    beforeDelete: [preventUnsafeUserDelete],
+  },
 }

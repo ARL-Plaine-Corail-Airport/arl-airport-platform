@@ -76,7 +76,7 @@ function buildPassengerAdvisory(input: {
     return 'Reduced visibility around the airport'
   }
 
-  if (windGustsKmh !== null && windGustsKmh !== undefined && windGustsKmh >= 50) {
+  if (windGustsKmh != null && windGustsKmh >= 50) {
     return 'Strong wind gusts reported'
   }
 

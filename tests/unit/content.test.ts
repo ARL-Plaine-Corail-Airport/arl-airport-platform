@@ -278,7 +278,7 @@ describe('news event attachment signing', () => {
 
     expect(signedItems[0].attachments?.[0]?.file).toMatchObject({ url: null })
     expect(loggerError).toHaveBeenCalledWith(
-      'Failed to sign news event attachments',
+      'Failed to sign document attachments',
       error,
       'content',
     )

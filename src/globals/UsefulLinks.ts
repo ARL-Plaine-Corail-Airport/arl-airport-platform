@@ -5,6 +5,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { isEditor } from '@/access'
+import { enforceApproverOnPublish } from './approvalGuards'
 
 export const UsefulLinks: GlobalConfig = {
   slug: 'useful-links',
@@ -95,4 +96,9 @@ export const UsefulLinks: GlobalConfig = {
       ],
     },
   ],
+  hooks: {
+    beforeChange: [
+      enforceApproverOnPublish('Only approvers can publish useful links.'),
+    ],
+  },
 }

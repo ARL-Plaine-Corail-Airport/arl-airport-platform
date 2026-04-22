@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+// Stays a server component. If you add async work here later, wrap it in
+// a try/catch - a throw blanks the dashboard until (payload)/error.tsx is hit.
 // Welcome banner shown at the top of the Payload admin dashboard
 // Styled to match the /dashboard design language
 export default function BeforeDashboard() {

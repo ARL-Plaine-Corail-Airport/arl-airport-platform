@@ -21,7 +21,7 @@ export default async function DashboardLayout({
   const session = await getDashboardSession()
 
   return (
-    <html lang="en">
+    <html lang={session.locale}>
       <body>
         <DashboardShell
           navSections={getNavForRoles(session.roles)}

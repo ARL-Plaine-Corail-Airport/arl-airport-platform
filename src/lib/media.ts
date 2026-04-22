@@ -36,11 +36,18 @@ export function getMediaSource(
     return null
   }
 
+  const width = size?.width ?? asset.width ?? DEFAULT_MEDIA_WIDTH
+  const height = size?.height ?? asset.height ?? DEFAULT_MEDIA_HEIGHT
+
+  if (width <= 0 || height <= 0) {
+    return null
+  }
+
   return {
     src,
     alt: asset.alt || fallbackAlt || asset.filename || 'Image',
     caption: asset.caption ?? null,
-    width: size?.width ?? asset.width ?? DEFAULT_MEDIA_WIDTH,
-    height: size?.height ?? asset.height ?? DEFAULT_MEDIA_HEIGHT,
+    width,
+    height,
   }
 }

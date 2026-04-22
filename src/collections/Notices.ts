@@ -1,6 +1,6 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, FieldAccess } from 'payload'
 
-import { isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
+import { isAdmin, isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
 import { syncWorkflowStatus } from './workflowStatus'
 
@@ -18,9 +18,31 @@ const syncNoticeStatus = syncWorkflowStatus({
   publishedStatus: 'published',
   approvalStatus: 'approved',
   publishError: 'Set status to Approved before publishing this notice.',
+  requireApproverToPublish: true,
   setPublishedAt: true,
   setLastApprovedBy: true,
 })
+
+const restrictedEditorNoticeStatuses = new Set(['approved', 'published', 'expired', 'archived'])
+
+const canSetNoticeStatus: FieldAccess = ({ data, req, siblingData }) => {
+  if (isApprover({ req })) return true
+
+  const status = (siblingData as { status?: unknown } | undefined)?.status
+    ?? (data as { status?: unknown } | undefined)?.status
+
+  return typeof status !== 'string' || !restrictedEditorNoticeStatuses.has(status)
+}
+
+const canSetNoticeBanner: FieldAccess = ({ data, req, siblingData }) => {
+  if (isApprover({ req })) return true
+
+  const promoteToBanner = (siblingData as { promoteToBanner?: unknown } | undefined)
+    ?.promoteToBanner
+    ?? (data as { promoteToBanner?: unknown } | undefined)?.promoteToBanner
+
+  return promoteToBanner !== true
+}
 
 export const Notices: CollectionConfig = {
   slug: 'notices',
@@ -28,7 +50,7 @@ export const Notices: CollectionConfig = {
     read: publishedVersionOrAdmin,
     create: isEditor,
     update: isEditor,
-    delete: isApprover,
+    delete: isAdmin,
   },
   admin: {
     useAsTitle: 'title',
@@ -63,6 +85,7 @@ export const Notices: CollectionConfig = {
               required: true,
               unique: true,
               index: true,
+              maxLength: 120,
               admin: {
                 description: 'Auto-generated from title if left blank. You can override with a custom slug.',
                 placeholder: 'runway-closure-2025',
@@ -118,6 +141,10 @@ export const Notices: CollectionConfig = {
                   required: true,
                   defaultValue: 'draft',
                   index: true,
+                  access: {
+                    create: canSetNoticeStatus,
+                    update: canSetNoticeStatus,
+                  },
                   admin: { width: '50%' },
                   options: [
                     { label: 'Draft', value: 'draft' },
@@ -136,6 +163,9 @@ export const Notices: CollectionConfig = {
                 {
                   name: 'publishedAt',
                   type: 'date',
+                  access: {
+                    update: canSetNoticeStatus,
+                  },
                   admin: {
                     width: '50%',
                     date: { pickerAppearance: 'dayAndTime' },
@@ -145,6 +175,9 @@ export const Notices: CollectionConfig = {
                 {
                   name: 'expiresAt',
                   type: 'date',
+                  access: {
+                    update: canSetNoticeStatus,
+                  },
                   validate: (value, { siblingData }) => {
                     if (value && hasNoticePublishedAt(siblingData) && siblingData.publishedAt) {
                       const expiresAt = new Date(value)
@@ -195,6 +228,10 @@ export const Notices: CollectionConfig = {
                   name: 'promoteToBanner',
                   type: 'checkbox',
                   defaultValue: false,
+                  access: {
+                    create: canSetNoticeBanner,
+                    update: canSetNoticeBanner,
+                  },
                   admin: {
                     width: '34%',
                     description: 'Surface in the site-wide alert banner (urgent + published only).',

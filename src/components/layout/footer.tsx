@@ -181,9 +181,9 @@ export function SiteFooter({
           {/* Airport */}
           <div>
             <h3 className="footer-heading">{t('footer.airport')}</h3>
-            <Link href={lp('/about-us')} className="footer-link">{t('nav.about_us')}</Link>
             <Link href={lp('/notices')} className="footer-link">{t('nav.notices')}</Link>
             <Link href={lp('/news-events')} className="footer-link">{t('nav.news_events')}</Link>
+            <Link href={lp('/career')} className="footer-link">{t('nav.career')}</Link>
             <Link href={lp('/useful-links')} className="footer-link">{t('nav.useful_links')}</Link>
             <Link href={lp('/contact')} className="footer-link">{t('nav.contact')}</Link>
           </div>

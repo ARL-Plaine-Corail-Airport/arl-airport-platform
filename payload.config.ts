@@ -9,7 +9,7 @@
 //            arl-public-media    → images (public, CDN)
 //            arl-protected-docs  → PDFs (private, signed URLs)
 //
-// COLLECTIONS: Users, Media, Documents, Flights, Notices, Pages, FAQs, Airlines, NewsEvents
+// COLLECTIONS: Users, Media, Documents, Flights, Notices, Pages, FAQs, Airlines, NewsEvents, Careers
 // GLOBALS:     SiteSettings, HomePage, PassengerGuide, TransportParking,
 //              AccessibilityInfo, AirportMap, ContactInfo,
 //              Regulations, UsageFees, VIPLounge, EmergencyServices,
@@ -28,6 +28,7 @@ import sharp                from 'sharp'
 // Collections
 import { Airlines }        from './src/collections/Airlines'
 import { AirportProject }  from './src/collections/AirportProject'
+import { Careers }         from './src/collections/Careers'
 import { Documents }  from './src/collections/Documents'
 import { Flights }    from './src/collections/Flights'
 import { FAQs }       from './src/collections/FAQs'
@@ -82,6 +83,57 @@ const s3Config = {
 
 const mediaBucket     = process.env.SUPABASE_STORAGE_BUCKET_MEDIA     ?? 'arl-public-media'
 const documentsBucket = process.env.SUPABASE_STORAGE_BUCKET_DOCUMENTS ?? 'arl-protected-docs'
+const databaseCaCert  = process.env.DATABASE_CA_CERT
+
+function splitAllowedOrigins(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+}
+
+function buildSiteUrlAllowList(): string[] {
+  const canonicalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  const extraOrigins = [
+    ...splitAllowedOrigins(process.env.NEXT_PUBLIC_SITE_URLS),
+    ...splitAllowedOrigins(process.env.ADDITIONAL_ALLOWED_ORIGINS),
+  ]
+
+  const allowList = Array.from(new Set([
+    canonicalSiteUrl,
+    ...extraOrigins,
+  ].filter((origin): origin is string => Boolean(origin))))
+
+  if (allowList.length === 0 && process.env.NODE_ENV === 'production' && !process.env.NEXT_OUTPUT_MODE) {
+    throw new Error('[payload.config] NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_SITE_URLS, or ADDITIONAL_ALLOWED_ORIGINS must be set for production CORS/CSRF.')
+  }
+
+  return allowList
+}
+
+const siteUrlAllowList = buildSiteUrlAllowList()
+
+function buildDatabaseSslOptions(hostname?: string) {
+  if (databaseCaCert) {
+    return {
+      rejectUnauthorized: true,
+      ca: databaseCaCert,
+      ...(hostname ? { servername: hostname } : {}),
+    }
+  }
+
+  if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+    return false
+  }
+
+  if (process.env.NODE_ENV === 'production' && !process.env.NEXT_OUTPUT_MODE) {
+    throw new Error(
+      '[payload.config] DATABASE_CA_CERT is required in production for remote Postgres hosts. Set DATABASE_CA_CERT to the Supabase database CA certificate.',
+    )
+  }
+
+  return { rejectUnauthorized: false, servername: hostname }
+}
 
 // ── Pool config builder ───────────────────────────────────────────────────────
 // Problem: pg-connection-string v2.7+ treats ?sslmode=require as verify-full,
@@ -90,30 +142,32 @@ const documentsBucket = process.env.SUPABASE_STORAGE_BUCKET_DOCUMENTS ?? 'arl-pr
 // the connection via SNI → "Tenant or user not found".
 //
 // Solution: parse the URL manually using Node's built-in URL class (no
-// pg-connection-string involved), then inject ssl: { rejectUnauthorized: false }
-// as a first-class pool option. This gives us encrypted SSL with SNI (so
-// Supabase can route correctly) without CA chain verification.
+// pg-connection-string involved), then inject SSL as a first-class pool option.
+// DATABASE_CA_CERT enables CA verification and is required for remote Postgres
+// hosts in production. Non-production remote connections keep encrypted SSL with
+// SNI while local development can run without SSL.
 function buildPoolConfig(connectionString: string) {
   try {
-    // Strip query params before parsing (pgbouncer=true, sslmode=require, etc.)
-    const clean  = connectionString.split('?')[0]
-    const url    = new URL(clean)
+    const url = new URL(connectionString)
+    const usePgBouncer = url.searchParams.get('pgbouncer') === 'true'
+
     return {
       host:     url.hostname,
       port:     parseInt(url.port, 10) || 5432,
       database: url.pathname.slice(1),
       user:     decodeURIComponent(url.username),
       password: decodeURIComponent(url.password),
-      ssl:      { rejectUnauthorized: false, servername: url.hostname },
+      ssl:      buildDatabaseSslOptions(url.hostname),
       max:      5,
       connectionTimeoutMillis: 10_000,
       idle_in_transaction_session_timeout: 30_000,
+      ...(usePgBouncer ? { options: '-c plan_cache_mode=force_custom_plan' } : {}),
     }
   } catch {
     // Fallback if URL parsing fails (e.g. local postgres without protocol)
     return {
       connectionString,
-      ssl:  true,
+      ssl:  buildDatabaseSslOptions(),
       max:  5,
       connectionTimeoutMillis: 10_000,
     }
@@ -121,7 +175,7 @@ function buildPoolConfig(connectionString: string) {
 }
 
 export default buildConfig({
-  serverURL: process.env.NEXT_PUBLIC_SITE_URL,
+  serverURL: siteUrlAllowList[0] || process.env.NEXT_PUBLIC_SITE_URL,
   secret:    requireEnv('PAYLOAD_SECRET'),
   sharp,
   editor: lexicalEditor({}),
@@ -193,6 +247,7 @@ export default buildConfig({
     Airlines,
     NewsEvents,
     AirportProject,
+    Careers,
     PageViews,
   ],
 
@@ -216,8 +271,8 @@ export default buildConfig({
 
   hooks: {},
 
-  cors: [requireEnv('NEXT_PUBLIC_SITE_URL')],
-  csrf: [requireEnv('NEXT_PUBLIC_SITE_URL')],
+  cors: siteUrlAllowList,
+  csrf: siteUrlAllowList,
 
   typescript: {
     outputFile: path.resolve(dirname, 'src/payload-types.ts'),

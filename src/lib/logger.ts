@@ -27,12 +27,13 @@ function output(entry: LogEntry) {
   const msg = redactSensitiveText(`${prefix} ${entry.message}`)
 
   if (entry.level === 'error') {
-    console.error(
-      msg,
-      entry.error instanceof Error && entry.error.stack
-        ? redactSensitiveText(entry.error.stack)
-        : '',
-    )
+    if (entry.error instanceof Error) {
+      console.error(msg, entry.error)
+    } else if (entry.error !== undefined) {
+      console.error(msg, redactSensitiveText(String(entry.error)))
+    } else {
+      console.error(msg)
+    }
   } else if (entry.level === 'warn') {
     console.warn(msg)
   } else {

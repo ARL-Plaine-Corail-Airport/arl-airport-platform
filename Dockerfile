@@ -31,6 +31,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV NEXT_OUTPUT_MODE=standalone
 ENV ARL_SKIP_DB_DURING_BUILD=1
+# Cap heap so the build fails fast with a JS heap OOM instead of getting
+# SIGKILLed by the cgroup — that shows up in logs as a gRPC EOF and is
+# impossible to diagnose.
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Placeholder values so payload.config.ts and env.ts don't throw during build.
 # ARL_SKIP_DB_DURING_BUILD keeps Next/Payload from attempting live DB access
@@ -41,6 +45,7 @@ ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
 ARG PAYLOAD_SECRET=build-time-placeholder-secret-min-32-chars
 ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ARG VISITOR_HASH_SALT=build-time-placeholder-visitor-hash-salt
 ARG SUPABASE_S3_ACCESS_KEY_ID=placeholder
 ARG SUPABASE_S3_SECRET_ACCESS_KEY=placeholder
 ARG SUPABASE_S3_ENDPOINT=https://placeholder.supabase.co/storage/v1/s3
@@ -49,6 +54,7 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV PAYLOAD_SECRET=$PAYLOAD_SECRET
 ENV DATABASE_URL=$DATABASE_URL
+ENV VISITOR_HASH_SALT=$VISITOR_HASH_SALT
 ENV SUPABASE_S3_ACCESS_KEY_ID=$SUPABASE_S3_ACCESS_KEY_ID
 ENV SUPABASE_S3_SECRET_ACCESS_KEY=$SUPABASE_S3_SECRET_ACCESS_KEY
 ENV SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT

@@ -1,4 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const { loggerWarn } = vi.hoisted(() => ({
+  loggerWarn: vi.fn(),
+}))
+
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    warn: loggerWarn,
+  },
+}))
 
 import {
   getLegacyVipRedirectPath,
@@ -7,6 +17,10 @@ import {
 } from '@/lib/middleware-routing'
 
 describe('middleware routing helpers', () => {
+  beforeEach(() => {
+    loggerWarn.mockClear()
+  })
+
   it('normalizes locale-prefixed reserved paths before routing', () => {
     expect(getMiddlewarePathInfo('/en/api/track')).toEqual({
       locale: 'en',
@@ -41,11 +55,15 @@ describe('middleware routing helpers', () => {
   })
 
   it('normalizes overlong pathnames to the root path', () => {
-    const result = getMiddlewarePathInfo(`/${'a'.repeat(2049)}`)
+    const result = getMiddlewarePathInfo(`/${'a'.repeat(2049)}`, 'airport.example')
 
     expect(result).toEqual({
       locale: null,
       normalizedPathname: '/',
     })
+    expect(loggerWarn).toHaveBeenCalledWith(
+      'Truncated overlong pathname host=airport.example pathLength=2050',
+      'middleware-routing',
+    )
   })
 })

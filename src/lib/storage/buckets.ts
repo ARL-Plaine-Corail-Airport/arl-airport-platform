@@ -54,10 +54,12 @@ export const DOCUMENT_PREFIXES = {
   general:        'general',
 } as const
 
-// Maximum allowed upload sizes per document type (bytes)
+// Maximum allowed upload sizes per document type (bytes).
+// Single source of truth — consumed by both Payload collection beforeChange hooks
+// (Media.ts, Documents.ts) and the programmatic upload helpers in upload.ts.
 export const MAX_FILE_SIZES = {
-  image:    10 * 1024 * 1024,  // 10 MB
-  pdf:      25 * 1024 * 1024,  // 25 MB
+  image:    50 * 1024 * 1024,   // 50 MB
+  pdf:     100 * 1024 * 1024,   // 100 MB
 } as const
 
 // Allowed MIME types per bucket

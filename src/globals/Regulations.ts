@@ -7,14 +7,16 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isEditor } from '@/access'
+import { isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { enforceApproverOnPublish } from './approvalGuards'
 import { appendApprovalHistoryHook } from './approvalHistory'
 
 export const Regulations: GlobalConfig = {
   slug: 'regulations',
   access: {
-    read:   () => true,
+    // Public reads are scoped to the published version; editors can draft,
+    // but only approvers may actually publish (enforced in beforeChange).
+    read: publishedVersionOrAdmin,
     update: isEditor,
   },
   admin: {
@@ -92,6 +94,11 @@ export const Regulations: GlobalConfig = {
       name: 'approvalNotes',
       label: 'Approval Notes',
       type: 'textarea',
+      access: {
+        read: isEditor,
+        create: isApprover,
+        update: isApprover,
+      },
       admin: {
         position: 'sidebar',
         description: 'Optional note to include in the approval history when publishing.',
@@ -101,6 +108,11 @@ export const Regulations: GlobalConfig = {
       name: 'approvalHistory',
       label: 'Approval History',
       type: 'array',
+      access: {
+        read: isEditor,
+        create: isApprover,
+        update: isApprover,
+      },
       admin: {
         position: 'sidebar',
         readOnly: true,

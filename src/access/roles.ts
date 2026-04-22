@@ -1,5 +1,10 @@
 import type { AccessArgs } from 'payload'
 
+// Shared by collection `Access` and field `FieldAccess` callers. Both receive
+// `{ req }` with a user; narrowing to this subset lets the role helpers be
+// reused at both levels without duplicating logic.
+type RoleAccessArgs = { req: AccessArgs['req'] }
+
 type Role =
   | 'super_admin'
   | 'content_admin'
@@ -33,15 +38,15 @@ function hasAnyRole(user: unknown, allowedRoles: readonly Role[]) {
   return roles.some((role) => allowedRoles.includes(role))
 }
 
-export const isAdmin = ({ req }: AccessArgs) => hasAnyRole(req.user, ADMIN_ROLES)
+export const isAdmin = ({ req }: RoleAccessArgs) => hasAnyRole(req.user, ADMIN_ROLES)
 
-export const isSuperAdmin = ({ req }: AccessArgs) => hasAnyRole(req.user, ['super_admin'])
+export const isSuperAdmin = ({ req }: RoleAccessArgs) => hasAnyRole(req.user, ['super_admin'])
 
-export const isApprover = ({ req }: AccessArgs) => hasAnyRole(req.user, APPROVER_ROLES)
+export const isApprover = ({ req }: RoleAccessArgs) => hasAnyRole(req.user, APPROVER_ROLES)
 
-export const isEditor = ({ req }: AccessArgs) => hasAnyRole(req.user, EDITOR_ROLES)
+export const isEditor = ({ req }: RoleAccessArgs) => hasAnyRole(req.user, EDITOR_ROLES)
 
-export const isDocumentReader = ({ req }: AccessArgs) =>
+export const isDocumentReader = ({ req }: RoleAccessArgs) =>
   hasAnyRole(req.user, DOCUMENT_READER_ROLES)
 
 function publishedFieldOrAdmin(field: 'status' | '_status') {

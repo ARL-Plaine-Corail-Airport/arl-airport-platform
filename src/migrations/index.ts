@@ -13,6 +13,7 @@ import * as migration_20260420_105000_add_documents_visibility from './20260420_
 import * as migration_20260420_144442_add_users_preferred_locale from './20260420_144442_add_users_preferred_locale';
 import * as migration_20260421_133938_add_slug_length_checks from './20260421_133938_add_slug_length_checks';
 import * as migration_20260422_055322_add_careers_collection from './20260422_055322_add_careers_collection';
+import * as migration_20260422_060000_expand_workflow_status_enums from './20260422_060000_expand_workflow_status_enums';
 
 export const migrations = [
   {
@@ -89,5 +90,10 @@ export const migrations = [
     up: migration_20260422_055322_add_careers_collection.up,
     down: migration_20260422_055322_add_careers_collection.down,
     name: '20260422_055322_add_careers_collection'
+  },
+  {
+    up: migration_20260422_060000_expand_workflow_status_enums.up,
+    down: migration_20260422_060000_expand_workflow_status_enums.down,
+    name: '20260422_060000_expand_workflow_status_enums',
   },
 ];

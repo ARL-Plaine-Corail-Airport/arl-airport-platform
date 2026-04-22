@@ -153,6 +153,8 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   	"_uuid" varchar
   );
   
+  UPDATE "faqs" SET "category" = 'general' WHERE "category" IS NULL;
+  ALTER TABLE "faqs" ALTER COLUMN "category" SET DEFAULT 'general';
   ALTER TABLE "faqs" ALTER COLUMN "category" SET NOT NULL;
   ALTER TABLE "faqs" ALTER COLUMN "status" SET DEFAULT 'draft';
   ALTER TABLE "news_events" ADD COLUMN "last_approved_by_id" integer;
@@ -195,16 +197,19 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "careers_attachments_order_idx" ON "careers_attachments" USING btree ("_order");
   CREATE INDEX "careers_attachments_parent_id_idx" ON "careers_attachments" USING btree ("_parent_id");
   CREATE INDEX "careers_attachments_file_idx" ON "careers_attachments" USING btree ("file_id");
+  CREATE INDEX "careers_attachments_locales_parent_id_idx" ON "careers_attachments_locales" USING btree ("_parent_id");
   CREATE UNIQUE INDEX "careers_attachments_locales_locale_parent_id_unique" ON "careers_attachments_locales" USING btree ("_locale","_parent_id");
   CREATE UNIQUE INDEX "careers_slug_idx" ON "careers" USING btree ("slug");
   CREATE INDEX "careers_last_approved_by_idx" ON "careers" USING btree ("last_approved_by_id");
   CREATE INDEX "careers_updated_at_idx" ON "careers" USING btree ("updated_at");
   CREATE INDEX "careers_created_at_idx" ON "careers" USING btree ("created_at");
   CREATE INDEX "careers__status_idx" ON "careers" USING btree ("_status");
+  CREATE INDEX "careers_locales_parent_id_idx" ON "careers_locales" USING btree ("_parent_id");
   CREATE UNIQUE INDEX "careers_locales_locale_parent_id_unique" ON "careers_locales" USING btree ("_locale","_parent_id");
   CREATE INDEX "_careers_v_version_attachments_order_idx" ON "_careers_v_version_attachments" USING btree ("_order");
   CREATE INDEX "_careers_v_version_attachments_parent_id_idx" ON "_careers_v_version_attachments" USING btree ("_parent_id");
   CREATE INDEX "_careers_v_version_attachments_file_idx" ON "_careers_v_version_attachments" USING btree ("file_id");
+  CREATE INDEX "_careers_v_version_attachments_locales_parent_id_idx" ON "_careers_v_version_attachments_locales" USING btree ("_parent_id");
   CREATE UNIQUE INDEX "_careers_v_version_attachments_locales_locale_parent_id_uniq" ON "_careers_v_version_attachments_locales" USING btree ("_locale","_parent_id");
   CREATE INDEX "_careers_v_parent_idx" ON "_careers_v" USING btree ("parent_id");
   CREATE INDEX "_careers_v_version_version_slug_idx" ON "_careers_v" USING btree ("version_slug");
@@ -218,7 +223,9 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   CREATE INDEX "_careers_v_published_locale_idx" ON "_careers_v" USING btree ("published_locale");
   CREATE INDEX "_careers_v_latest_idx" ON "_careers_v" USING btree ("latest");
   CREATE INDEX "_careers_v_autosave_idx" ON "_careers_v" USING btree ("autosave");
+  CREATE INDEX "_careers_v_locales_parent_id_idx" ON "_careers_v_locales" USING btree ("_parent_id");
   CREATE UNIQUE INDEX "_careers_v_locales_locale_parent_id_unique" ON "_careers_v_locales" USING btree ("_locale","_parent_id");
+  CREATE INDEX "airport_map_points_locales_parent_id_idx" ON "airport_map_points_locales" USING btree ("_parent_id");
   CREATE UNIQUE INDEX "airport_map_points_locales_locale_parent_id_unique" ON "airport_map_points_locales" USING btree ("_locale","_parent_id");
   CREATE INDEX "regulations_approval_history_order_idx" ON "regulations_approval_history" USING btree ("_order");
   CREATE INDEX "regulations_approval_history_parent_id_idx" ON "regulations_approval_history" USING btree ("_parent_id");
@@ -266,7 +273,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
-   ALTER TABLE "_flights_v" DISABLE ROW LEVEL SECURITY;
+  ALTER TABLE "_flights_v" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "careers_attachments" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "careers_attachments_locales" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "careers" DISABLE ROW LEVEL SECURITY;
@@ -280,49 +287,64 @@ export async function down({ db, payload, req }: MigrateDownArgs): Promise<void>
   ALTER TABLE "_regulations_v_version_approval_history" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "legal_pages_approval_history" DISABLE ROW LEVEL SECURITY;
   ALTER TABLE "_legal_pages_v_version_approval_history" DISABLE ROW LEVEL SECURITY;
+
+  ALTER TABLE "news_events" DROP CONSTRAINT IF EXISTS "news_events_last_approved_by_id_users_id_fk";
+  ALTER TABLE "_news_events_v" DROP CONSTRAINT IF EXISTS "_news_events_v_version_last_approved_by_id_users_id_fk";
+  ALTER TABLE "airport_project" DROP CONSTRAINT IF EXISTS "airport_project_last_approved_by_id_users_id_fk";
+  ALTER TABLE "_airport_project_v" DROP CONSTRAINT IF EXISTS "_airport_project_v_version_last_approved_by_id_users_id_fk";
+  ALTER TABLE "payload_locked_documents_rels" DROP CONSTRAINT IF EXISTS "payload_locked_documents_rels_careers_fk";
+
+  DROP INDEX IF EXISTS "notices_category_idx";
+  DROP INDEX IF EXISTS "notices_status_idx";
+  DROP INDEX IF EXISTS "_notices_v_version_version_category_idx";
+  DROP INDEX IF EXISTS "_notices_v_version_version_status_idx";
+  DROP INDEX IF EXISTS "pages_status_idx";
+  DROP INDEX IF EXISTS "_pages_v_version_version_status_idx";
+  DROP INDEX IF EXISTS "airlines_is_active_idx";
+  DROP INDEX IF EXISTS "airlines_iata_code_idx";
+  DROP INDEX IF EXISTS "_airlines_v_version_version_is_active_idx";
+  DROP INDEX IF EXISTS "_airlines_v_version_version_iata_code_idx";
+  DROP INDEX IF EXISTS "news_events_last_approved_by_idx";
+  DROP INDEX IF EXISTS "_news_events_v_version_version_last_approved_by_idx";
+  DROP INDEX IF EXISTS "airport_project_last_approved_by_idx";
+  DROP INDEX IF EXISTS "_airport_project_v_version_version_last_approved_by_idx";
+  DROP INDEX IF EXISTS "payload_locked_documents_rels_careers_id_idx";
+
+  -- Restore airport_map_points name/description from locale table before dropping the locale table.
+  ALTER TABLE "airport_map_points" ADD COLUMN IF NOT EXISTS "name" varchar;
+  ALTER TABLE "airport_map_points" ADD COLUMN IF NOT EXISTS "description" varchar;
+
+  UPDATE "airport_map_points" p
+  SET
+    "name" = COALESCE(l."name", p."name"),
+    "description" = COALESCE(l."description", p."description")
+  FROM "airport_map_points_locales" l
+  WHERE l."_parent_id" = p."id" AND l."_locale" = 'en';
+
+  UPDATE "airport_map_points"
+  SET "name" = COALESCE("name", ''), "description" = COALESCE("description", '');
+
+  ALTER TABLE "airport_map_points" ALTER COLUMN "name" SET NOT NULL;
+  ALTER TABLE "airport_map_points" ALTER COLUMN "description" SET NOT NULL;
+
   DROP TABLE "_flights_v" CASCADE;
-  DROP TABLE "careers_attachments" CASCADE;
   DROP TABLE "careers_attachments_locales" CASCADE;
-  DROP TABLE "careers" CASCADE;
+  DROP TABLE "careers_attachments" CASCADE;
   DROP TABLE "careers_locales" CASCADE;
-  DROP TABLE "_careers_v_version_attachments" CASCADE;
   DROP TABLE "_careers_v_version_attachments_locales" CASCADE;
-  DROP TABLE "_careers_v" CASCADE;
+  DROP TABLE "_careers_v_version_attachments" CASCADE;
   DROP TABLE "_careers_v_locales" CASCADE;
+  DROP TABLE "_careers_v" CASCADE;
+  DROP TABLE "careers" CASCADE;
   DROP TABLE "airport_map_points_locales" CASCADE;
   DROP TABLE "regulations_approval_history" CASCADE;
   DROP TABLE "_regulations_v_version_approval_history" CASCADE;
   DROP TABLE "legal_pages_approval_history" CASCADE;
   DROP TABLE "_legal_pages_v_version_approval_history" CASCADE;
-  ALTER TABLE "news_events" DROP CONSTRAINT "news_events_last_approved_by_id_users_id_fk";
-  
-  ALTER TABLE "_news_events_v" DROP CONSTRAINT "_news_events_v_version_last_approved_by_id_users_id_fk";
-  
-  ALTER TABLE "airport_project" DROP CONSTRAINT "airport_project_last_approved_by_id_users_id_fk";
-  
-  ALTER TABLE "_airport_project_v" DROP CONSTRAINT "_airport_project_v_version_last_approved_by_id_users_id_fk";
-  
-  ALTER TABLE "payload_locked_documents_rels" DROP CONSTRAINT "payload_locked_documents_rels_careers_fk";
-  
-  DROP INDEX "notices_category_idx";
-  DROP INDEX "notices_status_idx";
-  DROP INDEX "_notices_v_version_version_category_idx";
-  DROP INDEX "_notices_v_version_version_status_idx";
-  DROP INDEX "pages_status_idx";
-  DROP INDEX "_pages_v_version_version_status_idx";
-  DROP INDEX "airlines_is_active_idx";
-  DROP INDEX "airlines_iata_code_idx";
-  DROP INDEX "_airlines_v_version_version_is_active_idx";
-  DROP INDEX "_airlines_v_version_version_iata_code_idx";
-  DROP INDEX "news_events_last_approved_by_idx";
-  DROP INDEX "_news_events_v_version_version_last_approved_by_idx";
-  DROP INDEX "airport_project_last_approved_by_idx";
-  DROP INDEX "_airport_project_v_version_version_last_approved_by_idx";
-  DROP INDEX "payload_locked_documents_rels_careers_id_idx";
+
   ALTER TABLE "faqs" ALTER COLUMN "category" DROP NOT NULL;
+  ALTER TABLE "faqs" ALTER COLUMN "category" DROP DEFAULT;
   ALTER TABLE "faqs" ALTER COLUMN "status" SET DEFAULT 'published';
-  ALTER TABLE "airport_map_points" ADD COLUMN "name" varchar NOT NULL;
-  ALTER TABLE "airport_map_points" ADD COLUMN "description" varchar NOT NULL;
   ALTER TABLE "news_events" DROP COLUMN "last_approved_by_id";
   ALTER TABLE "_news_events_v" DROP COLUMN "version_last_approved_by_id";
   ALTER TABLE "airport_project" DROP COLUMN "last_approved_by_id";

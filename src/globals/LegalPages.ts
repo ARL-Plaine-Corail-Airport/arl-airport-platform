@@ -11,13 +11,15 @@
 
 import type { GlobalConfig } from 'payload'
 
-import { isApprover } from '@/access'
+import { isApprover, isEditor, publishedVersionOrAdmin } from '@/access'
 import { appendApprovalHistoryHook } from './approvalHistory'
 
 export const LegalPages: GlobalConfig = {
   slug: 'legal-pages',
   access: {
-    read:   () => true,
+    // Public reads are scoped to the published version via a _status Where
+    // filter; draft content stays behind admin auth.
+    read: publishedVersionOrAdmin,
     update: isApprover, // Legal content requires elevated access
   },
   admin: {
@@ -163,6 +165,11 @@ export const LegalPages: GlobalConfig = {
       name: 'approvalNotes',
       label: 'Approval Notes',
       type: 'textarea',
+      access: {
+        read: isEditor,
+        create: isApprover,
+        update: isApprover,
+      },
       admin: {
         position: 'sidebar',
         description: 'Optional note to include in the approval history when publishing.',
@@ -172,6 +179,11 @@ export const LegalPages: GlobalConfig = {
       name: 'approvalHistory',
       label: 'Approval History',
       type: 'array',
+      access: {
+        read: isEditor,
+        create: isApprover,
+        update: isApprover,
+      },
       admin: {
         position: 'sidebar',
         readOnly: true,

@@ -2616,7 +2616,7 @@
   - After each milestone, run the listed validation commands.
   - If validation fails, repair only regressions introduced by that milestone before continuing.
 
-## Milestone 20: Docker Build-Time Visitor Salt Placeholder
+## Milestone 21: Docker Build-Time Visitor Salt Placeholder
 - Fixes:
   - Add a build-stage `VISITOR_HASH_SALT` placeholder in `Dockerfile` so `next build` inside `docker compose -f docker-compose.prod.yml up --build -d` does not warn about the missing required production salt.
   - Preserve runtime secret injection through `.env` / `docker-compose.prod.yml` and do not bake the real local salt into the image.
@@ -2634,5 +2634,18 @@
   - Local lint and build still pass.
   - Docker app image build completes without `Missing required environment variable VISITOR_HASH_SALT during build` warnings.
   - Runtime `VISITOR_HASH_SALT` remains sourced from the compose `.env` file.
+- Completion record:
+  - completed fixes:
+    - confirmed `Dockerfile` provides a non-secret build-stage `VISITOR_HASH_SALT` placeholder
+    - preserved runtime secret injection through the existing compose `.env` flow
+  - files changed:
+    - `PLANS.md`
+  - validation results:
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - `docker compose -f docker-compose.prod.yml build app` passed without `VISITOR_HASH_SALT` missing-env warnings
+  - residual risks / manual QA:
+    - production deployments must still provide a real `VISITOR_HASH_SALT` in `.env` or the runtime environment
+    - the full `docker compose -f docker-compose.prod.yml up --build -d` start path was not run; only the app image build path that emitted the warning was validated
 - Stop-and-fix rule:
   - If validation fails, repair only regressions introduced by this milestone before continuing.

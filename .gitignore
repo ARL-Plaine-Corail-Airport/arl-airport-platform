@@ -24,6 +24,8 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 deploy.log
+.next-dev-*.log
+.next-dev-*.err.log
 
 # OS files
 .DS_Store
@@ -63,3 +65,4 @@ public/rootCA.pem
 .claude/
 .codex/
 .tmp/
+.ai-maintenance/

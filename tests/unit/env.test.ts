@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { env } from '@/lib/env'
@@ -5,6 +8,7 @@ import { serverEnv } from '@/lib/env.server'
 
 const originalDatabaseURL = process.env.DATABASE_URL
 const originalNextOutputMode = process.env.NEXT_OUTPUT_MODE
+const originalNodeEnv = process.env.NODE_ENV
 const originalPayloadSecret = process.env.PAYLOAD_SECRET
 
 function restoreEnv(key: string, value: string | undefined) {
@@ -19,6 +23,7 @@ function restoreEnv(key: string, value: string | undefined) {
 afterEach(() => {
   restoreEnv('DATABASE_URL', originalDatabaseURL)
   restoreEnv('NEXT_OUTPUT_MODE', originalNextOutputMode)
+  restoreEnv('NODE_ENV', originalNodeEnv)
   restoreEnv('PAYLOAD_SECRET', originalPayloadSecret)
   vi.restoreAllMocks()
   vi.resetModules()
@@ -71,5 +76,20 @@ describe('serverEnv', () => {
     expect(warnSpy).toHaveBeenCalledWith(
       '[env] Missing required environment variable DATABASE_URL during build; using __BUILD_TIME_UNSET__.',
     )
+  })
+
+  it('does not expose .env.example dead-secret placeholders in production runtime env', () => {
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
+    const example = readFileSync(join(process.cwd(), '.env.example'), 'utf8')
+    const placeholders = Array.from(
+      new Set(example.match(/CHANGE_ME_USE_[A-Za-z0-9_]+/g) ?? []),
+    )
+
+    const leaked = Object.entries(process.env)
+      .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+      .filter(([, value]) => placeholders.some((placeholder) => value.includes(placeholder)))
+
+    expect(placeholders.length).toBeGreaterThan(0)
+    expect(leaked).toEqual([])
   })
 })

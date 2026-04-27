@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  canAccess,
+  canAccessAny,
   getInitials,
   getNavForRole,
   getPrimaryRole,
@@ -35,18 +35,18 @@ describe('getRoleBadgeClass', () => {
   })
 })
 
-describe('canAccess', () => {
+describe('canAccessAny', () => {
   it('grants super_admin access to everything', () => {
-    expect(canAccess('super_admin', 'settings')).toBe(true)
-    expect(canAccess('super_admin', 'overview')).toBe(true)
+    expect(canAccessAny(['super_admin'], 'settings')).toBe(true)
+    expect(canAccessAny(['super_admin'], 'overview')).toBe(true)
   })
 
   it('denies viewer_auditor access to settings', () => {
-    expect(canAccess('viewer_auditor', 'settings')).toBe(false)
+    expect(canAccessAny(['viewer_auditor'], 'settings')).toBe(false)
   })
 
   it('returns false for unknown roles', () => {
-    expect(canAccess('nonexistent', 'overview')).toBe(false)
+    expect(canAccessAny(['nonexistent'], 'overview')).toBe(false)
   })
 })
 

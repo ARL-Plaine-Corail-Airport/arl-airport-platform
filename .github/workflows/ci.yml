@@ -37,8 +37,6 @@ env:
   WEATHER_PROVIDER_LATITUDE: '-19.757778'
   WEATHER_PROVIDER_LONGITUDE: '63.361389'
   WEATHER_PROVIDER_TIMEZONE: Indian/Mauritius
-  NEXT_PUBLIC_SENTRY_DSN: https://examplePublicKey@o0.ingest.sentry.io/0
-  SENTRY_DSN: https://examplePublicKey@o0.ingest.sentry.io/0
   SENTRY_AUTH_TOKEN: placeholder-sentry-token
 
 jobs:
@@ -121,6 +119,10 @@ jobs:
 
       - name: Run unit tests
         run: pnpm test
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
 
   build-and-e2e:
     runs-on: ubuntu-latest

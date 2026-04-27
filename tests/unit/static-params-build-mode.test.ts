@@ -39,8 +39,10 @@ function mockPageModuleDeps() {
     getPageBySlug: vi.fn(),
     getAirportProjectItems,
     getAirportProjectBySlug: vi.fn(),
+    getAirportProjectBySlugWithSignedAttachments: vi.fn(),
     getNewsEvents,
     getNewsEventBySlug: vi.fn(),
+    getNewsEventBySlugWithSignedAttachments: vi.fn(),
   }))
   vi.doMock('@/lib/date', () => ({
     formatDateTime: vi.fn(() => ''),
@@ -88,25 +90,29 @@ describe('build-time static params guards', () => {
     expect(getPublishedPages).not.toHaveBeenCalled()
   })
 
-  it('returns no airport project params during build-time DB skip', async () => {
+  it('keeps airport project detail params request-bound', async () => {
     process.env.ARL_SKIP_DB_DURING_BUILD = '1'
     getAirportProjectItems.mockResolvedValue([{ slug: 'runway-upgrade' }])
     mockPageModuleDeps()
 
     const mod = await import('@/app/(frontend)/airport-project/[slug]/page')
 
-    await expect(mod.generateStaticParams()).resolves.toEqual([])
+    expect('generateStaticParams' in mod).toBe(false)
+    expect('dynamic' in mod).toBe(false)
+    expect(mod.revalidate).toBe(60)
     expect(getAirportProjectItems).not.toHaveBeenCalled()
   })
 
-  it('returns no news event params during build-time DB skip', async () => {
+  it('keeps news event detail params request-bound', async () => {
     process.env.ARL_SKIP_DB_DURING_BUILD = '1'
     getNewsEvents.mockResolvedValue([{ slug: 'terminal-notice' }])
     mockPageModuleDeps()
 
     const mod = await import('@/app/(frontend)/news-events/[slug]/page')
 
-    await expect(mod.generateStaticParams()).resolves.toEqual([])
+    expect('generateStaticParams' in mod).toBe(false)
+    expect('dynamic' in mod).toBe(false)
+    expect(mod.revalidate).toBe(60)
     expect(getNewsEvents).not.toHaveBeenCalled()
   })
 })

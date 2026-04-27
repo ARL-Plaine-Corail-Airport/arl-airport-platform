@@ -37,6 +37,11 @@ const {
       statusSecret: 'status-secret-min-16',
       upstashRedisRestUrl: 'https://redis.example.com',
       upstashRedisRestToken: 'redis-token',
+      s3SecretAccessKey: 'storage-secret',
+      payloadSecret: 'payload-secret',
+      visitorHashSalt: 'visitor-salt',
+      databaseURL: 'postgres://user:db-password@example.com:6543/postgres',
+      databaseDirectURL: '',
     },
   }
 })
@@ -81,6 +86,11 @@ describe('status route', () => {
     serverEnv.statusSecret = 'status-secret-min-16'
     serverEnv.upstashRedisRestUrl = 'https://redis.example.com'
     serverEnv.upstashRedisRestToken = 'redis-token'
+    serverEnv.s3SecretAccessKey = 'storage-secret'
+    serverEnv.payloadSecret = 'payload-secret'
+    serverEnv.visitorHashSalt = 'visitor-salt'
+    serverEnv.databaseURL = 'postgres://user:db-password@example.com:6543/postgres'
+    serverEnv.databaseDirectURL = ''
     findGlobal.mockResolvedValue({})
     listBuckets.mockResolvedValue({ data: [], error: null })
     redisPing.mockResolvedValue('PONG')
@@ -171,6 +181,21 @@ describe('status route', () => {
       'Status Redis check failed',
       error,
       'status',
+    )
+  })
+
+  it('redacts configured secrets from Redis status errors', async () => {
+    redisPing.mockRejectedValue(
+      new Error('redis-token storage-secret db-password should not leak'),
+    )
+
+    const response = await GET(makeRequest('status-secret-min-16'))
+    const loggedError = loggerError.mock.calls[0]?.[1]
+
+    expect(response.status).toBe(200)
+    expect(loggedError).toBeInstanceOf(Error)
+    expect((loggedError as Error).message).toBe(
+      '[REDACTED] [REDACTED] [REDACTED] should not leak',
     )
   })
 

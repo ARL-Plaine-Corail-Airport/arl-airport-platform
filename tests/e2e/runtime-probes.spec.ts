@@ -14,11 +14,16 @@ test.describe('Runtime probes', () => {
   test('localized public routes return locale headers and public CSP', async ({ request }) => {
     for (const locale of ['en', 'fr']) {
       const response = await request.get(`/${locale}/contact`)
+      const csp = response.headers()['content-security-policy']
+      const nonce = csp?.match(/'nonce-([^']+)'/)?.[1]
+      const html = await response.text()
 
       expect(response.ok()).toBeTruthy()
       expect(response.headers()['x-locale']).toBe(locale)
-      expect(response.headers()['x-nonce']).toBeTruthy()
-      expect(response.headers()['content-security-policy']).toContain("script-src 'self' 'nonce-")
+      expect(response.headers()['x-nonce']).toBeUndefined()
+      expect(csp).toContain("script-src 'self' 'nonce-")
+      expect(nonce).toBeTruthy()
+      expect(html).toContain(`nonce="${nonce}"`)
       expect(response.headers()['referrer-policy']).toBe('strict-origin-when-cross-origin')
       expect(response.headers()['x-content-type-options']).toBe('nosniff')
       expect(response.headers()['permissions-policy']).toContain('camera=()')
@@ -32,6 +37,49 @@ test.describe('Runtime probes', () => {
     expect(response.ok()).toBeTruthy()
     expect(response.headers()['content-security-policy']).toContain("script-src 'self' 'unsafe-inline'")
     expect(response.headers()['x-nonce']).toBeUndefined()
+  })
+
+  test('admin login with a dashboard redirect target stays renderable', async ({ page }) => {
+    const adminRenderErrors: string[] = []
+    page.on('console', (message) => {
+      const text = message.text()
+      if (
+        message.type() === 'error' &&
+        (
+          text.includes('[payload-admin] render error') ||
+          text.includes('Failed to fetch RSC payload') ||
+          text.includes('network error')
+        )
+      ) {
+        adminRenderErrors.push(text)
+      }
+    })
+
+    await page.goto('/admin/login?redirect=%2Fdashboard', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(2000)
+
+    await expect(page.getByText('Admin view failed to render')).toHaveCount(0)
+    expect(adminRenderErrors).toEqual([])
+  })
+
+  test('shared chrome does not trigger automatic RSC prefetches on initial render', async ({ page }) => {
+    const rscRequests: string[] = []
+
+    page.on('request', (request) => {
+      const url = request.url()
+      if (
+        request.resourceType() === 'fetch' &&
+        url.startsWith('http://localhost:3000/') &&
+        url.includes('_rsc=')
+      ) {
+        rscRequests.push(url)
+      }
+    })
+
+    await page.goto('/en/notices', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(2000)
+
+    expect(rscRequests).toEqual([])
   })
 
   test('unauthenticated dashboard requests redirect to admin login', async ({ request }) => {
@@ -104,9 +152,13 @@ test.describe('Runtime probes', () => {
       const response = await request.post('/api/track', {
         failOnStatusCode: false,
         data: { path, referrer: null },
+        headers: {
+          'sec-fetch-site': 'same-origin',
+        },
       })
 
-      expect(response.status(), `expected ${path} to be rejected`).toBe(400)
+      expect(response.status(), `expected ${path} to be ignored`).toBe(204)
+      await expect(response.text()).resolves.toBe('')
     }
   })
 })

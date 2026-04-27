@@ -48,6 +48,16 @@ function FilterChipsSkeleton() {
   return <div className="filter-chips-skeleton" aria-hidden />
 }
 
+type SignedAttachment = {
+  id?: string | number | null
+  label?: string | null
+  file?: string | number | {
+    id?: string | number | null
+    url?: string | null
+    filename?: string | null
+  } | null
+}
+
 export default async function NewsEventsPage({
   searchParams,
 }: {
@@ -114,7 +124,7 @@ export default async function NewsEventsPage({
                     {/* Attachment links */}
                     {item.attachments?.length > 0 && (
                       <div className="news-item__links">
-                        {item.attachments.map((att: any) => {
+                        {item.attachments.map((att: SignedAttachment) => {
                           const fileUrl = typeof att.file === 'object' ? att.file?.url : null
                           if (!fileUrl) return null
                           const attachmentKey = `${item.id ?? item.slug}-${att.label ?? 'attachment'}-${fileUrl}`

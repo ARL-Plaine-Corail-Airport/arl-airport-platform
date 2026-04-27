@@ -321,6 +321,23 @@ function isExpiredJwt(token: string): boolean {
   return typeof exp === 'number' && Number.isFinite(exp) && exp * 1000 <= Date.now()
 }
 
+function isBrowserSubresourceRequest(request: NextRequest): boolean {
+  if (
+    request.headers.get('rsc') === '1' ||
+    request.headers.has('next-router-prefetch')
+  ) {
+    return true
+  }
+
+  const fetchDestination = request.headers.get('sec-fetch-dest')
+  if (fetchDestination && fetchDestination !== 'document') {
+    return true
+  }
+
+  const fetchMode = request.headers.get('sec-fetch-mode')
+  return Boolean(fetchMode && fetchMode !== 'navigate')
+}
+
 async function checkRateLimit(
   request: NextRequest,
   normalizedPathname: string,
@@ -451,7 +468,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Generate a per-request nonce for CSP script-src
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const nonce = btoa(crypto.randomUUID())
 
   const buildInternalUrl = (nextPathname: string) => {
     const url = new URL(nextPathname, request.url)
@@ -547,13 +564,46 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  if (
+    isLocalePrefixed &&
+    (
+      matchesPathPrefix(normalizedPathname, '/dashboard') ||
+      matchesPathPrefix(normalizedPathname, '/admin')
+    )
+  ) {
+    const mode: CspMode = matchesPathPrefix(normalizedPathname, '/admin') ? 'admin' : 'app'
+    const redirectResponse = applyCspHeaders(
+      NextResponse.redirect(buildInternalUrl(normalizedPathname), 308),
+      mode,
+      nonce,
+    )
+    redirectResponse.headers.set('Cache-Control', 'private, no-store')
+    return redirectResponse
+  }
+
   // Dashboard auth handoff
-  // Payload stores auth in a JWT cookie named `payload-token`. Middleware
-  // verifies the signature before using the expiry shortcut. Section and role
-  // access are still enforced server-side in the dashboard auth helpers after
-  // payload.auth().
+  // Payload stores auth in a JWT cookie named `payload-token`. For direct
+  // document navigations, middleware verifies the signature before using the
+  // expiry shortcut. Section and role access are still enforced server-side in
+  // the dashboard auth helpers after payload.auth().
   if (matchesPathPrefix(normalizedPathname, '/dashboard')) {
     const payloadToken = request.cookies.get('payload-token')?.value
+
+    const buildDashboardHandoffResponse = () => {
+      const dashResponse = applyCspHeaders(
+        buildRouteResponse({ 'x-nonce': nonce }),
+        'app',
+        nonce,
+      )
+      dashResponse.headers.set('Cache-Control', 'private, no-store')
+      return dashResponse
+    }
+
+    // Browser RSC/client fetches must reach the dashboard route so Next can
+    // encode any unauthenticated redirect in the RSC response format.
+    if (isBrowserSubresourceRequest(request)) {
+      return buildDashboardHandoffResponse()
+    }
 
     if (!payloadToken || !(await isValidJwt(payloadToken)) || isExpiredJwt(payloadToken)) {
       const loginUrl = new URL('/admin/login', request.url)
@@ -567,13 +617,7 @@ export async function middleware(request: NextRequest) {
       return redirectResponse
     }
 
-    const dashResponse = applyCspHeaders(
-      buildRouteResponse({ 'x-nonce': nonce }),
-      'app',
-      nonce,
-    )
-    dashResponse.headers.set('Cache-Control', 'private, no-store')
-    return dashResponse
+    return buildDashboardHandoffResponse()
   }
 
   // ── Locale-prefixed URL routing ───────────────────────────────────────

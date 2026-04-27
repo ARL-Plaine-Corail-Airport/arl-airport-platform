@@ -40,19 +40,19 @@ export function SiteFooter({
               <p className="footer-callout__copy">{t('pages.contact_summary')}</p>
             </div>
             <div className="footer-callout__actions">
-              <Link href={lp('/flight-status')} className="footer-callout__action">
+              <Link href={lp('/flight-status')} prefetch={false} className="footer-callout__action">
                 <span>{t('nav.flight_status')}</span>
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </Link>
-              <Link href={lp('/airport-map')} className="footer-callout__action">
+              <Link href={lp('/airport-map')} prefetch={false} className="footer-callout__action">
                 <span>{t('nav.airport_map')}</span>
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </Link>
-              <Link href={lp('/contact')} className="footer-callout__action">
+              <Link href={lp('/contact')} prefetch={false} className="footer-callout__action">
                 <span>{t('nav.contact')}</span>
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="m9 18 6-6-6-6" />
@@ -161,40 +161,40 @@ export function SiteFooter({
           {/* Flights */}
           <div>
             <h3 className="footer-heading">{t('footer.flights')}</h3>
-            <Link href={lp('/arrivals')} className="footer-link">{t('nav.arrivals')}</Link>
-            <Link href={lp('/departures')} className="footer-link">{t('nav.departures')}</Link>
-            <Link href={lp('/flight-status')} className="footer-link">{t('nav.flight_status')}</Link>
+            <Link href={lp('/arrivals')} prefetch={false} className="footer-link">{t('nav.arrivals')}</Link>
+            <Link href={lp('/departures')} prefetch={false} className="footer-link">{t('nav.departures')}</Link>
+            <Link href={lp('/flight-status')} prefetch={false} className="footer-link">{t('nav.flight_status')}</Link>
           </div>
 
           {/* Passenger Info */}
           <div>
             <h3 className="footer-heading">{t('footer.passenger_info')}</h3>
-            <Link href={lp('/passenger-guide')} className="footer-link">{t('nav.passenger_guide')}</Link>
-            <Link href={lp('/transport-parking')} className="footer-link">{t('nav.transport_parking')}</Link>
-            <Link href={lp('/airport-map')} className="footer-link">{t('nav.airport_map')}</Link>
-            <Link href={lp('/amenities')} className="footer-link">{t('nav.amenities')}</Link>
-            <Link href={lp('/vip-lounge')} className="footer-link">{t('nav.vip_lounge')}</Link>
-            <Link href={lp('/accessibility')} className="footer-link">{t('nav.accessibility')}</Link>
-            <Link href={lp('/faq')} className="footer-link">{t('nav.faq')}</Link>
+            <Link href={lp('/passenger-guide')} prefetch={false} className="footer-link">{t('nav.passenger_guide')}</Link>
+            <Link href={lp('/transport-parking')} prefetch={false} className="footer-link">{t('nav.transport_parking')}</Link>
+            <Link href={lp('/airport-map')} prefetch={false} className="footer-link">{t('nav.airport_map')}</Link>
+            <Link href={lp('/amenities')} prefetch={false} className="footer-link">{t('nav.amenities')}</Link>
+            <Link href={lp('/vip-lounge')} prefetch={false} className="footer-link">{t('nav.vip_lounge')}</Link>
+            <Link href={lp('/accessibility')} prefetch={false} className="footer-link">{t('nav.accessibility')}</Link>
+            <Link href={lp('/faq')} prefetch={false} className="footer-link">{t('nav.faq')}</Link>
           </div>
 
           {/* Airport */}
           <div>
             <h3 className="footer-heading">{t('footer.airport')}</h3>
-            <Link href={lp('/notices')} className="footer-link">{t('nav.notices')}</Link>
-            <Link href={lp('/news-events')} className="footer-link">{t('nav.news_events')}</Link>
-            <Link href={lp('/career')} className="footer-link">{t('nav.career')}</Link>
-            <Link href={lp('/useful-links')} className="footer-link">{t('nav.useful_links')}</Link>
-            <Link href={lp('/contact')} className="footer-link">{t('nav.contact')}</Link>
+            <Link href={lp('/notices')} prefetch={false} className="footer-link">{t('nav.notices')}</Link>
+            <Link href={lp('/news-events')} prefetch={false} className="footer-link">{t('nav.news_events')}</Link>
+            <Link href={lp('/career')} prefetch={false} className="footer-link">{t('nav.career')}</Link>
+            <Link href={lp('/useful-links')} prefetch={false} className="footer-link">{t('nav.useful_links')}</Link>
+            <Link href={lp('/contact')} prefetch={false} className="footer-link">{t('nav.contact')}</Link>
           </div>
         </div>
 
         <div className="footer-bottom">
           <p>{t('footer.copyright').replace('{year}', String(currentYear))}</p>
           <div className="footer-legal">
-            <Link href={lp('/terms-conditions')} className="footer-link footer-link--inline">{t('footer.terms')}</Link>
-            <Link href={lp('/privacy')} className="footer-link footer-link--inline">{t('footer.privacy')}</Link>
-            <Link href={lp('/disclaimer')} className="footer-link footer-link--inline">{t('footer.disclaimer')}</Link>
+            <Link href={lp('/terms-conditions')} prefetch={false} className="footer-link footer-link--inline">{t('footer.terms')}</Link>
+            <Link href={lp('/privacy')} prefetch={false} className="footer-link footer-link--inline">{t('footer.privacy')}</Link>
+            <Link href={lp('/disclaimer')} prefetch={false} className="footer-link footer-link--inline">{t('footer.disclaimer')}</Link>
           </div>
         </div>
       </div>

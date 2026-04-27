@@ -1,5 +1,415 @@
 # ARL Airport Platform Audit Fix Plan
 
+## Milestone 29: Audit Remediation Batch - Routing, Publishing, Attachments, PWA, and Resilience
+- Status: Completed
+- Date: April 24, 2026
+- Source: April 24, 2026 conservative-repair-mode request to implement 15 audit findings across frontend detail rendering, route config, middleware, collection access, analytics hashing, signed URL timeout cleanup, workflow field access, attachment typing, CSP nonce portability, PWA bootstrap/pull-to-refresh, dashboard dead code, status redaction, Users MFA advisory field, and service-worker no-store parsing.
+- Fixes grouped by milestone:
+  - 29A - content visibility and collection workflow:
+    - render Notices relationship attachments from populated Media documents using `attachment.url`
+    - make `publishedVersionOrAdmin` use the custom `status: published` gate so public access matches content-layer queries
+    - add status field access to Careers and AirportProject so non-approvers cannot directly set `published`
+    - remove the unenforced `mfaRequired` advisory field from Users and regenerate Payload types
+  - 29B - routing, middleware, API, and infrastructure resilience:
+    - remove dead `force-dynamic` exports from News/Event and Airport Project detail pages while preserving `revalidate = 60`
+    - redirect locale-prefixed `/dashboard` and `/admin` to canonical unprefixed paths with 308 status and query preservation
+    - replace middleware nonce `Buffer` usage with web-standard `btoa`
+    - partition analytics visitor hashes by `Indian/Mauritius` calendar day
+    - attach no-op late rejection handlers to signed URL promises that may outlive timeout races
+    - apply shared redaction to status-route errors
+  - 29C - frontend/PWA cleanup and low-risk dead code:
+    - narrow attachment renderer types without changing attachment data shapes
+    - harden the inline PWA splash bootstrap with guarded standalone/matchMedia reads and stable timestamp behavior
+    - use App Router `router.refresh()` for pull-to-refresh
+    - remove unused `canAccess(role, section)` export
+    - tighten the service-worker `no-store` directive regex for trailing whitespace
+- Files likely affected:
+  - `src/app/(frontend)/notices/[slug]/page.tsx`
+  - `src/app/(frontend)/airport-project/[slug]/page.tsx`
+  - `src/app/(frontend)/news-events/[slug]/page.tsx`
+  - `src/app/(frontend)/career/page.tsx`
+  - `src/app/(frontend)/news-events/page.tsx`
+  - `src/app/(frontend)/layout.tsx`
+  - `src/components/pwa/pull-to-refresh.tsx`
+  - `src/access/roles.ts`
+  - `src/collections/Careers.ts`
+  - `src/collections/AirportProject.ts`
+  - `src/collections/Users.ts`
+  - `src/payload-types.ts` generated only by `pnpm generate:types`
+  - `src/middleware.ts`
+  - `src/app/api/track/route.ts`
+  - `src/lib/storage/supabase-client.ts`
+  - `src/app/api/status/route.ts`
+  - `src/lib/dashboard.ts`
+  - `public/sw.js`
+  - focused tests if existing expectations cover changed behavior
+  - `.ai-maintenance/*/20260424-094322-audit-remediation-batch.md`
+- Dependencies:
+  - previous detail-route repair intentionally used `force-dynamic` for request-bound `x-locale` and `x-nonce`; the current prompt intentionally removes that explicit config, so route rendering must be rechecked
+  - middleware canonicalization must preserve admin/API bypass behavior and the dashboard RSC/client-fetch handoff repair from Milestone 27
+  - collection access must not broaden public reads beyond explicitly published custom workflow status
+  - service-worker changes must preserve current cache behavior except the requested `no-store` parsing fix
+  - Payload types must be regenerated only through the generator if schema changes affect generated types
+- Risks:
+  - removing `force-dynamic` may interact with request header usage in detail routes and prior production 500 repair
+  - switching access control from `_status` to custom `status` makes custom workflow synchronization the canonical public gate
+  - removing an existing Users field can affect admin UI and generated types, but leaving an unenforced security flag would preserve false confidence
+  - middleware canonical redirects can break localized admin/dashboard links if query preservation is wrong
+  - signed URL late rejection handling must not swallow foreground errors before the race result reaches callers
+- Validation commands:
+  - `pnpm generate:types`
+  - `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/storage/supabase-client.test.ts tests/unit/sw-runtime.test.ts tests/unit/api/track.test.ts`
+  - `pnpm test -- tests/unit/status-sync.test.ts tests/unit/content.test.ts tests/unit/static-params-build-mode.test.ts tests/unit/collections/Users.test.ts`
+  - `pnpm lint`
+  - `pnpm build`
+  - if feasible after build: targeted route smoke for `/dashboard`, `/admin`, `/en/dashboard`, `/en/admin`, and the two detail route families
+- Acceptance criteria:
+  - Notice detail attachments render one download link per populated Media attachment with a usable URL
+  - public collection access and content queries use the same custom `status` publish gate
+  - non-approvers cannot directly set Careers or AirportProject status to `published`
+  - detail route segment config no longer contains contradictory `dynamic = 'force-dynamic'` plus `revalidate = 60`
+  - locale-prefixed dashboard/admin URLs 308 redirect to the canonical unprefixed URL while preserving query string
+  - middleware nonce generation no longer depends on Node `Buffer`
+  - daily visitor hashes rotate on the Mauritius calendar day
+  - signed URL timeout races do not leave unhandled late rejections
+  - status route error logging uses shared sensitive-text redaction
+  - PWA splash and pull-to-refresh behavior remains functional without unnecessary global timestamp resets or full reloads
+  - generated types, lint, focused tests, and build pass
+- Stop-and-fix rule:
+  - after each validation step, fix only issues introduced by this milestone before continuing; if a pre-existing dirty-worktree or environment blocker appears, document it separately before proceeding
+- Milestone output:
+  - Completed fixes:
+    - rendered Notice detail attachments from populated Media `attachment.url` values with stable fallback labels
+    - removed the contradictory explicit `force-dynamic` exports from News/Event and Airport Project detail routes while keeping `revalidate = 60`
+    - added 308 canonical redirects for locale-prefixed dashboard/admin URLs before the existing dashboard/admin handling
+    - changed `publishedVersionOrAdmin` to use the custom `status: published` public read gate
+    - added shared status field access to Careers and AirportProject so non-approvers cannot set `published`
+    - partitioned analytics visitor hashes by `Indian/Mauritius` calendar day
+    - attached late rejection handlers to single and batch signed URL promises that may outlive timeout races
+    - narrowed public attachment renderer callback types while preserving array/file shapes
+    - replaced middleware nonce generation with `btoa(crypto.randomUUID())`
+    - hardened the inline PWA splash bootstrap with guarded `matchMedia`/standalone handling and one-time warning logging
+    - switched pull-to-refresh from hard reload to `router.refresh()` with indicator reset
+    - removed unused dashboard `canAccess(role, section)` and updated tests to use `canAccessAny`
+    - replaced status-route ad-hoc Upstash redaction with shared `redactSensitiveText` and configured secret values
+    - removed the unenforced Users `mfaRequired` field, removed the dashboard table column that read it, and regenerated Payload types
+    - tightened service-worker `no-store` detection for trailing whitespace
+  - Files changed by this milestone:
+    - `src/app/(frontend)/notices/[slug]/page.tsx`
+    - `src/app/(frontend)/airport-project/[slug]/page.tsx`
+    - `src/app/(frontend)/news-events/[slug]/page.tsx`
+    - `src/app/(frontend)/career/page.tsx`
+    - `src/app/(frontend)/news-events/page.tsx`
+    - `src/app/(frontend)/layout.tsx`
+    - `src/components/pwa/pull-to-refresh.tsx`
+    - `src/access/roles.ts`
+    - `src/collections/Careers.ts`
+    - `src/collections/AirportProject.ts`
+    - `src/collections/Users.ts`
+    - `src/payload-types.ts`
+    - `src/app/(dashboard)/dashboard/users/page.tsx`
+    - `src/middleware.ts`
+    - `src/app/api/track/route.ts`
+    - `src/lib/storage/supabase-client.ts`
+    - `src/app/api/status/route.ts`
+    - `src/lib/dashboard.ts`
+    - `public/sw.js`
+    - `tests/unit/access/roles.test.ts`
+    - `tests/unit/api/status.test.ts`
+    - `tests/unit/api/track.test.ts`
+    - `tests/unit/collections/Users.test.ts`
+    - `tests/unit/dashboard.test.ts`
+    - `tests/unit/middleware-security.test.ts`
+    - `tests/unit/static-params-build-mode.test.ts`
+    - `tests/unit/status-sync.test.ts`
+    - `tests/unit/sw-runtime.test.ts`
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260424-094322-audit-remediation-batch.md`
+  - Validation results:
+    - `pnpm generate:types` passed and removed generated `mfaRequired` type entries
+    - focused `pnpm test -- tests/unit/middleware-security.test.ts tests/unit/storage/supabase-client.test.ts tests/unit/sw-runtime.test.ts tests/unit/api/track.test.ts tests/unit/api/status.test.ts tests/unit/access/roles.test.ts tests/unit/status-sync.test.ts tests/unit/content.test.ts tests/unit/static-params-build-mode.test.ts tests/unit/collections/Users.test.ts tests/unit/dashboard.test.ts` passed with 11 files and 98 tests
+    - `pnpm lint` passed
+    - first `pnpm build` failed because local attachment types did not accept unpopulated relationship ids; widened only the local `file` union to `string | number | object | null`
+    - rerun `pnpm build` passed
+    - after expanding status error redaction to database/storage logs, `pnpm test -- tests/unit/api/status.test.ts`, `pnpm lint`, `pnpm build`, and full `pnpm test` passed
+    - final full `pnpm test` passed with 67 files and 336 tests
+    - `docker compose -f docker-compose.prod.yml up --build -d` passed after the final source changes and recreated four healthy app containers
+    - container route smoke passed: `https://localhost/dashboard` returned 307 to `/admin/login?redirect=%2Fdashboard`; `https://localhost/admin/login?redirect=%2Fdashboard` returned 200; `https://localhost/en/dashboard?tab=overview` returned 308 to `/dashboard?tab=overview`; `https://localhost/fr/admin/login?redirect=%2Fdashboard` returned 308 to `/admin/login?redirect=%2Fdashboard`
+    - seeded detail route smoke passed: current News/Event and Airport Project detail URLs returned 200 from the rebuilt HTTPS stack
+    - `git diff --check` passed with Git CRLF normalization warnings only
+  - Residual risks or manual QA notes:
+    - no notice detail link existed in the current seeded `/en/notices` listing, so Notice attachment rendering was validated by code review rather than live seeded-content smoke
+    - removing explicit `force-dynamic` intentionally overrides Milestone 24's prior route config; build output still marks the two detail routes dynamic on demand because they read request headers
+    - authenticated dashboard content smoke still needs valid admin credentials; unauthenticated and canonicalization behavior was verified
+    - Docker rebuild updated the running local production stack
+
+## Milestone 25: LAN IP Runtime Origin Repair
+- Status: Completed
+- Date: April 23, 2026
+- Scope:
+  - verify and repair local phone access through the Wi-Fi adapter IP `192.168.100.120`
+  - keep localhost access working for desktop development
+  - remove the current localhost-only mismatch from Docker/Nginx runtime origin handling
+- Fixes grouped by milestone:
+  - update local runtime origin settings so `https://192.168.100.120` is the canonical phone-facing origin while localhost remains allowed
+  - pass public build-time origin values from compose into the Docker image so Next/Payload do not bake `http://localhost:3000`
+  - bind the host `pnpm dev` server to `0.0.0.0` so the same certified LAN IP works outside Docker too
+  - regenerate the local Nginx TLS certificate so the SAN covers `192.168.100.120`
+  - lower the Docker build-only Node heap cap from 4096 MB to 3072 MB so image builds fit the current Docker Desktop memory limit
+  - verify the running app returns 2xx/3xx on both localhost and the LAN IP and no longer renders localhost in LAN-page metadata after rebuild
+- Files likely affected:
+  - `.env` (ignored local runtime config)
+  - `Dockerfile`
+  - `docker-compose.prod.yml`
+  - `package.json`
+  - `nginx/ssl/selfsigned.crt` and `nginx/ssl/selfsigned.key` (ignored local TLS files)
+  - `PLANS.md`
+  - `.ai-maintenance/*/20260423-103534-lan-ip-runtime-origin.md`
+- Dependencies:
+  - the PC Wi-Fi adapter must keep `192.168.100.120`
+  - the phone must be on the same Wi-Fi network and browse to `https://192.168.100.120`
+  - Docker production compose rebuild is required for changed `NEXT_PUBLIC_*` values to be baked into Next output
+  - Android/browser may need old localhost PWA/site storage cleared if it still launches an installed localhost origin
+- Risks:
+  - changing public origin values requires rebuild/restart and can leave old containers serving stale metadata until recreated
+  - local TLS trust on the phone still depends on accepting or trusting the mkcert root/certificate
+  - if the Wi-Fi IP changes later, `.env` and the local cert must be regenerated for the new IP
+- Validation commands:
+  - `Get-NetIPAddress -AddressFamily IPv4`
+  - `certutil -dump nginx\ssl\selfsigned.crt`
+  - `docker compose -f docker-compose.prod.yml up --build -d`
+  - `curl.exe -k -I https://localhost/`
+  - `curl.exe -k -I https://192.168.100.120/`
+  - `curl.exe -k -L https://192.168.100.120/en`
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - `192.168.100.120` is present on the Wi-Fi adapter
+  - Nginx TLS certificate SAN includes `IP Address=192.168.100.120`
+  - running app containers receive `NEXT_PUBLIC_SITE_URL=https://192.168.100.120` and allowed localhost/LAN origins
+  - LAN HTML for `/en` references `https://192.168.100.120` for canonical/alternate/Open Graph/structured-data URLs instead of `localhost`
+  - localhost and LAN IP health/navigation checks pass
+- Stop-and-fix rule:
+  - after each validation step, fix only issues introduced by this milestone before continuing
+- Milestone output:
+  - Completed fixes:
+    - set local `.env` canonical origin to `https://192.168.100.120` and kept `https://localhost` plus the LAN origin in the allowed origin lists
+    - added Docker production build args for public site/Supabase values and allowed origin values so the image no longer bakes Dockerfile defaults into Next/Payload output
+    - changed host `pnpm dev` to bind `0.0.0.0`
+    - regenerated the ignored Nginx TLS certificate for `localhost`, `127.0.0.1`, `::1`, and `192.168.100.120`
+    - lowered the Docker build-only Node heap cap to 3072 MB after the first compose rebuild failed under the current Docker memory limit
+    - rebuilt and recreated the four app containers, then reloaded Nginx
+  - Files changed:
+    - `.env` (ignored local config)
+    - `Dockerfile`
+    - `docker-compose.prod.yml`
+    - `package.json`
+    - `nginx/ssl/selfsigned.crt` and `nginx/ssl/selfsigned.key` (ignored local TLS files)
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260423-103534-lan-ip-runtime-origin.md`
+  - Validation results:
+    - `Get-NetIPAddress -AddressFamily IPv4` confirmed `192.168.100.120` on `Wi-Fi`
+    - `certutil -dump nginx\ssl\selfsigned.crt` confirmed SAN entries for `localhost`, `127.0.0.1`, `::1`, and `192.168.100.120`
+    - first `docker compose -f docker-compose.prod.yml up --build -d` failed with Docker build memory exhaustion; after lowering `NODE_OPTIONS` to 3072 MB, rerun passed and all four app replicas became healthy
+    - `docker exec arl-airport-platform-app-1 ... printenv` confirmed `NEXT_PUBLIC_SITE_URL=https://192.168.100.120` with localhost and LAN allowed origins
+    - `curl.exe --ssl-no-revoke -I https://192.168.100.120/` returned HTTP 307 to `/en/`
+    - `curl.exe -k -I https://localhost/` returned HTTP 307 to `/en/`
+    - LAN HTML for `/en` has canonical and Open Graph URL `https://192.168.100.120/en`, has no `localhost`, and does not render the visible error-boundary heading
+    - Playwright Galaxy-sized smoke for `https://192.168.100.120/en` returned HTTP 200, H1 `Official passenger information for Plaine Corail Airport`, canonical `https://192.168.100.120/en`, and no visible `Something went wrong` error boundary
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - `git diff --check` passed with CRLF normalization warnings only
+  - Residual risks or manual QA notes:
+    - the affected phone may still need old localhost PWA/browser site storage cleared or the old installed localhost shortcut removed
+    - Android must browse to `https://192.168.100.120`, not `localhost`
+    - the local mkcert certificate may still require trusting/accepting on the phone
+    - Playwright still reports React hydration error #418 on both localhost and LAN IP, but the page renders and the visible error boundary is absent; this appears separate from the LAN-origin mismatch
+    - Nginx reload printed a pre-existing duplicate `text/html` MIME warning but reloaded successfully
+
+## Milestone 24: Dynamic Detail Route Runtime Repair
+- Status: Completed
+- Date: April 23, 2026
+- Scope:
+  - repair production 500s for News/Event and Airport Project detail routes across `en`, `fr`, and `mfe`
+  - keep listing pages from triggering detail-route RSC prefetch 500s
+  - preserve signed attachment fetchers, locale resolution, metadata, `notFound`, rendered UI, and CSP nonce usage
+- Fixes grouped by milestone:
+  - mark the two affected detail routes as request-rendered so middleware-provided `x-locale` and `x-nonce` headers are available at runtime
+  - do not change collection access, API shapes, service-worker behavior, middleware behavior, or full-app audit assertions
+- Files likely affected:
+  - `src/app/(frontend)/news-events/[slug]/page.tsx`
+  - `src/app/(frontend)/airport-project/[slug]/page.tsx`
+  - `PLANS.md`
+  - `.ai-maintenance/*/20260423-093700-detail-route-dynamic-repair.md`
+- Dependencies:
+  - middleware rewrites localized URLs to unprefixed frontend routes and injects `x-locale` and `x-nonce` request headers
+  - detail pages use JSON-LD inline scripts that need the middleware nonce under production CSP
+  - previous signed attachment repairs must remain in place for News/Event and Airport Project content
+  - existing dirty worktree changes in `public/sw.js`, `tests/unit/sw-runtime.test.ts`, `package.json`, and audit tests must be preserved
+- Risks:
+  - route segment config changes can alter caching for the affected detail pages
+  - removing nonce reads would break production CSP for page-level JSON-LD scripts
+  - static generation must not cache one locale's rendered detail page for another locale
+- Validation commands:
+  - `pnpm test:e2e:full`
+  - `pnpm test:e2e`
+  - `pnpm lint`
+  - `pnpm test`
+  - `pnpm exec tsc --noEmit`
+  - `pnpm build`
+- Acceptance criteria:
+  - `pnpm test:e2e:full` has no production 500 failures for News/Event or Airport Project detail pages
+  - `reports/full-app-feature-audit.md` has no failure entries for those detail routes or their listing-page RSC prefetches
+  - missing admin credentials and missing seeded notice detail links may remain manual gaps if the environment/data is unchanged
+  - unit, e2e, lint, typecheck, and build validations pass
+- Stop-and-fix rule:
+  - after each validation step, fix only regressions introduced by this milestone before continuing
+- Milestone output:
+  - Completed fixes:
+    - removed `generateStaticParams()` from News/Event and Airport Project detail pages because those routes require request-bound `x-locale` and `x-nonce` values
+    - added `dynamic = 'force-dynamic'` to both detail routes
+    - updated the static params unit coverage to assert these two detail routes remain request-bound and do not call listing fetchers during build-skip mode
+  - Files changed:
+    - `src/app/(frontend)/news-events/[slug]/page.tsx`
+    - `src/app/(frontend)/airport-project/[slug]/page.tsx`
+    - `tests/unit/static-params-build-mode.test.ts`
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260423-093700-detail-route-dynamic-repair.md`
+  - Validation results:
+    - `pnpm test -- tests/unit/static-params-build-mode.test.ts` initially failed after static params were removed; the test was updated to assert the new request-bound invariant and then passed
+    - fresh `pnpm build` confirmed `/news-events/[slug]` and `/airport-project/[slug]` are dynamic routes
+    - `reports/full-app-feature-audit.md` now reports `Failures: 0` and `Manual gaps: 4`
+    - `pnpm test:e2e:full` passed
+    - `pnpm test:e2e` passed with 22 passed and 1 skipped
+    - `pnpm lint` passed
+    - `pnpm test` passed with 67 files and 330 tests
+    - `pnpm exec tsc --noEmit` passed
+    - `pnpm build` passed
+    - `git diff --check` passed with CRLF normalization warnings only
+  - Residual risks or manual QA notes:
+    - notice detail coverage remains a manual gap because the current seeded data has no notice detail links
+    - authenticated admin/dashboard audit coverage remains a manual gap because `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` are not configured
+    - Playwright webServer output still printed Next internal `controller[kState].transformAlgorithm` messages during the passing full audit, but the generated report recorded no same-origin 5xx failures
+
+## Milestone 23: PWA Offline Recovery
+- Status: Completed
+- Date: April 23, 2026
+- Scope:
+  - repair service-worker install resilience so one failed localized precache request cannot strand devices on an older offline worker
+  - keep navigation, API, admin, dashboard, and asset caching behavior otherwise unchanged
+  - add focused service-worker runtime coverage for partial precache failures
+- Files likely affected:
+  - `public/sw.js`
+  - `tests/unit/sw-runtime.test.ts`
+  - `.ai-maintenance/prompt-log/20260423-091338-pwa-offline-recovery.md`
+  - `.ai-maintenance/baseline-reports/20260423-091338-pwa-offline-recovery.md`
+  - `.ai-maintenance/review-reports/20260423-091338-pwa-offline-recovery.md`
+  - `.ai-maintenance/fix-ledgers/20260423-091338-pwa-offline-recovery.md`
+  - `.ai-maintenance/impact-comparisons/20260423-091338-pwa-offline-recovery.md`
+  - `.ai-maintenance/verification-reports/20260423-091338-pwa-offline-recovery.md`
+  - `.ai-maintenance/regression-checks/20260423-091338-pwa-offline-recovery.md`
+  - `.ai-maintenance/final-status/20260423-091338-pwa-offline-recovery.md`
+- Dependencies:
+  - current service-worker registration keeps versioned `/sw.js?v=...` URLs and production-only registration behavior
+  - middleware locale rewrites must continue serving localized public pages and localized offline fallbacks
+  - existing dirty worktree changes in `PLANS.md`, `package.json`, and tests must be preserved
+- Risks:
+  - service-worker install changes can affect installed PWA update behavior
+  - weakening precache failure handling may reduce offline coverage for a route that fails during install, so failures must be logged and navigation fallback must remain intact
+  - devices already controlled by an old worker may need one successful reload after deployment to fetch the fixed worker
+- Validation commands:
+  - `pnpm test -- tests/unit/sw-runtime.test.ts tests/unit/sw-register.test.tsx`
+  - `pnpm test:e2e -- tests/e2e/runtime-probes.spec.ts`
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - service-worker install completes even if one precache URL fails
+  - successful precache entries are still cached
+  - failed precache entries are logged without crashing install
+  - admin/dashboard/API exclusions, localized offline fallback logic, and live API cache policy remain unchanged
+- Stop-and-fix rule:
+  - after each validation step, fix only regressions introduced by this milestone before continuing
+- Milestone output:
+  - Completed fixes:
+    - replaced all-or-nothing service-worker route precaching with per-route precaching that logs individual failures and still completes install
+    - added focused service-worker runtime coverage for a failed localized precache entry
+  - Files changed:
+    - `public/sw.js`
+    - `tests/unit/sw-runtime.test.ts`
+    - `PLANS.md`
+    - `.ai-maintenance/prompt-log/20260423-091338-pwa-offline-recovery.md`
+    - `.ai-maintenance/baseline-reports/20260423-091338-pwa-offline-recovery.md`
+    - `.ai-maintenance/review-reports/20260423-091338-pwa-offline-recovery.md`
+    - `.ai-maintenance/fix-ledgers/20260423-091338-pwa-offline-recovery.md`
+    - `.ai-maintenance/impact-comparisons/20260423-091338-pwa-offline-recovery.md`
+    - `.ai-maintenance/verification-reports/20260423-091338-pwa-offline-recovery.md`
+    - `.ai-maintenance/regression-checks/20260423-091338-pwa-offline-recovery.md`
+    - `.ai-maintenance/final-status/20260423-091338-pwa-offline-recovery.md`
+  - Validation results:
+    - `pnpm test -- tests/unit/sw-runtime.test.ts tests/unit/sw-register.test.tsx` passed
+    - `pnpm test:e2e -- tests/e2e/runtime-probes.spec.ts` passed
+    - `pnpm lint` passed
+    - `pnpm build` initially hit a transient generated `.next/server/pages/_document.js` lookup failure, direct `pnpm exec next build` passed, and the final required `pnpm build` passed
+    - `git diff --check` passed with only existing CRLF conversion warnings
+  - Residual risks or manual QA notes:
+    - phones already controlled by an old worker need one successful online visit after deployment to fetch and activate the fixed worker
+    - if the phone remains stuck after deployment, clear that site's browser/PWA storage once so the old worker is removed
+
+## Milestone 22: Full-App Feature Audit Test
+- Status: Completed
+- Date: April 23, 2026
+- Scope:
+  - repair stale baseline test expectations for the hybrid user role rule, response-side nonce removal, and analytics blocked-path status
+  - add a comprehensive Playwright full-app feature audit across public pages, APIs, admin login, dashboard routes, PWA/offline behavior, locale routing, console errors, and same-origin network failures
+  - generate a local Markdown report with issue locations, evidence, user impact, and fix prompts
+- Files likely affected:
+  - `tests/unit/collections/Users.test.ts`
+  - `tests/e2e/runtime-probes.spec.ts`
+  - `tests/e2e/full-app-feature-audit.spec.ts`
+  - `package.json`
+  - `PLANS.md`
+- Dependencies:
+  - stale baseline tests must be corrected before the broader audit can produce useful results
+  - authenticated admin coverage depends on optional `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` credentials for a `super_admin` account
+  - report output is written under ignored `reports/` as a runtime artifact
+- Risks:
+  - broad browser crawling can expose missing seed data as manual gaps rather than code failures
+  - authenticated dashboard checks can only prove full coverage when a valid super-admin account is configured
+  - production-mode Playwright checks depend on a fresh successful build
+- Validation commands:
+  - `pnpm test -- tests/unit/collections/Users.test.ts tests/unit/api/track.test.ts tests/unit/middleware-security.test.ts`
+  - `pnpm test:e2e -- tests/e2e/runtime-probes.spec.ts`
+  - `pnpm test:e2e:full`
+  - `pnpm test:e2e`
+  - `pnpm lint`
+  - `pnpm test`
+  - `pnpm exec tsc --noEmit`
+  - `pnpm build`
+- Acceptance criteria:
+  - stale tests align with the accepted hybrid role rule and current nonce/analytics behavior without weakening authorization or changing production response shapes
+  - the new audit visits all planned public features, probes API/PWA/security surfaces, and attempts authenticated admin coverage when env credentials exist
+  - any audit failure writes a concrete finding and ready-to-use fix prompt to `reports/full-app-feature-audit.md`
+  - missing admin credentials are reported as an unproven manual gap, not as passing authenticated coverage
+- Stop-and-fix rule:
+  - after each validation step, fix only regressions introduced by this milestone before continuing
+- Completion record:
+  - completed fixes: updated stale role and runtime probe expectations, added the opt-in full-app Playwright audit, added `pnpm test:e2e:full`, and generated a local Markdown report with concrete findings and fix prompts
+  - files changed: `tests/unit/collections/Users.test.ts`, `tests/e2e/runtime-probes.spec.ts`, `tests/e2e/full-app-feature-audit.spec.ts`, `package.json`, `PLANS.md`
+  - validation:
+    - `pnpm test -- tests/unit/collections/Users.test.ts tests/unit/api/track.test.ts tests/unit/middleware-security.test.ts` passed
+    - `pnpm test:e2e -- tests/e2e/runtime-probes.spec.ts` passed
+    - `pnpm lint` passed
+    - `pnpm test` passed with 67 files and 330 tests
+    - `pnpm exec tsc --noEmit` passed
+    - `pnpm build` passed after waiting for the Windows build child process to finish writing `.next/BUILD_ID`
+    - `pnpm test:e2e` passed with 22 tests and 1 skipped opt-in audit
+    - `pnpm test:e2e:full` ran and failed by design with 12 verified app findings; see `reports/full-app-feature-audit.md`
+  - residual risks / manual QA:
+    - the full audit found production 500s for seeded News/Event and Airport Project detail pages in `en`, `fr`, and `mfe`
+    - listing pages for News/Event and Airport Project render but trigger linked detail RSC prefetch 500s
+    - notice detail coverage could not be proven because no notice detail links were present in the current seeded data
+    - authenticated admin/dashboard coverage was skipped because `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD` were not configured
+
 ## Milestone 20: Payload Admin Rendering And Shell Repair
 - Status: Completed
 - Date: April 22, 2026
@@ -2649,3 +3059,214 @@
     - the full `docker compose -f docker-compose.prod.yml up --build -d` start path was not run; only the app image build path that emitted the warning was validated
 - Stop-and-fix rule:
   - If validation fails, repair only regressions introduced by this milestone before continuing.
+
+## Milestone 26: Dashboard Overview Load Timeout Repair
+- Source: April 23, 2026 request that `/dashboard` will not finish loading and to run conservative repair mode in the dashboard area.
+- Fixes:
+  - Add narrow per-source timeout boundaries around the root dashboard overview data fetches so one stalled widget query cannot hold the whole page render.
+  - Preserve the existing degraded-data banner and unavailable-value behavior for timed-out sources.
+  - Add focused dashboard overview coverage for a stalled data source.
+- Files likely affected:
+  - `src/app/(dashboard)/dashboard/page.tsx`
+  - `tests/unit/dashboard-overview.test.tsx`
+  - `.ai-maintenance/*/20260423-103132-dashboard-overview-load-timeout.md`
+  - `PLANS.md`
+- Dependencies:
+  - Existing `requireDashboardSectionAccess('overview')` must remain the dashboard authorization gate.
+  - Existing `cachedFetch('flights:rotations', 2600, getFlightBoards, { shouldCache })` behavior must remain unchanged except for the page-level wait boundary.
+  - Existing degraded-source logging must continue to capture failed or timed-out sources.
+- Risks:
+  - Too short a timeout could show degraded values during transient slow but successful database/API responses.
+  - Timed-out promises may still complete after the page render; the repair must not add side effects or duplicate writes.
+  - Authenticated browser dashboard coverage still depends on configured `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD`.
+- Validation commands:
+  - `pnpm test -- tests/unit/dashboard-overview.test.tsx`
+  - `pnpm test -- tests/unit/dashboard-auth.test.ts tests/unit/dashboard-overview.test.tsx tests/unit/dashboard.test.ts tests/unit/dashboard-users.test.tsx`
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - `/dashboard` overview can render degraded UI when a widget data source stalls instead of waiting forever.
+  - Existing partial-failure dashboard behavior and labels remain unchanged.
+  - Dashboard auth, role navigation, middleware handoff, and API response shapes remain unchanged.
+- Stop-and-fix rule:
+  - After this milestone, run the listed validation commands.
+  - If validation fails, repair only regressions introduced by this milestone before continuing.
+- Completion record:
+  - completed fixes:
+    - added an 8-second per-source timeout wrapper for root dashboard overview data fetches
+    - routed timed-out sources through the existing degraded-data banner and logging path
+    - added focused coverage for a stalled recent-notices source
+  - files changed:
+    - `src/app/(dashboard)/dashboard/page.tsx`
+    - `tests/unit/dashboard-overview.test.tsx`
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260423-103132-dashboard-overview-load-timeout*.md`
+  - validation results:
+    - `pnpm test -- tests/unit/dashboard-overview.test.tsx` passed
+    - `pnpm test -- tests/unit/dashboard-auth.test.ts tests/unit/dashboard-overview.test.tsx tests/unit/dashboard.test.ts tests/unit/dashboard-users.test.tsx` passed
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - `pnpm exec playwright test tests/e2e/runtime-probes.spec.ts --project=chromium` passed
+    - `git diff --check` passed with CRLF normalization warnings only
+  - residual risks / manual QA:
+    - authenticated browser coverage for `/dashboard` still needs `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD`
+    - if production dashboard sources routinely exceed 8 seconds but eventually succeed, the timeout may need tuning
+
+## Milestone 27: Admin Login Dashboard Redirect Loop Repair
+- Source: April 23, 2026 request that Payload admin login stays black with `TypeError: network error`, `ERR_INCOMPLETE_CHUNKED_ENCODING`, and repeated redirects around `/admin/login?redirect=%2Fdashboard`.
+- Fixes:
+  - Keep middleware dashboard auth redirects for direct document navigations.
+  - Let browser client/RSC fetches for `/dashboard` reach the dashboard server route so Next can encode unauthenticated redirects in the expected RSC response format.
+  - Add focused middleware coverage for browser subresource dashboard requests.
+  - Add a runtime probe that `/admin/login?redirect=%2Fdashboard` does not render the Payload admin error boundary while unauthenticated.
+- Files likely affected:
+  - `src/middleware.ts`
+  - `tests/unit/middleware-security.test.ts`
+  - `tests/e2e/runtime-probes.spec.ts`
+  - `.ai-maintenance/*/20260423-135716-admin-login-dashboard-rsc-loop.md`
+  - `PLANS.md`
+- Dependencies:
+  - `src/lib/dashboard-auth.ts` remains the server-side dashboard authorization source of truth.
+  - Middleware must not expose dashboard content; it may only choose whether to short-circuit before server auth.
+  - Payload admin CSP behavior must remain unchanged.
+- Risks:
+  - Over-broadly bypassing middleware dashboard checks could weaken the early forged/expired cookie redirect for document navigations.
+  - RSC/fetch request detection depends on standard browser fetch metadata headers; non-browser clients should keep the existing direct redirect behavior.
+  - Authenticated browser dashboard coverage still depends on configured admin credentials for a full login smoke.
+- Validation commands:
+  - `pnpm test -- tests/unit/middleware-security.test.ts`
+  - `pnpm lint`
+  - `pnpm build`
+  - `pnpm exec playwright test tests/e2e/runtime-probes.spec.ts --project=chromium`
+- Acceptance criteria:
+  - `/admin/login?redirect=%2Fdashboard` no longer falls into the black Payload admin render error while unauthenticated.
+  - Direct unauthenticated `/dashboard` document requests still redirect to `/admin/login?redirect=%2Fdashboard`.
+  - Expired/forged dashboard JWT document navigations still redirect before dashboard render.
+  - Browser client/RSC dashboard fetches are passed to server-side dashboard auth instead of receiving a raw middleware redirect.
+- Stop-and-fix rule:
+  - After this milestone, run the listed validation commands.
+  - If validation fails, repair only regressions introduced by this milestone before continuing.
+- Completion record:
+  - completed fixes:
+    - added a middleware browser subresource/RSC handoff path for `/dashboard`
+    - preserved direct document-navigation dashboard redirects to `/admin/login?redirect=%2Fdashboard`
+    - added unit coverage for dashboard browser fetch handoff
+    - added a runtime browser probe for `/admin/login?redirect=%2Fdashboard`
+    - rebuilt and recreated the Docker/Nginx app stack after Docker Desktop was restarted to clear a wedged buildx/daemon state
+  - files changed:
+    - `src/middleware.ts`
+    - `tests/unit/middleware-security.test.ts`
+    - `tests/e2e/runtime-probes.spec.ts`
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260423-135716-admin-login-dashboard-rsc-loop.md`
+  - validation results:
+    - `pnpm test -- tests/unit/middleware-security.test.ts` passed
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - `pnpm exec playwright test tests/e2e/runtime-probes.spec.ts --project=chromium` passed
+    - `docker compose -f docker-compose.prod.yml build app --progress=plain` passed after restarting Docker Desktop
+    - `docker compose -f docker-compose.prod.yml up -d --no-build` passed and recreated four healthy app containers
+    - `curl.exe -skI "https://localhost/admin/login?redirect=%2Fdashboard"` returned HTTP 200 with admin CSP and `private, no-store`
+    - `curl.exe -skI "https://localhost/dashboard"` returned HTTP 307 to `/admin/login?redirect=%2Fdashboard`
+    - HTTPS Playwright smoke for `https://localhost/admin/login?redirect=%2Fdashboard` returned status 200 with no Payload admin error boundary, no filtered RSC/network console errors, and no failed requests
+    - `git diff --check` passed with CRLF normalization warnings only
+  - residual risks / manual QA:
+    - authenticated login/dashboard route coverage still needs `E2E_ADMIN_EMAIL` and `E2E_ADMIN_PASSWORD`
+    - if the user's browser has stale localhost cookies/storage, clearing site data may still be needed once, but the unauthenticated admin render loop is fixed in code and in the rebuilt HTTPS stack
+
+## Milestone 28: Runtime Cache And Signed Attachment Resilience
+- Source: April 24, 2026 bug-hunt-hardening pass.
+- Findings:
+  - Medium: batch protected-document signed URL generation has no timeout, unlike the single-URL path. If Supabase Storage stalls, public News/Event, Airport Project, and Career attachment signing can hold page rendering instead of falling back to already-fetched local content.
+  - Medium: service-worker runtime caching clones cacheable responses only after `caches.open()` resolves. The browser may consume the original response first, causing `response.clone()` to fail and leaving live API/page/asset responses uncached.
+  - Medium: the development in-memory cache LRU uses `Date.now()` for access order. Multiple accesses in the same millisecond can evict a just-touched hot entry, making local cache behavior flaky under fast requests and tests.
+  - Low: cache in-flight cleanup attaches `.finally()` without handling the returned promise. A rejected foreground fetch can create a secondary unhandled rejection even when the caller handles the original failure.
+- Fixes grouped by milestone:
+  - add the same bounded timeout behavior to `getSignedURLs()` that `getSignedURL()` already uses
+  - clone service-worker cacheable responses before awaiting cache open
+  - use a monotonic access counter for the development memory-cache LRU
+  - handle the cache cleanup `.finally()` chain so rejected fetches do not create unhandled cleanup rejections
+  - add focused unit coverage for batch signed-URL timeout and service-worker early cloning
+- Files likely affected:
+  - `src/lib/storage/supabase-client.ts`
+  - `public/sw.js`
+  - `src/lib/cache.ts`
+  - `tests/unit/storage/supabase-client.test.ts`
+  - `tests/unit/sw-runtime.test.ts`
+  - `PLANS.md`
+- Dependencies:
+  - existing signed attachment fallback in `src/lib/content.ts` must continue returning unsigned local data when signing fails
+  - service-worker cache exclusions for admin, dashboard, and non-live API routes must remain unchanged
+  - Redis/cache failures must continue to degrade gracefully
+- Risks:
+  - changing service-worker caching can affect offline freshness if clone handling is wrong
+  - too aggressive signed-URL timeout behavior could skip attachment signing during transient Supabase slowness, but it preserves the existing fallback content path
+  - cache cleanup changes must not hide foreground fetch errors from callers
+- Validation commands:
+  - `pnpm test -- tests/unit/storage/supabase-client.test.ts tests/unit/sw-runtime.test.ts tests/unit/cache-runtime.test.ts`
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - batch signed URL generation rejects with `SignedUrlTimeoutError` after the existing timeout window
+  - pages that catch signing failures can keep rendering local attachment metadata instead of hanging indefinitely
+  - service worker stores a clone captured before asynchronous cache open
+  - development memory-cache LRU eviction preserves recently touched entries even when accesses share a wall-clock millisecond
+  - foreground cache fetch failures still reject to callers without producing cleanup-chain unhandled rejections
+- Stop-and-fix rule:
+  - after each validation step, fix only regressions introduced by this milestone before continuing
+- Completion record:
+  - completed fixes:
+    - added timeout parity to batch protected-document signed URL generation via `SignedUrlTimeoutError`
+    - kept empty batch signing as an immediate empty-map result
+    - cloned service-worker cacheable responses before awaiting `caches.open()`
+    - changed the development memory-cache LRU from millisecond wall-clock ordering to a monotonic access counter
+    - handled the cache in-flight cleanup `.finally()` chain so rejected foreground fetches do not create secondary unhandled rejections
+    - added focused coverage for batch signed-URL timeout and service-worker early response cloning
+  - files changed:
+    - `src/lib/storage/supabase-client.ts`
+    - `public/sw.js`
+    - `src/lib/cache.ts`
+    - `tests/unit/storage/supabase-client.test.ts`
+    - `tests/unit/sw-runtime.test.ts`
+    - `PLANS.md`
+  - validation results:
+    - initial `pnpm test -- tests/unit/storage/supabase-client.test.ts tests/unit/sw-runtime.test.ts tests/unit/cache-runtime.test.ts` exposed the same-module dev cache LRU timestamp tie; fixed with monotonic access ordering
+    - rerun `pnpm test -- tests/unit/storage/supabase-client.test.ts tests/unit/sw-runtime.test.ts tests/unit/cache-runtime.test.ts` passed with 3 files and 25 tests
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - `pnpm test` passed with 67 files and 334 tests
+    - `git diff --check` passed with CRLF normalization warnings only
+  - residual risks or manual QA notes:
+    - batch signed-URL timeouts preserve page rendering by falling back to unsigned local metadata, so protected attachment download links may be absent during a Supabase Storage outage until signing recovers
+    - deployed clients already controlled by an older service worker need the normal service-worker update cycle before the runtime caching clone fix takes effect
+## Milestone 30: Investigate and repair Playwright `next start` TransformStream runtime error
+- Status: In Progress
+- Date: April 24, 2026
+- Source: April 24, 2026 conservative-repair-mode request to investigate and fix repeated `TypeError: controller[kState].transformAlgorithm is not a function` logs emitted by `next start` under Playwright even when the full browser audit passes.
+- Fixes grouped by milestone:
+  - 30A - reproduce and isolate the exact route/runtime path that emits the stream error under production `next start`
+  - 30B - apply the smallest safe fix to the offending runtime/global compatibility path without changing intended request behavior
+  - 30C - add focused regression coverage so `next start` browser probes no longer emit the server-side stream error
+- Files likely affected:
+  - `PLANS.md`
+  - `src/middleware.ts`
+  - startup/runtime config or instrumentation files if implicated
+  - focused e2e/unit/runtime tests only if they cover the repaired behavior
+  - `.ai-maintenance/*` artifact files for this repair cycle
+- Dependencies:
+  - must preserve prior Milestone 29 middleware nonce portability, locale routing, and dashboard/admin reserved-route behavior
+  - must preserve public/API/admin response shapes and cache policy behavior under `next start`
+- Risks:
+  - runtime-global changes can affect Edge-style APIs, Payload admin rendering, and service worker related startup behavior
+  - reproducing only through Playwright may mask the exact triggering route unless probes are aligned with the prior audit pass
+- Validation commands:
+  - `pnpm lint`
+  - `pnpm build`
+  - focused reproduction/probe command under `pnpm start`
+  - `pnpm test:e2e:full`
+- Acceptance criteria:
+  - the triggering request path is identified
+  - `next start` no longer logs repeated `controller[kState].transformAlgorithm is not a function` errors during the focused reproduction and full browser audit
+  - existing middleware/admin/public behavior remains unchanged aside from the runtime repair
+- Stop-and-fix rule:
+  - if reproduction points to a framework or dependency bug with no safe repo-local fix, document the minimal containment and stop rather than broadening the patch

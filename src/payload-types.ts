@@ -178,10 +178,6 @@ export interface User {
   fullName: string;
   roles: ('super_admin' | 'content_admin' | 'approver' | 'operations_editor' | 'translator' | 'viewer_auditor')[];
   /**
-   * This flag is not currently enforced. Do not rely on it as a security control.
-   */
-  mfaRequired?: boolean | null;
-  /**
    * Preferred dashboard language.
    */
   preferredLocale?: ('en' | 'fr' | 'mfe') | null;
@@ -875,7 +871,6 @@ export interface PayloadMigration {
 export interface UsersSelect<T extends boolean = true> {
   fullName?: T;
   roles?: T;
-  mfaRequired?: T;
   preferredLocale?: T;
   updatedAt?: T;
   createdAt?: T;

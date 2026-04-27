@@ -58,10 +58,20 @@ function DownloadIcon() {
   )
 }
 
-function getFileURL(file: unknown): string | null {
+type SignedAttachment = {
+  id?: string | number | null
+  label?: string | null
+  file?: string | number | {
+    id?: string | number | null
+    url?: string | null
+    filename?: string | null
+  } | null
+}
+
+function getFileURL(file: SignedAttachment['file']): string | null {
   if (!file || typeof file !== 'object') return null
 
-  const url = (file as { url?: unknown }).url
+  const url = file.url
   return typeof url === 'string' && url ? url : null
 }
 
@@ -102,7 +112,7 @@ export default async function CareerPage() {
 
                     {item.attachments?.length > 0 && (
                       <div className="news-item__links">
-                        {item.attachments.map((att: any, i: number) => {
+                        {item.attachments.map((att: SignedAttachment, i: number) => {
                           const fileUrl = getFileURL(att?.file)
                           if (!fileUrl) return null
 

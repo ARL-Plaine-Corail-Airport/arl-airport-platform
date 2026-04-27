@@ -40,3 +40,11 @@ done
 
 remaining=$(find "$BACKUP_DIR" -name "*.dump.gz" 2>/dev/null | wc -l)
 log "Retention: pruned $pruned old backups, $remaining kept (${RETENTION_DAYS}d policy)"
+
+if sh "$SCRIPT_DIR/backup-upload.sh"; then
+  log "Backup upload completed"
+else
+  log "BACKUP UPLOAD FAILED"
+  sh "$SCRIPT_DIR/alert.sh" "Database Backup Upload Failed" "Daily backup upload at $(date -Iseconds) did not complete successfully."
+  exit 1
+fi

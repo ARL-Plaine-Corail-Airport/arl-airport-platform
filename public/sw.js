@@ -89,7 +89,7 @@ async function matchCached(request, fallbackKey) {
 
 function hasNoStoreDirective(response) {
   const cacheControl = response?.headers?.get('Cache-Control') ?? ''
-  return /(?:^|,)\s*no-store(?:,|$)/i.test(cacheControl)
+  return /(?:^|,)\s*no-store\s*(?:,|$)/i.test(cacheControl)
 }
 
 function isCacheableResponse(response) {
@@ -114,8 +114,9 @@ async function safeCachePut(request, response) {
   if (!isCacheableResponse(response)) return
 
   try {
+    const responseToCache = response.clone()
     const cache = await caches.open(CACHE_NAME)
-    await cache.put(request, response.clone())
+    await cache.put(request, responseToCache)
   } catch (error) {
     if (isQuotaExceededError(error)) {
       console.warn('[sw] Cache quota exceeded')
@@ -130,15 +131,30 @@ function cacheResponse(request, response) {
   void safeCachePut(request, response)
 }
 
+async function precacheUrl(cache, url) {
+  try {
+    await cache.add(url)
+  } catch (error) {
+    console.warn(`[sw] Failed to precache ${url}`, error)
+  }
+}
+
+async function precacheUrls(urls) {
+  try {
+    const cache = await caches.open(CACHE_NAME)
+    await Promise.all(urls.map((url) => precacheUrl(cache, url)))
+  } catch (error) {
+    console.warn('[sw] Failed to open precache cache', error)
+  }
+}
+
 self.addEventListener('install', (event) => {
   if (IS_LOCAL_DEV) {
     self.skipWaiting()
     return
   }
 
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)),
-  )
+  event.waitUntil(precacheUrls(PRECACHE_URLS))
   self.skipWaiting()
 })
 

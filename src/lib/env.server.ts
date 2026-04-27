@@ -15,6 +15,21 @@ function readNumber(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function splitAllowedOrigins(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+}
+
+function buildSiteOriginAllowList(): string[] {
+  return Array.from(new Set([
+    process.env.NEXT_PUBLIC_SITE_URL,
+    ...splitAllowedOrigins(process.env.NEXT_PUBLIC_SITE_URLS),
+    ...splitAllowedOrigins(process.env.ADDITIONAL_ALLOWED_ORIGINS),
+  ].filter((origin): origin is string => Boolean(origin))))
+}
+
 const BUILD_TIME_UNSET_ENV = '__BUILD_TIME_UNSET__'
 const warnedBuildTimeMissingEnv = new Set<string>()
 
@@ -47,10 +62,12 @@ const visitorHashSalt =
 
 const flightProviderBaseUrl = getConfiguredFlightProviderBaseUrl()
 const weatherProviderBaseUrl = getConfiguredWeatherProviderBaseUrl()
+const siteOriginAllowList = buildSiteOriginAllowList()
 
 export const serverEnv = {
   // Server-side site URL for origin checks and canonical host derivation.
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || env.siteURL,
+  siteOriginAllowList,
 
   // Payload
   payloadSecret: requireEnv('PAYLOAD_SECRET'),

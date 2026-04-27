@@ -415,6 +415,7 @@ async function fetchManualFlights(
     const result = await payload.find({
       collection: 'flights',
       limit: 50,
+      pagination: false,
       where: {
         and: [
           { status: { equals: 'active' } },

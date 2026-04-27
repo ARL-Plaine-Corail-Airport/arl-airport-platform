@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { Users } from '@/collections/Users'
 
-function buildAccessArgs(roles?: string[]) {
+function buildAccessArgs(roles?: string[], extras: Record<string, unknown> = {}) {
   return {
     req: {
       user: roles ? { id: 1, roles } : undefined,
     },
+    ...extras,
   } as any
 }
 
@@ -47,25 +48,46 @@ describe('Users collection', () => {
     ])
   })
 
-  it('marks MFA as advisory because it is not enforced in this app', () => {
-    const mfaField = getField('mfaRequired')
+  it('does not expose an unenforced MFA advisory flag', () => {
+    const hasMfaRequired = Users.fields.some(
+      (candidate) => 'name' in candidate && candidate.name === 'mfaRequired',
+    )
 
-    expect(mfaField.label).toBe('MFA Required (advisory - not enforced)')
-    expect(mfaField.admin?.description).toContain('not currently enforced')
-    expect(mfaField.admin?.description).toContain('Do not rely on it as a security control')
+    expect(hasMfaRequired).toBe(false)
+    expect(Users.admin?.defaultColumns).not.toContain('mfaRequired')
   })
 
-  it('only allows super admins to assign roles during create or update', async () => {
+  it('allows content admins to manage non-super-admin roles only', async () => {
     const rolesField = getField('roles')
+    const expectAccess = async (value: unknown, expected: boolean) => {
+      await expect(Promise.resolve(value)).resolves.toBe(expected)
+    }
 
-    await expect(Promise.resolve(rolesField.access.create(buildAccessArgs(['content_admin']))))
-      .resolves.toBe(false)
-    await expect(Promise.resolve(rolesField.access.create(buildAccessArgs(['super_admin']))))
-      .resolves.toBe(true)
-    await expect(Promise.resolve(rolesField.access.update(buildAccessArgs(['content_admin']))))
-      .resolves.toBe(false)
-    await expect(Promise.resolve(rolesField.access.update(buildAccessArgs(['super_admin']))))
-      .resolves.toBe(true)
+    await expectAccess(rolesField.access.create(buildAccessArgs(['content_admin'], {
+      siblingData: { roles: ['operations_editor'] },
+    })), true)
+    await expectAccess(rolesField.access.update(buildAccessArgs(['content_admin'], {
+      doc: { roles: ['operations_editor'] },
+      siblingData: { roles: ['translator'] },
+    })), true)
+    await expectAccess(rolesField.access.create(buildAccessArgs(['content_admin'], {
+      siblingData: { roles: ['super_admin'] },
+    })), false)
+    await expectAccess(rolesField.access.update(buildAccessArgs(['content_admin'], {
+      doc: { roles: ['operations_editor'] },
+      siblingData: { roles: ['super_admin'] },
+    })), false)
+    await expectAccess(rolesField.access.update(buildAccessArgs(['content_admin'], {
+      doc: { roles: ['super_admin'] },
+      siblingData: { roles: ['content_admin'] },
+    })), false)
+    await expectAccess(rolesField.access.create(buildAccessArgs(['super_admin'], {
+      siblingData: { roles: ['super_admin'] },
+    })), true)
+    await expectAccess(rolesField.access.update(buildAccessArgs(['super_admin'], {
+      doc: { roles: ['super_admin'] },
+      siblingData: { roles: ['content_admin'] },
+    })), true)
   })
 
   it('keeps user deletion behind the super admin collection gate', () => {

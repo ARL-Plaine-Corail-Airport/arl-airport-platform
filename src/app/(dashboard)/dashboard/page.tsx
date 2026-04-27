@@ -41,6 +41,21 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 const unavailableValue = '\u2014'
+const DASHBOARD_DATA_TIMEOUT_MS = 8000
+
+function withDashboardDataTimeout<T>(label: string, promise: Promise<T>): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${DASHBOARD_DATA_TIMEOUT_MS}ms`))
+    }, DASHBOARD_DATA_TIMEOUT_MS)
+  })
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeout) clearTimeout(timeout)
+  })
+}
 
 function countDelayed(records: Array<{ remarks?: string | null }>): number {
   return records.filter((record) => {
@@ -212,45 +227,63 @@ export default async function DashboardOverviewPage() {
     usersResult,
     boardsResult,
   ] = await Promise.allSettled([
-    payload.find({
-      collection: 'notices',
-      depth: 0,
-      limit: 5,
-      sort: '-updatedAt',
-      overrideAccess: true,
-    }),
-    payload.count({
-      collection: 'notices',
-      overrideAccess: true,
-    }),
-    payload.count({
-      collection: 'notices',
-      overrideAccess: true,
-      where: {
-        or: [
-          { status: { equals: 'published' } },
-          { status: { equals: 'approved' } },
-        ],
-      },
-    }),
-    payload.count({
-      collection: 'notices',
-      overrideAccess: true,
-      where: {
-        and: [
-          { urgent: { equals: true } },
-          { promoteToBanner: { equals: true } },
-          { status: { equals: 'published' } },
-        ],
-      },
-    }),
-    payload.count({
-      collection: 'users',
-      overrideAccess: true,
-    }),
-    cachedFetch('flights:rotations', 2600, getFlightBoards, {
-      shouldCache: (data) => !data.degraded,
-    }),
+    withDashboardDataTimeout(
+      'recent notices',
+      payload.find({
+        collection: 'notices',
+        depth: 0,
+        limit: 5,
+        sort: '-updatedAt',
+        overrideAccess: true,
+      }),
+    ),
+    withDashboardDataTimeout(
+      'total notices',
+      payload.count({
+        collection: 'notices',
+        overrideAccess: true,
+      }),
+    ),
+    withDashboardDataTimeout(
+      'active notices',
+      payload.count({
+        collection: 'notices',
+        overrideAccess: true,
+        where: {
+          or: [
+            { status: { equals: 'published' } },
+            { status: { equals: 'approved' } },
+          ],
+        },
+      }),
+    ),
+    withDashboardDataTimeout(
+      'emergency banners',
+      payload.count({
+        collection: 'notices',
+        overrideAccess: true,
+        where: {
+          and: [
+            { urgent: { equals: true } },
+            { promoteToBanner: { equals: true } },
+            { status: { equals: 'published' } },
+          ],
+        },
+      }),
+    ),
+    withDashboardDataTimeout(
+      'admin users',
+      payload.count({
+        collection: 'users',
+        overrideAccess: true,
+      }),
+    ),
+    withDashboardDataTimeout(
+      'flight boards',
+      cachedFetch('flights:rotations', 2600, getFlightBoards, {
+        shouldCache: (data) => !data.degraded,
+      }),
+    ),
   ])
 
   const degradedSources: string[] = []

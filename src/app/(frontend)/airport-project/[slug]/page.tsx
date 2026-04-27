@@ -7,11 +7,7 @@ import { RichText } from '@/components/ui/rich-text'
 import { getDictionary } from '@/i18n/get-dictionary'
 import { getLocale } from '@/i18n/get-locale'
 import { localePath } from '@/i18n/path'
-import { shouldSkipDbDuringBuild } from '@/lib/build-db'
-import {
-  getAirportProjectBySlugWithSignedAttachments,
-  getAirportProjectItems,
-} from '@/lib/content'
+import { getAirportProjectBySlugWithSignedAttachments } from '@/lib/content'
 import { formatDateTime } from '@/lib/date'
 import { env } from '@/lib/env'
 import { buildFrontendMetadata } from '@/lib/metadata'
@@ -27,13 +23,14 @@ type Props = {
   params: Promise<{ slug: string }>
 }
 
-export async function generateStaticParams() {
-  if (shouldSkipDbDuringBuild()) {
-    return []
-  }
-
-  const items = await getAirportProjectItems(100)
-  return items.map((item: any) => ({ slug: item.slug }))
+type SignedAttachment = {
+  id?: string | number | null
+  label?: string | null
+  file?: string | number | {
+    id?: string | number | null
+    url?: string | null
+    filename?: string | null
+  } | null
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -142,7 +139,7 @@ export default async function AirportProjectDetailPage({ params }: Props) {
               <div className="news-detail__attachments">
                 <h3>{dict.labels?.attachments ?? 'Attachments'}</h3>
                 <ul className="news-detail__file-list">
-                  {item.attachments.map((att: any, i: number) => {
+                  {item.attachments.map((att: SignedAttachment, i: number) => {
                     const fileUrl = typeof att.file === 'object' ? att.file?.url : null
                     if (!fileUrl) return null
                     const attachmentKey = att.id ?? `${item.id ?? slug}-att-${i}`

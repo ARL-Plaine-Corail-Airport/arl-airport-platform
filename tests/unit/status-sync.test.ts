@@ -1,6 +1,8 @@
 import type { CollectionConfig } from 'payload'
 import { describe, expect, it, vi } from 'vitest'
 
+import { AirportProject } from '@/collections/AirportProject'
+import { Careers } from '@/collections/Careers'
 import { NewsEvents } from '@/collections/NewsEvents'
 import { Notices } from '@/collections/Notices'
 import { Pages } from '@/collections/Pages'
@@ -206,13 +208,15 @@ describe('status sync hooks', () => {
     ).rejects.toThrow('Set status to Approved before publishing this notice.')
   })
 
-  it('restricts NewsEvents, Notice, and Page publish fields for non-approvers', async () => {
+  it('restricts workflow publish fields for non-approvers', async () => {
     const newsStatusField = findFieldByName(NewsEvents.fields, 'status')
     const noticeStatusField = findFieldByName(Notices.fields, 'status')
     const noticePublishedAtField = findFieldByName(Notices.fields, 'publishedAt')
     const noticeExpiresAtField = findFieldByName(Notices.fields, 'expiresAt')
     const noticePromoteToBannerField = findFieldByName(Notices.fields, 'promoteToBanner')
     const pageStatusField = findFieldByName(Pages.fields, 'status')
+    const airportProjectStatusField = findFieldByName(AirportProject.fields, 'status')
+    const careersStatusField = findFieldByName(Careers.fields, 'status')
 
     expect(newsStatusField.access.create({
       req: buildReq(['operations_editor']),
@@ -272,6 +276,22 @@ describe('status sync hooks', () => {
     expect(pageStatusField.access.update({
       req: buildReq(['operations_editor']),
       siblingData: { status: 'in_review' },
+    })).toBe(true)
+    expect(airportProjectStatusField.access.update({
+      req: buildReq(['operations_editor']),
+      siblingData: { status: 'published' },
+    })).toBe(false)
+    expect(airportProjectStatusField.access.update({
+      req: buildReq(['operations_editor']),
+      siblingData: { status: 'in_review' },
+    })).toBe(true)
+    expect(careersStatusField.access.update({
+      req: buildReq(['operations_editor']),
+      siblingData: { status: 'published' },
+    })).toBe(false)
+    expect(careersStatusField.access.update({
+      req: buildReq(['approver']),
+      siblingData: { status: 'published' },
     })).toBe(true)
   })
 })

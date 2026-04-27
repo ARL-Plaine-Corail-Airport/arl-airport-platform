@@ -15,6 +15,12 @@ const IPV4_PATTERN = /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]
 const IPV6_PATTERN =
   /^(?:[a-f0-9]{1,4}:){7}[a-f0-9]{1,4}$|^(?:[a-f0-9]{1,4}:){1,7}:$|^:(?::[a-f0-9]{1,4}){1,7}$|^(?:[a-f0-9]{1,4}:){1,6}:[a-f0-9]{1,4}$|^(?:[a-f0-9]{1,4}:){1,5}(?::[a-f0-9]{1,4}){1,2}$|^(?:[a-f0-9]{1,4}:){1,4}(?::[a-f0-9]{1,4}){1,3}$|^(?:[a-f0-9]{1,4}:){1,3}(?::[a-f0-9]{1,4}){1,4}$|^(?:[a-f0-9]{1,4}:){1,2}(?::[a-f0-9]{1,4}){1,5}$|^[a-f0-9]{1,4}(?::[a-f0-9]{1,4}){1,6}$|^::$/i
 const MAX_REFERRER_LENGTH = 2048
+const mauritiusDayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Indian/Mauritius',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
 
 export const maxDuration = 10
 
@@ -67,7 +73,7 @@ function extractLanguage(header: string | null): string {
 }
 
 // Extract referrer domain
-function extractReferrerDomain(referrer: string | null, siteHost: string): string {
+function extractReferrerDomain(referrer: string | null, siteHosts: Set<string>): string {
   if (!referrer) return 'direct'
   if (referrer.length > MAX_REFERRER_LENGTH) {
     logger.warn('Rejected overlong referrer while extracting domain', 'track')
@@ -77,7 +83,7 @@ function extractReferrerDomain(referrer: string | null, siteHost: string): strin
   try {
     const host = new URL(referrer).hostname.replace(/^www\./, '')
     // If referrer is own site, treat as direct/internal
-    if (host === siteHost || host === `www.${siteHost}`) return 'direct'
+    if (siteHosts.has(host)) return 'direct'
     return host
   } catch {
     logger.warn('Invalid referrer URL while extracting domain', 'track')
@@ -88,7 +94,7 @@ function extractReferrerDomain(referrer: string | null, siteHost: string): strin
 // Create a daily anonymized hash from IP — not reversible
 // IP-less requests use a weaker user-agent/language fingerprint for daily estimates.
 async function hashDailyVisitor(value: string): Promise<string> {
-  const date = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+  const date = mauritiusDayFormatter.format(new Date())
   const data = new TextEncoder().encode(`${serverEnv.visitorHashSalt}:${value}:${date}`)
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
@@ -126,14 +132,47 @@ function getClientIp(request: NextRequest): string {
   return 'unknown'
 }
 
-function isAllowedOrigin(request: NextRequest, siteUrl: string): boolean {
+function buildAllowedOrigins(origins: readonly string[]): string[] {
+  return Array.from(new Set(
+    origins.flatMap((origin) => {
+      try {
+        return [new URL(origin).origin]
+      } catch {
+        return []
+      }
+    }),
+  ))
+}
+
+function buildAllowedHosts(origins: readonly string[]): Set<string> {
+  return new Set(
+    origins.flatMap((origin) => {
+      try {
+        return [new URL(origin).hostname.replace(/^www\./, '')]
+      } catch {
+        return []
+      }
+    }),
+  )
+}
+
+function isAllowedOrigin(request: NextRequest, allowedOrigins: readonly string[]): boolean {
   const origin = request.headers.get('origin')
+  const normalizedAllowedOrigins = buildAllowedOrigins([
+    ...allowedOrigins,
+    request.nextUrl.origin,
+  ])
+
+  if (normalizedAllowedOrigins.length === 0) {
+    return false
+  }
 
   try {
-    const siteOrigin = new URL(siteUrl).origin
-
     if (origin) {
-      return timingSafeStringEqual(new URL(origin).origin, siteOrigin)
+      const requestOrigin = new URL(origin).origin
+      return normalizedAllowedOrigins.some((allowedOrigin) =>
+        timingSafeStringEqual(requestOrigin, allowedOrigin),
+      )
     }
 
     const fetchSite = request.headers.get('sec-fetch-site')?.toLowerCase()
@@ -143,7 +182,10 @@ function isAllowedOrigin(request: NextRequest, siteUrl: string): boolean {
 
     const referer = request.headers.get('referer')
     if (referer) {
-      return timingSafeStringEqual(new URL(referer).origin, siteOrigin)
+      const refererOrigin = new URL(referer).origin
+      return normalizedAllowedOrigins.some((allowedOrigin) =>
+        timingSafeStringEqual(refererOrigin, allowedOrigin),
+      )
     }
 
     return false
@@ -154,7 +196,7 @@ function isAllowedOrigin(request: NextRequest, siteUrl: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isAllowedOrigin(request, serverEnv.siteUrl)) {
+    if (!isAllowedOrigin(request, serverEnv.siteOriginAllowList)) {
       return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 })
     }
 
@@ -187,7 +229,10 @@ export async function POST(request: NextRequest) {
 
     const ua = request.headers.get('user-agent') ?? ''
     const acceptLang = request.headers.get('accept-language')
-    const siteHost = new URL(serverEnv.siteUrl).host
+    const siteHosts = buildAllowedHosts([
+      ...serverEnv.siteOriginAllowList,
+      request.nextUrl.origin,
+    ])
 
     const clientIp = getClientIp(request)
     const visitorHash = clientIp === 'unknown'
@@ -199,7 +244,7 @@ export async function POST(request: NextRequest) {
       collection: 'page-views',
       data: {
         path,
-        referrer: extractReferrerDomain(referrer ?? null, siteHost),
+        referrer: extractReferrerDomain(referrer ?? null, siteHosts),
         locale,
         device: detectDevice(ua),
         language: extractLanguage(acceptLang),

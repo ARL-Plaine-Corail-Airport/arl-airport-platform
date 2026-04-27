@@ -61,6 +61,22 @@ export class SignedUrlTimeoutError extends Error {
   }
 }
 
+function createSignedUrlTimeout(bucket: string, path: string) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const promise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new SignedUrlTimeoutError(bucket, path))
+    }, SIGNED_URL_TIMEOUT_MS)
+  })
+
+  return {
+    promise,
+    clear: () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    },
+  }
+}
+
 /**
  * Generates a time-limited signed URL for a private document.
  * Use for notice PDFs, regulations, and fee schedules in arl-protected-docs.
@@ -80,17 +96,13 @@ export async function getSignedURL(
   const signedUrlPromise = supabase.storage
     .from(bucket)
     .createSignedUrl(path, expiresIn)
-  let timeoutId: ReturnType<typeof setTimeout> | undefined
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new SignedUrlTimeoutError(bucket, path))
-    }, SIGNED_URL_TIMEOUT_MS)
-  })
+  void signedUrlPromise.catch(() => undefined)
+  const timeout = createSignedUrlTimeout(bucket, path)
 
   try {
     const { data, error } = await Promise.race([
       signedUrlPromise,
-      timeoutPromise,
+      timeout.promise,
     ])
 
     if (error || !data?.signedUrl) {
@@ -101,7 +113,7 @@ export async function getSignedURL(
 
     return data.signedUrl
   } finally {
-    if (timeoutId) clearTimeout(timeoutId)
+    timeout.clear()
   }
 }
 
@@ -114,11 +126,22 @@ export async function getSignedURLs(
   paths: string[],
   expiresIn: number = SIGNED_URL_EXPIRY_SECONDS,
 ): Promise<Record<string, string>> {
-  const supabase = getSupabaseAdminClient()
+  if (paths.length === 0) return {}
 
-  const { data, error } = await supabase.storage
+  const supabase = getSupabaseAdminClient()
+  const timeout = createSignedUrlTimeout(bucket, `${paths.length} paths`)
+
+  const signedUrlsPromise = supabase.storage
     .from(bucket)
     .createSignedUrls(paths, expiresIn)
+  void signedUrlsPromise.catch(() => undefined)
+
+  const { data, error } = await Promise.race([
+    signedUrlsPromise,
+    timeout.promise,
+  ]).finally(() => {
+    timeout.clear()
+  })
 
   if (error || !data) {
     throw new Error(

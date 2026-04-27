@@ -34,6 +34,12 @@ type InFlightFetch = {
 
 const memCache = new Map<string, MemCacheEntry>()
 const inFlightFetches = new Map<string, InFlightFetch>()
+let memCacheAccessSequence = 0
+
+function nextMemCacheAccessOrder(): number {
+  memCacheAccessSequence += 1
+  return memCacheAccessSequence
+}
 
 function isRefreshFailureBackoffActive(entry: MemCacheEntry, now: number): boolean {
   return (
@@ -78,11 +84,11 @@ function setMemCacheEntry(
     }
   }
 
-  memCache.set(cacheKey, { ...value, lastAccessed: now })
+  memCache.set(cacheKey, { ...value, lastAccessed: nextMemCacheAccessOrder() })
 }
 
-function touchMemCacheEntry(cacheKey: string, entry: MemCacheEntry, now = Date.now()) {
-  entry.lastAccessed = now
+function touchMemCacheEntry(cacheKey: string, entry: MemCacheEntry) {
+  entry.lastAccessed = nextMemCacheAccessOrder()
   memCache.set(cacheKey, entry)
 }
 
@@ -92,7 +98,7 @@ function markMemCacheRefreshFailure(cacheKey: string) {
 
   const now = Date.now()
   entry.refreshFailedAt = now
-  entry.lastAccessed = now
+  entry.lastAccessed = nextMemCacheAccessOrder()
   memCache.set(cacheKey, entry)
 }
 
@@ -139,11 +145,13 @@ function trackInFlightFetch<T>(
 
   inFlightFetches.set(cacheKey, trackedFetch)
 
-  trackedPromise.finally(() => {
-    if (inFlightFetches.get(cacheKey) === trackedFetch) {
-      inFlightFetches.delete(cacheKey)
-    }
-  })
+  void trackedPromise
+    .finally(() => {
+      if (inFlightFetches.get(cacheKey) === trackedFetch) {
+        inFlightFetches.delete(cacheKey)
+      }
+    })
+    .catch(() => undefined)
 
   return trackedPromise
 }
@@ -211,12 +219,12 @@ export async function cachedFetch<T>(
 
       if (entry.expiresAt > now) {
         if (cached !== undefined) {
-          touchMemCacheEntry(cacheKey, entry, now)
+          touchMemCacheEntry(cacheKey, entry)
           return cached
         }
       } else if (cached !== undefined) {
         if (isRefreshFailureBackoffActive(entry, now)) {
-          touchMemCacheEntry(cacheKey, entry, now)
+          touchMemCacheEntry(cacheKey, entry)
           return cached
         }
 
@@ -232,7 +240,7 @@ export async function cachedFetch<T>(
           )
         }
 
-        touchMemCacheEntry(cacheKey, entry, now)
+        touchMemCacheEntry(cacheKey, entry)
         return cached
       }
     }

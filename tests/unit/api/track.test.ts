@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const { createMock, getPayloadClient, loggerError } = vi.hoisted(() => {
   process.env.VISITOR_HASH_SALT = 'test-visitor-hash-salt'
-  process.env.NEXT_PUBLIC_SITE_URL = 'http://localhost:3000'
+  process.env.NEXT_PUBLIC_SITE_URL = 'https://192.168.100.120'
+  process.env.NEXT_PUBLIC_SITE_URLS = 'http://localhost:3000,https://192.168.100.120'
+  process.env.ADDITIONAL_ALLOWED_ORIGINS = 'http://127.0.0.1:3000'
 
   return {
     createMock: vi.fn(),
@@ -25,13 +27,20 @@ vi.mock('@/lib/logger', () => ({
 
 import { POST } from '@/app/api/track/route'
 
+const mauritiusDayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Indian/Mauritius',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
 function hashVisitorForTest(ip: string, salt: string): string {
-  const date = new Date().toISOString().slice(0, 10)
+  const date = mauritiusDayFormatter.format(new Date())
   return createHash('sha256').update(`${salt}:${ip}:${date}`).digest('hex')
 }
 
 function hashFingerprintForTest(userAgent: string, acceptLanguage: string | null, salt: string): string {
-  const date = new Date().toISOString().slice(0, 10)
+  const date = mauritiusDayFormatter.format(new Date())
   return createHash('sha256')
     .update(`${salt}:fingerprint:${userAgent}:${acceptLanguage ?? ''}:${date}`)
     .digest('hex')
@@ -146,8 +155,30 @@ describe('track route', () => {
       data: expect.objectContaining({
         path: '/fr/contact',
         locale: 'fr',
+        referrer: 'direct',
       }),
     })
+  })
+
+  it('accepts allowed alternate origin headers when the canonical site URL differs', async () => {
+    getPayloadClient.mockResolvedValue({ create: createMock })
+
+    const request = new NextRequest('http://localhost/api/track', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'pageview',
+        path: '/en/contact',
+      }),
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+    })
+
+    const response = await POST(request)
+
+    expect(response.status).toBe(201)
+    expect(createMock).toHaveBeenCalledTimes(1)
   })
 
   it('rejects admin, dashboard, and api paths', async () => {

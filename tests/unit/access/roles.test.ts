@@ -52,9 +52,9 @@ describe('access roles', () => {
     })
   })
 
-  it('supports collections that rely on Payload draft status instead of a custom status field', () => {
+  it('keeps publishedVersionOrAdmin aligned with the custom workflow status field', () => {
     expect(publishedVersionOrAdmin(buildAccessArgs())).toEqual({
-      _status: { equals: 'published' },
+      status: { equals: 'published' },
     })
     expect(publishedVersionOrAdmin(buildAccessArgs(['super_admin']))).toBe(true)
   })
@@ -65,7 +65,7 @@ describe('access roles', () => {
       status: { equals: 'published' },
     })
     expect(reexportedAccess.publishedVersionOrAdmin(buildAccessArgs(['operations_editor']))).toEqual({
-      _status: { equals: 'published' },
+      status: { equals: 'published' },
     })
   })
 })

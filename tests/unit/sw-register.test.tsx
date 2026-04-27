@@ -28,6 +28,8 @@ describe('ServiceWorkerRegister', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
     window.history.replaceState({}, '', '/')
   })
 
@@ -64,5 +66,47 @@ describe('ServiceWorkerRegister', () => {
 
     expect(deleteCache).not.toHaveBeenCalledWith('unrelated-cache')
     expect(register).not.toHaveBeenCalled()
+  })
+
+  it('registers the versioned worker URL in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+
+    const originalWindow = window
+    vi.stubGlobal(
+      'window',
+      new Proxy(originalWindow, {
+        get(target, property, receiver) {
+          if (property === 'location') {
+            return {
+              ...target.location,
+              hostname: 'airport.example',
+            }
+          }
+
+          return Reflect.get(target, property, receiver)
+        },
+      }),
+    )
+
+    const update = vi.fn().mockResolvedValue(undefined)
+    const register = vi.fn().mockResolvedValue({ update })
+    const getRegistrations = vi.fn()
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        getRegistrations,
+        register,
+      },
+    })
+
+    render(<ServiceWorkerRegister />)
+
+    await waitFor(() => {
+      expect(register).toHaveBeenCalledWith(getServiceWorkerUrl())
+      expect(update).toHaveBeenCalledTimes(1)
+    })
+
+    expect(getRegistrations).not.toHaveBeenCalled()
   })
 })

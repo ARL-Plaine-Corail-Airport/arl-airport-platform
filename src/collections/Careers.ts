@@ -6,7 +6,7 @@
 
 import type { CollectionConfig } from 'payload'
 
-import { isAdmin, isEditor, publishedVersionOrAdmin } from '@/access'
+import { canSetPublishedStatus, isAdmin, isEditor, publishedVersionOrAdmin } from '@/access'
 import { autoSlug } from '@/hooks/autoSlug'
 import { syncWorkflowStatus } from './workflowStatus'
 
@@ -96,6 +96,10 @@ export const Careers: CollectionConfig = {
       label: 'Status',
       type: 'select',
       defaultValue: 'draft',
+      access: {
+        create: canSetPublishedStatus,
+        update: canSetPublishedStatus,
+      },
       options: [
         { label: 'Draft', value: 'draft' },
         { label: 'In Review', value: 'in_review' },

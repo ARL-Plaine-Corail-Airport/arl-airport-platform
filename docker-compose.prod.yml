@@ -49,10 +49,18 @@ services:
 
   # ── Application (Next.js + Payload CMS) — scaled to 10 replicas ───────────
   app:
-    image: ${APP_IMAGE:-ghcr.io/arl-plaine-corail-airport/arl-airport-platform:latest}
+    image: ${APP_IMAGE:?APP_IMAGE is required. Use deploy.env with a pinned image SHA.}
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://localhost}
+        NEXT_PUBLIC_SITE_URLS: ${NEXT_PUBLIC_SITE_URLS:-}
+        ADDITIONAL_ALLOWED_ORIGINS: ${ADDITIONAL_ALLOWED_ORIGINS:-}
+        NEXT_PUBLIC_BUILD_VERSION: ${NEXT_PUBLIC_BUILD_VERSION:-}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-https://placeholder.supabase.co}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-placeholder}
+        SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
       # Uses the production "runner" stage (standalone output)
     restart: unless-stopped
     env_file:
@@ -60,13 +68,22 @@ services:
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_BUILD_VERSION: ${NEXT_PUBLIC_BUILD_VERSION:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     deploy:
       replicas: 4 # Local/staging. Set to 10+ for production (40K concurrent users).
       resources:
         limits:
           memory: 512M
+          cpus: '1.0'
         reservations:
           memory: 256M
+          cpus: '0.5'
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '5'
     expose:
       - '3000'
     networks:
@@ -108,12 +125,43 @@ services:
       DATABASE_DIRECT_URL: ${DATABASE_DIRECT_URL}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
       BACKUP_DIR: /app/backups
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
     entrypoint: >
       /bin/sh -c '
-        apk add --no-cache gzip > /dev/null 2>&1
+        apk add --no-cache aws-cli gzip > /dev/null 2>&1
         echo "0 2 * * * cd /app && sh /scripts/backup-cron.sh" > /etc/crontabs/root
         echo "Backup service started. Running daily at 02:00 UTC."
+        crond -f -l 8
+      '
+    networks:
+      - arl-network
+    restart: unless-stopped
+
+  # Weekly backup restore drill
+  backup-restore-test:
+    image: postgres:16-alpine
+    container_name: arl-backup-restore-test
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/app/backups
+    environment:
+      DATABASE_DIRECT_URL: ${DATABASE_DIRECT_URL}
+      RESTORE_TEST_DATABASE_URL: ${RESTORE_TEST_DATABASE_URL:-}
+      BACKUP_DIR: /app/backups
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+    entrypoint: >
+      /bin/sh -c '
+        apk add --no-cache aws-cli gzip > /dev/null 2>&1
+        echo "0 4 * * 0 cd /app && sh /scripts/backup-restore-test.sh" > /etc/crontabs/root
+        echo "Backup restore test service started. Running weekly on Sunday at 04:00 UTC."
         crond -f -l 8
       '
     networks:

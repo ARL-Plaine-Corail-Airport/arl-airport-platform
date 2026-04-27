@@ -220,6 +220,7 @@ export const getLatestNotices = cache(async (limit = 6, locale?: string) => {
       depth: 1,
       limit,
       locale: payloadLocale,
+      pagination: false,
       sort: '-publishedAt',
       where: {
         and: getPublishedNoticeFilters(nowIso),
@@ -246,6 +247,7 @@ export const getPromotedEmergencyNotice = cache(async (locale?: string) => {
       depth: 1,
       limit: 1,
       locale: payloadLocale,
+      pagination: false,
       sort: '-publishedAt',
       where: {
         and: [
@@ -273,6 +275,7 @@ export const getNoticeBySlug = cache(async (slug: string, locale?: string) => {
       depth: 1,
       limit: 1,
       locale: payloadLocale,
+      pagination: false,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -297,6 +300,7 @@ export const getFAQs = cache(async (limit = 100, locale?: string) => {
       depth: 1,
       limit,
       locale: payloadLocale,
+      pagination: false,
       sort: 'order',
       where: {
         status: {
@@ -323,6 +327,7 @@ export const getPageBySlug = cache(async (slug: string, locale?: string) => {
       depth: 1,
       limit: 1,
       locale: payloadLocale,
+      pagination: false,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -459,6 +464,19 @@ export const getNewsEvents = cache(async (limit = 24, locale?: string) => {
       depth: 1,
       limit,
       locale: payloadLocale,
+      pagination: false,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        type: true,
+        summary: true,
+        publishedAt: true,
+        updatedAt: true,
+        isPinned: true,
+        featuredImage: true,
+        attachments: true,
+      },
       sort: '-publishedAt',
       where: {
         status: {
@@ -485,6 +503,7 @@ export const getNewsEventBySlug = cache(async (slug: string, locale?: string) =>
       depth: 1,
       limit: 1,
       locale: payloadLocale,
+      pagination: false,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -522,6 +541,19 @@ export const getAirportProjectItems = cache(async (limit = 24, locale?: string) 
       depth: 1,
       limit,
       locale: payloadLocale,
+      pagination: false,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        category: true,
+        summary: true,
+        publishedAt: true,
+        updatedAt: true,
+        isPinned: true,
+        featuredImage: true,
+        attachments: true,
+      },
       sort: '-publishedAt',
       where: {
         status: {
@@ -548,6 +580,7 @@ export const getAirportProjectBySlug = cache(async (slug: string, locale?: strin
       depth: 1,
       limit: 1,
       locale: payloadLocale,
+      pagination: false,
       where: {
         and: [
           { slug: { equals: slug } },
@@ -585,6 +618,7 @@ export const getCareerItems = cache(async (limit = 24, locale?: string) => {
       depth: 1,
       limit,
       locale: payloadLocale,
+      pagination: false,
       sort: '-publishedAt',
       where: {
         status: {
@@ -616,6 +650,7 @@ export const getPublishedPages = cache(async (locale?: string) => {
       depth: 0,
       limit: 200,
       locale: payloadLocale,
+      pagination: false,
       where: {
         status: {
           equals: 'published',

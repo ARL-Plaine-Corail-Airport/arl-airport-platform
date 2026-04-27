@@ -164,6 +164,23 @@ describe('supabase storage client', () => {
     }
   })
 
+  it('throws SignedUrlTimeoutError when batch signed URLs do not respond within 10s', async () => {
+    const storage = createStorageMock()
+    storage.createSignedUrls.mockImplementation(
+      () => new Promise(() => {}),
+    )
+    vi.useFakeTimers()
+    try {
+      const { getSignedURLs, SignedUrlTimeoutError } = await loadSubject(storage)
+      const pending = getSignedURLs('docs', ['slow.pdf'])
+      const assertion = expect(pending).rejects.toBeInstanceOf(SignedUrlTimeoutError)
+      await vi.advanceTimersByTimeAsync(10_001)
+      await assertion
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('batch-generates signed URLs as a path map', async () => {
     const storage = createStorageMock()
     storage.createSignedUrls.mockResolvedValue({

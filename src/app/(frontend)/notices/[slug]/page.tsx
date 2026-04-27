@@ -116,18 +116,12 @@ export default async function NoticeDetailPage({ params }: Props) {
                 <h2>{dict.labels.attachments}</h2>
                 <ul className="content-list">
                   {notice.attachments.map((attachment: any, index: number) => {
-                    const fileUrl = typeof attachment?.file === 'object' ? attachment.file?.url : null
-
-                    if (!fileUrl) {
-                      return null
-                    }
-
+                    const fileUrl = typeof attachment === 'object' ? attachment?.url : null
+                    if (!fileUrl) return null
                     return (
                       <li key={attachment?.id ?? `att-${index}`}>
                         <a href={fileUrl} download className="news-item__download">
-                          {attachment?.filename ||
-                            attachment?.alt ||
-                            dict.labels.attached_document}
+                          {attachment?.filename || attachment?.alt || dict.labels.attached_document}
                         </a>
                       </li>
                     )

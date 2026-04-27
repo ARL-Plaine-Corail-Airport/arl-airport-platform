@@ -66,6 +66,7 @@ describe('dashboard overview counts', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.clearAllMocks()
     vi.resetModules()
   })
@@ -191,6 +192,32 @@ describe('dashboard overview counts', () => {
     expect(loggerErrorMock).toHaveBeenCalledWith(
       'Failed to fetch flight boards',
       flightBoardsError,
+      'dashboard',
+    )
+  })
+
+  it('renders degraded UI instead of waiting forever when a data source stalls', async () => {
+    vi.useFakeTimers()
+    findMock.mockReturnValue(new Promise(() => undefined))
+    countMock.mockResolvedValue({ totalDocs: 0 })
+    getPayloadClientMock.mockResolvedValue({
+      find: findMock,
+      count: countMock,
+    })
+
+    const { default: DashboardOverviewPage } = await import('@/app/(dashboard)/dashboard/page')
+    const page = DashboardOverviewPage()
+
+    await vi.advanceTimersByTimeAsync(8000)
+
+    render(await page)
+
+    expect(screen.getByRole('status')).toHaveTextContent('recent notices')
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      'Failed to fetch recent notices',
+      expect.objectContaining({
+        message: 'recent notices timed out after 8000ms',
+      }),
       'dashboard',
     )
   })

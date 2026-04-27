@@ -29,6 +29,10 @@ jobs:
             set -eu
             cd "${{ secrets.DEPLOY_PATH }}"
 
+            sha="${{ github.event.workflow_run.head_sha }}"
+            new_image="ghcr.io/${{ github.repository }}:${sha}"
+            compose="docker compose --env-file deploy.env -f docker-compose.prod.yml"
+
             echo "==> Pulling latest code..."
             git pull origin main
 
@@ -38,23 +42,86 @@ jobs:
               set +a
             fi
 
-            # Snapshot current image digests for rollback
-            echo "==> Saving current state for rollback..."
-            docker compose -f docker-compose.prod.yml config --images > /tmp/arl-pre-deploy-images.txt 2>/dev/null || true
-            current_commit=$(git rev-parse HEAD~1 2>/dev/null || echo "")
-
-            if command -v pnpm > /dev/null 2>&1; then
-              echo "==> Running database migrations..."
-              DATABASE_URL="${DATABASE_DIRECT_URL:-${DATABASE_URL:-}}" pnpm migrate || echo "Warning: Migration step failed - check manually"
-            else
-              echo "Warning: pnpm is not available on the deploy host - skipping migration step"
+            if [ -z "${DATABASE_DIRECT_URL:-}" ]; then
+              echo "DATABASE_DIRECT_URL is required for migrations" >&2
+              exit 1
             fi
 
-            echo "==> Pulling latest Docker image..."
-            docker compose -f docker-compose.prod.yml pull
+            echo "==> Saving current image for rollback..."
+            previous_image=""
+            if [ -f deploy.env ]; then
+              previous_image="$(grep '^APP_IMAGE=' deploy.env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+            fi
+            if [ -z "$previous_image" ] && [ -f .env ]; then
+              previous_image="$(grep '^APP_IMAGE=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+            fi
+            printf '%s\n' "$previous_image" > /tmp/arl-prev-image.txt
 
-            echo "==> Rolling restart..."
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            echo "==> Pinning deploy image: $new_image"
+            {
+              printf 'APP_IMAGE=%s\n' "$new_image"
+              printf 'NEXT_PUBLIC_BUILD_VERSION=%s\n' "$sha"
+            } > deploy.env
+
+            rollback_image() {
+              previous="$(cat /tmp/arl-prev-image.txt 2>/dev/null || true)"
+              if [ -z "$previous" ]; then
+                echo "No previous APP_IMAGE recorded; manual intervention required." >&2
+                return 1
+              fi
+              echo "==> Restoring previous image: $previous"
+              previous_version="${previous##*:}"
+              {
+                printf 'APP_IMAGE=%s\n' "$previous"
+                printf 'NEXT_PUBLIC_BUILD_VERSION=%s\n' "$previous_version"
+              } > deploy.env
+              $compose pull app || true
+              $compose up -d --remove-orphans
+            }
+
+            echo "==> Pulling pinned Docker image..."
+            if ! $compose pull app; then
+              rollback_image || true
+              exit 1
+            fi
+
+            echo "==> Running database migrations from new image..."
+            if ! $compose run --rm \
+              -e DATABASE_URL="${DATABASE_DIRECT_URL}" \
+              app pnpm migrate; then
+              rollback_image || true
+              exit 1
+            fi
+
+            echo "==> Scaling up app replicas..."
+            if command -v jq > /dev/null 2>&1; then
+              target="$($compose config --format json | jq -r '.services.app.deploy.replicas // 4')"
+            else
+              echo "Warning: jq is not available; defaulting rollout target to 4 replicas"
+              target=4
+            fi
+            $compose up -d --scale app=$((target * 2)) --no-deps app
+
+            echo "==> Waiting for readiness..."
+            ready=false
+            for i in $(seq 1 60); do
+              if curl -ksf --max-time 2 https://localhost/api/ready > /dev/null 2>&1; then
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+
+            if [ "$ready" != "true" ]; then
+              echo "==> READINESS CHECK FAILED. Rolling back image..."
+              rollback_image || true
+              exit 1
+            fi
+
+            $compose exec -T nginx nginx -s reload 2>/dev/null || $compose restart nginx
+
+            echo "==> Scaling down to target replicas..."
+            $compose up -d --scale app="$target" --remove-orphans
 
             echo "==> Pruning old images..."
             docker image prune -f
@@ -76,18 +143,13 @@ jobs:
 
             if [ "$healthy" = "true" ]; then
               echo "==> Deploy complete. Health check passed."
-              echo "$(date -Iseconds) deploy=success commit=$(git rev-parse --short HEAD)" >> deploy.log
+              echo "$(date -Iseconds) deploy=success image=$new_image commit=$(git rev-parse --short HEAD)" >> deploy.log
               exit 0
             fi
 
             echo "==> HEALTH CHECK FAILED after 30 attempts. Rolling back..."
 
-            if [ -n "$current_commit" ]; then
-              echo "==> Reverting to commit $current_commit..."
-              git checkout "$current_commit" -- docker-compose.prod.yml Dockerfile || true
-            fi
-
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            rollback_image || true
 
             # Wait for rollback to stabilize
             rollback_ok=false
@@ -105,7 +167,7 @@ jobs:
               echo "==> CRITICAL: Rollback also failed. Manual intervention required."
             fi
 
-            echo "$(date -Iseconds) deploy=rollback commit=$(git rev-parse --short HEAD)" >> deploy.log
+            echo "$(date -Iseconds) deploy=rollback failed_image=$new_image commit=$(git rev-parse --short HEAD)" >> deploy.log
 
             exit 1
 

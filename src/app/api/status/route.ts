@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { serverEnv } from '@/lib/env.server'
 import { logger } from '@/lib/logger'
 import { getPayloadClient } from '@/lib/payload'
+import { redactSensitiveText } from '@/lib/redaction'
 import { getSupabaseAdminClient } from '@/lib/storage/supabase-client'
 
 export const dynamic = 'force-dynamic'
@@ -53,17 +54,30 @@ function getStatusRedisClient(): Redis | null {
   return statusRedis
 }
 
-function redactUpstashToken(value: string): string {
-  const token = serverEnv.upstashRedisRestToken
-  return token ? value.split(token).join('[REDACTED]') : value
+function getUrlPassword(value: string): string {
+  try {
+    return decodeURIComponent(new URL(value).password)
+  } catch {
+    return ''
+  }
 }
 
 function redactStatusError(error: unknown): unknown {
-  if (!serverEnv.upstashRedisRestToken) return error
+  const secrets = [
+    serverEnv.upstashRedisRestToken,
+    serverEnv.s3SecretAccessKey,
+    serverEnv.payloadSecret,
+    serverEnv.visitorHashSalt,
+    getUrlPassword(serverEnv.databaseURL),
+    getUrlPassword(serverEnv.databaseDirectURL),
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    process.env.SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  ].filter((secret): secret is string => Boolean(secret))
 
   if (error instanceof Error) {
-    const message = redactUpstashToken(error.message)
-    const stack = error.stack ? redactUpstashToken(error.stack) : undefined
+    const message = redactSensitiveText(error.message, secrets)
+    const stack = error.stack ? redactSensitiveText(error.stack, secrets) : undefined
 
     if (message === error.message && stack === error.stack) {
       return error
@@ -76,7 +90,7 @@ function redactStatusError(error: unknown): unknown {
   }
 
   if (typeof error === 'string') {
-    return redactUpstashToken(error)
+    return redactSensitiveText(error, secrets)
   }
 
   return error
@@ -123,7 +137,7 @@ async function checkDatabase(): Promise<ServiceCheck> {
 
     return { status: 'ok', latencyMs: latencySince(start) }
   } catch (error) {
-    logger.error('Status database check failed', error, 'status')
+    logger.error('Status database check failed', redactStatusError(error), 'status')
     return { status: 'error', latencyMs: latencySince(start) }
   }
 }
@@ -163,7 +177,7 @@ async function checkStorage(): Promise<ServiceCheck> {
 
     return { status: 'ok', latencyMs: latencySince(start) }
   } catch (error) {
-    logger.error('Status storage check failed', error, 'status')
+    logger.error('Status storage check failed', redactStatusError(error), 'status')
     return { status: 'error', latencyMs: latencySince(start) }
   }
 }

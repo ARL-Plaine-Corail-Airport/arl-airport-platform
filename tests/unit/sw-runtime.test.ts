@@ -9,10 +9,15 @@ type ServiceWorkerFetchEvent = {
   respondWith: (response: Promise<Response> | Response) => void
 }
 
+type ServiceWorkerInstallEvent = {
+  waitUntil: (promise: Promise<unknown>) => void
+}
+
 function loadServiceWorker(fetchImpl: typeof fetch) {
   const listeners: Record<string, ((event: unknown) => void) | undefined> = {}
+  const cacheAdd = vi.fn().mockResolvedValue(undefined)
   const cachePut = vi.fn().mockResolvedValue(undefined)
-  const cacheOpen = vi.fn().mockResolvedValue({ put: cachePut })
+  const cacheOpen = vi.fn().mockResolvedValue({ add: cacheAdd, put: cachePut })
   const cacheMatch = vi.fn().mockResolvedValue(undefined)
   const cacheKeys = vi.fn().mockResolvedValue([])
   const cacheDelete = vi.fn().mockResolvedValue(true)
@@ -47,10 +52,33 @@ function loadServiceWorker(fetchImpl: typeof fetch) {
   })
 
   return {
+    cacheAdd,
     cacheOpen,
     cachePut,
     listeners,
+    warn,
   }
+}
+
+async function dispatchInstall(
+  handler: ((event: unknown) => void) | undefined,
+): Promise<void> {
+  if (!handler) {
+    throw new Error('Service worker install handler was not registered')
+  }
+
+  let installPromise: Promise<unknown> | undefined
+  handler({
+    waitUntil: (promise: Promise<unknown>) => {
+      installPromise = Promise.resolve(promise)
+    },
+  } satisfies ServiceWorkerInstallEvent)
+
+  if (!installPromise) {
+    throw new Error('Service worker install handler did not call waitUntil')
+  }
+
+  await installPromise
 }
 
 async function dispatchFetch(
@@ -80,12 +108,37 @@ async function dispatchFetch(
   return response
 }
 
+describe('service worker install precache policy', () => {
+  it('keeps installing when one localized route fails to precache', async () => {
+    const fetchMock = vi.fn()
+    const { cacheAdd, cacheOpen, listeners, warn } = loadServiceWorker(fetchMock)
+    cacheAdd.mockImplementation((url: string) => {
+      if (url === '/fr/contact') {
+        return Promise.reject(new Error('route unavailable'))
+      }
+
+      return Promise.resolve()
+    })
+
+    await expect(dispatchInstall(listeners.install)).resolves.toBeUndefined()
+
+    expect(cacheOpen).toHaveBeenCalledWith('arl-static-test-build')
+    expect(cacheAdd).toHaveBeenCalledWith('/en/offline')
+    expect(cacheAdd).toHaveBeenCalledWith('/fr/contact')
+    expect(cacheAdd).toHaveBeenCalledWith('/mfe/vip-lounge')
+    expect(warn).toHaveBeenCalledWith(
+      '[sw] Failed to precache /fr/contact',
+      expect.any(Error),
+    )
+  })
+})
+
 describe('service worker live API cache policy', () => {
   it('skips caching successful live API responses marked no-store', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('degraded', {
       status: 200,
       headers: {
-        'Cache-Control': 'no-store',
+        'Cache-Control': 'private, no-store ',
         'Content-Type': 'application/json',
       },
     }))
@@ -121,5 +174,42 @@ describe('service worker live API cache policy', () => {
     expect(response.status).toBe(200)
     expect(cacheOpen).toHaveBeenCalledTimes(1)
     expect(cachePut).toHaveBeenCalledTimes(1)
+  })
+
+  it('clones cacheable responses before asynchronous cache open settles', async () => {
+    const response = new Response('healthy', {
+      status: 200,
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        'Content-Type': 'application/json',
+      },
+    })
+    const cloneSpy = vi.spyOn(response, 'clone')
+    const fetchMock = vi.fn().mockResolvedValue(response)
+    const cache = {
+      add: vi.fn().mockResolvedValue(undefined),
+      put: vi.fn().mockResolvedValue(undefined),
+    }
+    let resolveCacheOpen: ((value: typeof cache) => void) | undefined
+    const cacheOpenPromise = new Promise<typeof cache>((resolve) => {
+      resolveCacheOpen = resolve
+    })
+
+    const { cacheOpen, listeners } = loadServiceWorker(fetchMock)
+    cacheOpen.mockReturnValueOnce(cacheOpenPromise)
+
+    const returnedResponse = await dispatchFetch(
+      listeners.fetch,
+      new Request('https://airport.example/api/weather'),
+    )
+
+    expect(returnedResponse.status).toBe(200)
+    expect(cloneSpy).toHaveBeenCalledTimes(1)
+    expect(cache.put).not.toHaveBeenCalled()
+
+    resolveCacheOpen?.(cache)
+    await vi.waitFor(() => {
+      expect(cache.put).toHaveBeenCalledWith(expect.any(Request), expect.any(Response))
+    })
   })
 })

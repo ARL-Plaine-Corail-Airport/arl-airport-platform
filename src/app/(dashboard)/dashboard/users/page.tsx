@@ -418,7 +418,6 @@ export default async function UsersPage({
                   <th>User</th>
                   <th>Email</th>
                   <th>Roles</th>
-                  <th>MFA Advisory</th>
                   <th>Status</th>
                   <th>Last Updated</th>
                   <th>Actions</th>
@@ -455,13 +454,6 @@ export default async function UsersPage({
                             <span className="badge badge-muted">No role</span>
                           )}
                         </div>
-                      </td>
-                      <td>
-                        {user.mfaRequired ? (
-                          <span className="badge badge-muted">Flagged</span>
-                        ) : (
-                          <span className="badge badge-muted">Not flagged</span>
-                        )}
                       </td>
                       <td>
                         <span className="badge badge-success">Active</span>

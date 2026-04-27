@@ -102,16 +102,6 @@ export const Users: CollectionConfig = {
       ],
     },
     {
-      name: 'mfaRequired',
-      label: 'MFA Required (advisory - not enforced)',
-      type: 'checkbox',
-      defaultValue: true,
-      admin: {
-        description:
-          'This flag is not currently enforced. Do not rely on it as a security control.',
-      },
-    },
-    {
       name: 'preferredLocale',
       type: 'select',
       defaultValue: defaultLocale,

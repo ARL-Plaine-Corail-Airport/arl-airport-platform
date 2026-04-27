@@ -1,4 +1,4 @@
-import type { AccessArgs } from 'payload'
+import type { AccessArgs, FieldAccess } from 'payload'
 
 // Shared by collection `Access` and field `FieldAccess` callers. Both receive
 // `{ req }` with a user; narrowing to this subset lets the role helpers be
@@ -44,6 +44,15 @@ export const isSuperAdmin = ({ req }: RoleAccessArgs) => hasAnyRole(req.user, ['
 
 export const isApprover = ({ req }: RoleAccessArgs) => hasAnyRole(req.user, APPROVER_ROLES)
 
+export const canSetPublishedStatus: FieldAccess = ({ data, req, siblingData }) => {
+  if (isApprover({ req })) return true
+
+  const status = (siblingData as { status?: unknown } | undefined)?.status
+    ?? (data as { status?: unknown } | undefined)?.status
+
+  return status !== 'published'
+}
+
 export const isEditor = ({ req }: RoleAccessArgs) => hasAnyRole(req.user, EDITOR_ROLES)
 
 export const isDocumentReader = ({ req }: RoleAccessArgs) =>
@@ -60,4 +69,4 @@ function publishedFieldOrAdmin(field: 'status' | '_status') {
 
 export const publishedOrAdmin = publishedFieldOrAdmin('status')
 
-export const publishedVersionOrAdmin = publishedFieldOrAdmin('_status')
+export const publishedVersionOrAdmin = publishedFieldOrAdmin('status')

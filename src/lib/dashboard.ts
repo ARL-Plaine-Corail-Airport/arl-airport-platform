@@ -116,12 +116,6 @@ export function getRoleBadgeClass(role: DashboardRole): string {
   return ROLE_BADGE[role] ?? 'role-viewer'
 }
 
-export function canAccess(role: string, section: string): boolean {
-  const access = ROLE_ACCESS[role as DashboardRole]
-  if (!access) return false
-  return access.includes(section)
-}
-
 export function canAccessAny(roles: string[], section: string): boolean {
   return getAllowedSections(roles).includes(section)
 }

@@ -159,6 +159,7 @@ function NavDropdown({
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
             className="dropdown-item"
             role="menuitem"
             tabIndex={open ? 0 : -1}
@@ -243,11 +244,11 @@ export function SiteHeader({ phone }: { phone?: string }) {
               {t('flights.live_data')}
             </p>
             <div className="site-header__meta-links">
-              <Link href={lp('/flight-status')} className="site-header__meta-link">
+              <Link href={lp('/flight-status')} prefetch={false} className="site-header__meta-link">
                 <UtilityIcon path="flight" />
                 {t('nav.flight_status')}
               </Link>
-              <Link href={lp('/airport-map')} className="site-header__meta-link">
+              <Link href={lp('/airport-map')} prefetch={false} className="site-header__meta-link">
                 <UtilityIcon path="map" />
                 {t('nav.airport_map')}
               </Link>
@@ -265,7 +266,7 @@ export function SiteHeader({ phone }: { phone?: string }) {
         </div>
 
         <div className="container site-header__inner">
-          <Link href={lp('/')} className="logo-link" onClick={() => setMenuOpen(false)}>
+          <Link href={lp('/')} prefetch={false} className="logo-link" onClick={() => setMenuOpen(false)}>
             <div className="logo-box logo-box--rect">
               <Image
                 src="/images/ARL airport logo with airplane graphic.png"
@@ -291,36 +292,42 @@ export function SiteHeader({ phone }: { phone?: string }) {
             />
             <Link
               href={lp('/transport-parking')}
+              prefetch={false}
               className={`nav-link${isPathActive(pathname, '/transport-parking') ? ' nav-link--active' : ''}`}
             >
               {t('nav.transport')}
             </Link>
             <Link
               href={lp('/notices')}
+              prefetch={false}
               className={`nav-link${isPathActive(pathname, '/notices') ? ' nav-link--active' : ''}`}
             >
               {t('nav.notices')}
             </Link>
             <Link
               href={lp('/news-events')}
+              prefetch={false}
               className={`nav-link${isPathActive(pathname, '/news-events') ? ' nav-link--active' : ''}`}
             >
               {t('nav.news_events')}
             </Link>
             <Link
               href={lp('/airport-project')}
+              prefetch={false}
               className={`nav-link${isPathActive(pathname, '/airport-project') ? ' nav-link--active' : ''}`}
             >
               {t('nav.airport_project')}
             </Link>
             <Link
               href={lp('/career')}
+              prefetch={false}
               className={`nav-link${isPathActive(pathname, '/career') ? ' nav-link--active' : ''}`}
             >
               {t('nav.career')}
             </Link>
             <Link
               href={lp('/contact')}
+              prefetch={false}
               className={`nav-link${isPathActive(pathname, '/contact') ? ' nav-link--active' : ''}`}
             >
               {t('nav.contact')}
@@ -370,16 +377,16 @@ export function SiteHeader({ phone }: { phone?: string }) {
 
           <div className="mobile-nav-quick" role="group" aria-labelledby="mobile-quick-label">
             <p className="mobile-nav-group__label" id="mobile-quick-label">{t('nav.quick_links')}</p>
-            <Link href={lp('/arrivals')} className="mobile-nav-quick__link">{t('nav.arrivals')}</Link>
-            <Link href={lp('/departures')} className="mobile-nav-quick__link">{t('nav.departures')}</Link>
-            <Link href={lp('/passenger-guide')} className="mobile-nav-quick__link">{t('nav.passenger_guide')}</Link>
-            <Link href={lp('/contact')} className="mobile-nav-quick__link">{t('nav.contact')}</Link>
+            <Link href={lp('/arrivals')} prefetch={false} className="mobile-nav-quick__link">{t('nav.arrivals')}</Link>
+            <Link href={lp('/departures')} prefetch={false} className="mobile-nav-quick__link">{t('nav.departures')}</Link>
+            <Link href={lp('/passenger-guide')} prefetch={false} className="mobile-nav-quick__link">{t('nav.passenger_guide')}</Link>
+            <Link href={lp('/contact')} prefetch={false} className="mobile-nav-quick__link">{t('nav.contact')}</Link>
           </div>
 
           <div className="mobile-nav-group" role="group" aria-labelledby="mobile-flights-label">
             <p className="mobile-nav-group__label" id="mobile-flights-label">{t('nav.flights')}</p>
             {flightLinks.map((item) => (
-              <Link key={item.href} href={item.href} className="mobile-nav-link">
+              <Link key={item.href} href={item.href} prefetch={false} className="mobile-nav-link">
                 {item.label}
               </Link>
             ))}
@@ -388,7 +395,7 @@ export function SiteHeader({ phone }: { phone?: string }) {
           <div className="mobile-nav-group" role="group" aria-labelledby="mobile-passenger-label">
             <p className="mobile-nav-group__label" id="mobile-passenger-label">{t('nav.passenger_info')}</p>
             {passengerLinks.map((item) => (
-              <Link key={item.href} href={item.href} className="mobile-nav-link">
+              <Link key={item.href} href={item.href} prefetch={false} className="mobile-nav-link">
                 {item.label}
               </Link>
             ))}
@@ -396,12 +403,12 @@ export function SiteHeader({ phone }: { phone?: string }) {
 
           <div className="mobile-nav-group" role="group" aria-labelledby="mobile-airport-label">
             <p className="mobile-nav-group__label" id="mobile-airport-label">{t('nav.airport')}</p>
-            <Link href={lp('/transport-parking')} className="mobile-nav-link">{t('nav.transport_parking')}</Link>
-            <Link href={lp('/notices')} className="mobile-nav-link">{t('nav.notices')}</Link>
-            <Link href={lp('/news-events')} className="mobile-nav-link">{t('nav.news_events')}</Link>
-            <Link href={lp('/airport-project')} className="mobile-nav-link">{t('nav.airport_project')}</Link>
-            <Link href={lp('/career')} className="mobile-nav-link">{t('nav.career')}</Link>
-            <Link href={lp('/contact')} className="mobile-nav-link">{t('nav.contact')}</Link>
+            <Link href={lp('/transport-parking')} prefetch={false} className="mobile-nav-link">{t('nav.transport_parking')}</Link>
+            <Link href={lp('/notices')} prefetch={false} className="mobile-nav-link">{t('nav.notices')}</Link>
+            <Link href={lp('/news-events')} prefetch={false} className="mobile-nav-link">{t('nav.news_events')}</Link>
+            <Link href={lp('/airport-project')} prefetch={false} className="mobile-nav-link">{t('nav.airport_project')}</Link>
+            <Link href={lp('/career')} prefetch={false} className="mobile-nav-link">{t('nav.career')}</Link>
+            <Link href={lp('/contact')} prefetch={false} className="mobile-nav-link">{t('nav.contact')}</Link>
           </div>
         </nav>
       </div>

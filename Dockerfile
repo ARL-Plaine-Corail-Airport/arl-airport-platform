@@ -34,15 +34,19 @@ ENV ARL_SKIP_DB_DURING_BUILD=1
 # Cap heap so the build fails fast with a JS heap OOM instead of getting
 # SIGKILLed by the cgroup — that shows up in logs as a gRPC EOF and is
 # impossible to diagnose.
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 
 # Placeholder values so payload.config.ts and env.ts don't throw during build.
 # ARL_SKIP_DB_DURING_BUILD keeps Next/Payload from attempting live DB access
 # while image artifacts are being compiled.
 # These are NOT used at runtime — real values come from .env / docker-compose.
 ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ARG NEXT_PUBLIC_SITE_URLS=
+ARG ADDITIONAL_ALLOWED_ORIGINS=
+ARG NEXT_PUBLIC_BUILD_VERSION=
 ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
+ARG SENTRY_ENVIRONMENT=
 ARG PAYLOAD_SECRET=build-time-placeholder-secret-min-32-chars
 ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ARG VISITOR_HASH_SALT=build-time-placeholder-visitor-hash-salt
@@ -50,8 +54,12 @@ ARG SUPABASE_S3_ACCESS_KEY_ID=placeholder
 ARG SUPABASE_S3_SECRET_ACCESS_KEY=placeholder
 ARG SUPABASE_S3_ENDPOINT=https://placeholder.supabase.co/storage/v1/s3
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SITE_URLS=$NEXT_PUBLIC_SITE_URLS
+ENV ADDITIONAL_ALLOWED_ORIGINS=$ADDITIONAL_ALLOWED_ORIGINS
+ENV NEXT_PUBLIC_BUILD_VERSION=$NEXT_PUBLIC_BUILD_VERSION
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV SENTRY_ENVIRONMENT=$SENTRY_ENVIRONMENT
 ENV PAYLOAD_SECRET=$PAYLOAD_SECRET
 ENV DATABASE_URL=$DATABASE_URL
 ENV VISITOR_HASH_SALT=$VISITOR_HASH_SALT
@@ -64,7 +72,7 @@ ENV SUPABASE_S3_ENDPOINT=$SUPABASE_S3_ENDPOINT
 RUN pnpm run build
 
 # ── Stage 4: runner (minimal production image) ────────────────────────────────
-FROM node:20-alpine AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -78,6 +86,9 @@ RUN addgroup --system --gid 1001 arl && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=arl:arl /app/.next/standalone ./
 COPY --from=builder --chown=arl:arl /app/.next/static     ./.next/static
+COPY --from=deps --chown=arl:arl /app/node_modules ./node_modules
+COPY --from=builder --chown=arl:arl /app/package.json /app/pnpm-lock.yaml /app/tsconfig.json /app/next.config.mjs /app/payload.config.ts ./
+COPY --from=builder --chown=arl:arl /app/src ./src
 
 USER arl
 

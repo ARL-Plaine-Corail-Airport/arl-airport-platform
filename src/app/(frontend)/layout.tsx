@@ -23,10 +23,23 @@ import { env } from '@/lib/env'
 import { buildOrganizationSchema, JsonLd } from '@/lib/structured-data'
 
 const pwaSplashBootstrap = `(() => {
+  const logOnce = (message, error) => {
+    if (window.__arlPwaSplashBootstrapLogged) return
+    window.__arlPwaSplashBootstrapLogged = true
+    console.warn(message, error)
+  }
+
   try {
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
+    const mediaStandalone = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(display-mode: standalone)').matches
+      : (logOnce('[pwa] matchMedia is unavailable for splash bootstrap'), false)
+    const navigatorStandalone =
+      typeof window.navigator === 'object' &&
+      'standalone' in window.navigator &&
       window.navigator.standalone === true
+    const standalone =
+      mediaStandalone ||
+      navigatorStandalone
 
     if (!standalone) return
 
@@ -37,7 +50,9 @@ const pwaSplashBootstrap = `(() => {
     if (!root.dataset.pwaSplashStartedAt) {
       root.dataset.pwaSplashStartedAt = String(Date.now())
     }
-  } catch {}
+  } catch (error) {
+    logOnce('[pwa] Splash bootstrap failed', error)
+  }
 })()`
 
 const bodyFont = Public_Sans({

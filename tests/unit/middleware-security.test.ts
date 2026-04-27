@@ -230,6 +230,43 @@ describe('middleware security', () => {
     expect(response.headers.get('location')).toContain('/admin/login?redirect=%2Fdashboard')
   })
 
+  it('passes browser dashboard RSC fetches through to server-side auth', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+
+    const response = await middleware(new NextRequest('http://localhost/dashboard', {
+      headers: {
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+      },
+    }))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('location')).toBeNull()
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
+  })
+
+  it('redirects locale-prefixed dashboard and admin URLs to canonical unprefixed paths', async () => {
+    const { middleware, NextRequest } = await loadProductionSecurityModules()
+
+    const dashboardResponse = await middleware(
+      new NextRequest('http://localhost/en/dashboard?tab=overview'),
+    )
+    const adminResponse = await middleware(
+      new NextRequest('http://localhost/fr/admin/login?redirect=%2Fdashboard'),
+    )
+
+    expect(dashboardResponse.status).toBe(308)
+    expect(dashboardResponse.headers.get('location')).toBe(
+      'http://localhost/dashboard?tab=overview',
+    )
+    expect(dashboardResponse.headers.get('Cache-Control')).toBe('private, no-store')
+    expect(adminResponse.status).toBe(308)
+    expect(adminResponse.headers.get('location')).toBe(
+      'http://localhost/admin/login?redirect=%2Fdashboard',
+    )
+    expect(adminResponse.headers.get('Cache-Control')).toBe('private, no-store')
+  })
+
   it('allows signed unexpired dashboard JWT cookies to reach dashboard handoff', async () => {
     const { middleware, NextRequest } = await loadProductionSecurityModules()
 

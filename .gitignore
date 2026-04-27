@@ -50,6 +50,9 @@ media/
 certificates/
 nginx/ssl/
 
+# generated PDFs (regenerate via scripts/md-to-pdf.mjs)
+docs/*.pdf
+
 # test output
 playwright-report/
 test-results/

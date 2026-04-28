@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const originalBuildFlag = process.env.ARL_SKIP_DB_DURING_BUILD
+const originalFlightApiKey = process.env.FLIGHT_PROVIDER_API_KEY
 
 describe('flight board build-time fallback', () => {
   afterEach(() => {
@@ -12,10 +13,17 @@ describe('flight board build-time fallback', () => {
     } else {
       process.env.ARL_SKIP_DB_DURING_BUILD = originalBuildFlag
     }
+
+    if (originalFlightApiKey === undefined) {
+      delete process.env.FLIGHT_PROVIDER_API_KEY
+    } else {
+      process.env.FLIGHT_PROVIDER_API_KEY = originalFlightApiKey
+    }
   })
 
   it('skips manual CMS flight lookups during build without logging', async () => {
     process.env.ARL_SKIP_DB_DURING_BUILD = '1'
+    delete process.env.FLIGHT_PROVIDER_API_KEY
 
     const getPayloadClient = vi.fn()
     const loggerError = vi.fn()

@@ -448,98 +448,98 @@ body {
 }
 
 /* ── Dark mode polish overrides ── */
-@media (prefers-color-scheme: dark) {
-  body {
+
+  html[data-theme='dark'] body {
     background:
       radial-gradient(circle at top left, hsl(200 40% 12% / 0.6), transparent 24rem),
       radial-gradient(circle at top right, hsl(210 30% 10% / 0.6), transparent 30rem),
       hsl(210 25% 8%);
   }
 
-  .site-header {
+  html[data-theme='dark'] .site-header {
     background: hsl(210 20% 10% / 0.88);
     border-bottom-color: hsl(210 15% 18%);
     box-shadow: 0 8px 24px -16px hsl(210 40% 4% / 0.5);
   }
 
-  .dropdown-menu {
+  html[data-theme='dark'] .dropdown-menu {
     background: hsl(210 20% 14% / 0.98);
     border-color: hsl(210 15% 22%);
     box-shadow: 0 16px 40px -20px hsl(210 40% 4% / 0.6);
   }
 
-  .dropdown-item:hover {
+  html[data-theme='dark'] .dropdown-item:hover {
     background: hsl(210 20% 18%);
   }
 
-  .mobile-menu__panel {
+  html[data-theme='dark'] .mobile-menu__panel {
     background:
       radial-gradient(circle at top right, hsl(200 30% 14% / 0.6), transparent 14rem),
       linear-gradient(180deg, hsl(210 20% 12%), hsl(210 22% 10%));
   }
 
-  .mobile-menu__backdrop {
+  html[data-theme='dark'] .mobile-menu__backdrop {
     background: hsl(210 40% 4% / 0.6);
   }
 
-  .card,
-  .flight-panel,
-  .service-card,
-  .map-card,
-  .emergency-card,
-  .table-card {
+  html[data-theme='dark'] .card,
+html[data-theme='dark'] .flight-panel,
+html[data-theme='dark'] .service-card,
+html[data-theme='dark'] .map-card,
+html[data-theme='dark'] .emergency-card,
+html[data-theme='dark'] .table-card {
     background: linear-gradient(180deg, hsl(210 20% 13%), hsl(210 18% 11%));
     border-color: hsl(210 15% 20%);
     box-shadow: 0 12px 24px -16px hsl(210 40% 4% / 0.4);
   }
 
-  .weather-card {
+  html[data-theme='dark'] .weather-card {
     background: hsl(210 20% 12%);
     border-color: hsl(210 15% 20%);
     box-shadow: 0 12px 24px -16px hsl(210 40% 4% / 0.4);
   }
 
-  .quick-action-card {
+  html[data-theme='dark'] .quick-action-card {
     background: linear-gradient(180deg, hsl(210 18% 14%), hsl(210 20% 11%));
     border-color: hsl(210 15% 20%);
     box-shadow: 0 12px 24px -16px hsl(210 40% 4% / 0.4);
   }
 
-  .quick-action-card:hover {
+  html[data-theme='dark'] .quick-action-card:hover {
     border-color: hsl(200 40% 35%);
     box-shadow: 0 16px 32px -18px hsl(210 40% 4% / 0.5);
   }
 
-  .quick-action-card__icon {
+  html[data-theme='dark'] .quick-action-card__icon {
     background: linear-gradient(135deg, hsl(210 30% 18%), hsl(184 25% 18%));
     border-color: hsl(200 20% 28%);
   }
 
-  .card:hover,
-  .flight-panel:hover,
-  .service-card:hover,
-  .map-card:hover {
+  html[data-theme='dark'] .card:hover,
+html[data-theme='dark'] .flight-panel:hover,
+html[data-theme='dark'] .service-card:hover,
+html[data-theme='dark'] .map-card:hover {
     border-color: hsl(200 30% 30%);
   }
 
-  .card::before,
-  .flight-panel::before,
-  .map-card::before,
-  .emergency-card::before,
-  .table-card::before,
-  .quick-action-card::before {
+  html[data-theme='dark'] .card::before,
+html[data-theme='dark'] .flight-panel::before,
+html[data-theme='dark'] .map-card::before,
+html[data-theme='dark'] .emergency-card::before,
+html[data-theme='dark'] .table-card::before,
+html[data-theme='dark'] .quick-action-card::before {
     opacity: 0.5;
   }
 
-  .section-alt {
+  html[data-theme='dark'] .section-alt {
     background: linear-gradient(180deg, hsl(210 20% 10%), hsl(210 18% 9%));
   }
 
-  .flight-row:hover {
+  html[data-theme='dark'] .flight-row:hover {
     background: hsl(210 20% 16%);
   }
 
-  .contact-strip {
+  html[data-theme='dark'] .contact-strip {
     background:
       radial-gradient(circle at right top, hsl(200 25% 14% / 0.6), transparent 14rem),
       linear-gradient(180deg, hsl(210 20% 13%), hsl(210 18% 11%));
@@ -547,114 +547,114 @@ body {
     box-shadow: 0 16px 32px -20px hsl(210 40% 4% / 0.4);
   }
 
-  .btn-primary {
+  html[data-theme='dark'] .btn-primary {
     background: linear-gradient(135deg, hsl(210 60% 40%), hsl(185 45% 35%));
     box-shadow: 0 12px 24px -14px hsl(210 40% 4% / 0.5);
   }
 
-  .btn-primary:hover {
+  html[data-theme='dark'] .btn-primary:hover {
     background: linear-gradient(135deg, hsl(210 60% 35%), hsl(185 45% 30%));
     box-shadow: 0 16px 28px -14px hsl(210 40% 4% / 0.6);
   }
 
-  .btn-outline {
+  html[data-theme='dark'] .btn-outline {
     border-color: hsl(210 15% 28%);
     background: hsl(210 20% 14% / 0.7);
   }
 
-  .btn-outline:hover {
+  html[data-theme='dark'] .btn-outline:hover {
     background: hsl(210 18% 18%);
     border-color: hsl(210 18% 35%);
   }
 
-  .logo-sub {
+  html[data-theme='dark'] .logo-sub {
     color: hsl(210 15% 55%);
   }
 
-  .nav-link {
+  html[data-theme='dark'] .nav-link {
     color: hsl(210 15% 60%);
   }
 
-  .nav-link:hover {
+  html[data-theme='dark'] .nav-link:hover {
     color: hsl(210 15% 88%);
     background: hsl(210 20% 16%);
   }
 
-  .icon-box {
+  html[data-theme='dark'] .icon-box {
     background: linear-gradient(135deg, hsl(210 25% 18%), hsl(184 20% 18%));
     border-color: hsl(200 18% 26%);
   }
 
-  .map-placeholder {
+  html[data-theme='dark'] .map-placeholder {
     background: hsl(210 18% 14%);
     border-color: hsl(210 15% 22%);
   }
 
-  .inner-page-hero {
+  html[data-theme='dark'] .inner-page-hero {
     background:
       radial-gradient(circle at right top, hsl(200 25% 14%), transparent 15rem),
       linear-gradient(180deg, hsl(210 20% 12%), hsl(210 18% 10%));
     border-bottom-color: hsl(210 15% 18%);
   }
 
-  .inner-page-hero .lead {
+  html[data-theme='dark'] .inner-page-hero .lead {
     color: hsl(210 12% 58%);
   }
 
-  .alert-info {
+  html[data-theme='dark'] .alert-info {
     background: hsl(210 40% 14%);
     border-color: hsl(210 30% 25%);
   }
 
-  .pill {
+  html[data-theme='dark'] .pill {
     background: hsl(210 18% 18%);
     color: hsl(210 12% 65%);
   }
 
-  .pill--primary {
+  html[data-theme='dark'] .pill--primary {
     background: hsl(210 40% 20%);
     color: hsl(210 70% 65%);
   }
 
-  .filter-chip {
+  html[data-theme='dark'] .filter-chip {
     border-color: hsl(210 15% 25%);
     background: hsl(210 20% 14%);
   }
 
-  .filter-chip:hover {
+  html[data-theme='dark'] .filter-chip:hover {
     border-color: hsl(210 50% 45%);
   }
 
-  .mobile-nav-quick__link {
+  html[data-theme='dark'] .mobile-nav-quick__link {
     background-color: hsl(210 30% 16%);
     color: hsl(210 60% 65%);
   }
 
-  .mobile-nav-quick__link:hover {
+  html[data-theme='dark'] .mobile-nav-quick__link:hover {
     background-color: hsl(210 30% 20%);
   }
 
-  .lang-switcher {
+  html[data-theme='dark'] .lang-switcher {
     background: hsl(210 18% 16%);
   }
 
-  .lang-btn {
+  html[data-theme='dark'] .lang-btn {
     color: hsl(210 12% 55%);
   }
 
-  .lang-btn:hover {
+  html[data-theme='dark'] .lang-btn:hover {
     color: hsl(210 15% 80%);
   }
 
-  .lang-btn--active {
+  html[data-theme='dark'] .lang-btn--active {
     background: hsl(210 20% 20%);
     color: hsl(210 60% 65%);
   }
 
-  .footer-contact-item a:hover {
+  html[data-theme='dark'] .footer-contact-item a:hover {
     opacity: 1;
   }
-}
+
 
 @media (max-width: 767px) {
   .site-header {
@@ -662,24 +662,25 @@ body {
   }
 }
 
-@media (max-width: 767px) and (prefers-color-scheme: dark) {
-  .site-header {
+@media (max-width: 767px) {
+  html[data-theme='dark'] .site-header {
     background: hsl(210 20% 10% / 0.94);
   }
 
-  .page-hero {
+  html[data-theme='dark'] .page-hero {
     padding: 0;
   }
 
-  .hero-eyebrow {
+  html[data-theme='dark'] .hero-eyebrow {
     padding: 0.45rem 0.75rem;
   }
 
-  .page-hero__content {
+  html[data-theme='dark'] .page-hero__content {
     border-radius: 0.95rem;
   }
 
-  .contact-strip {
+  html[data-theme='dark'] .contact-strip {
     padding: 1.6rem 1.2rem;
   }
+
 }

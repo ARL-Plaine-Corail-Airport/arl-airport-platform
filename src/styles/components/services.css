@@ -98,31 +98,31 @@
   border-color: hsl(38 50% 78%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .service-card:nth-child(1) .icon-box {
+
+  html[data-theme='dark'] .service-card:nth-child(1) .icon-box {
     background: linear-gradient(135deg, hsl(210 30% 18%), hsl(210 25% 15%));
     color: hsl(210 60% 60%);
     border-color: hsl(210 20% 26%);
   }
 
-  .service-card:nth-child(2) .icon-box {
+  html[data-theme='dark'] .service-card:nth-child(2) .icon-box {
     background: linear-gradient(135deg, hsl(185 25% 17%), hsl(185 20% 14%));
     color: hsl(185 50% 55%);
     border-color: hsl(185 18% 25%);
   }
 
-  .service-card:nth-child(3) .icon-box {
+  html[data-theme='dark'] .service-card:nth-child(3) .icon-box {
     background: linear-gradient(135deg, hsl(152 25% 16%), hsl(152 20% 13%));
     color: hsl(152 45% 50%);
     border-color: hsl(152 18% 24%);
   }
 
-  .service-card:nth-child(4) .icon-box {
+  html[data-theme='dark'] .service-card:nth-child(4) .icon-box {
     background: linear-gradient(135deg, hsl(38 30% 17%), hsl(38 25% 14%));
     color: hsl(38 60% 55%);
     border-color: hsl(38 20% 25%);
   }
-}
+
 
 /* ─── Weather ─── */
 .weather-card {
@@ -212,16 +212,15 @@
   padding-top: 0.75rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .weather-card__header {
+
+  html[data-theme='dark'] .weather-card__header {
     background: linear-gradient(135deg, hsl(210 50% 22%), hsl(195 40% 20%), hsl(185 35% 18%));
   }
 
-  .weather-card__header::before {
+  html[data-theme='dark'] .weather-card__header::before {
     background: hsl(0 0% 100% / 0.04);
   }
 
-  .weather-card__header::after {
+  html[data-theme='dark'] .weather-card__header::after {
     background: hsl(0 0% 100% / 0.02);
   }
-}

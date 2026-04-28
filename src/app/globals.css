@@ -74,8 +74,7 @@
 }
 
 /* ── Dark mode ── */
-@media (prefers-color-scheme: dark) {
-  :root {
+html[data-theme='dark'] {
     /* Surfaces */
     --bg:             hsl(210 25% 8%);
     --surface:        hsl(210 20% 12%);
@@ -123,11 +122,11 @@
 
     /* Focus ring */
     --focus:          0 0 0 2px hsl(210 70% 50%);
-  }
-
-  html {
     color-scheme: dark;
-  }
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
 }
 
 @import '../styles/components/base.css';

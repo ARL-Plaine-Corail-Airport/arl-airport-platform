@@ -1649,256 +1649,256 @@ tbody tr:hover {
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
+
+  html[data-theme='dark'] body {
     background:
       radial-gradient(circle at top left, hsl(var(--arl-teal-650) / 0.24), transparent 22rem),
       radial-gradient(circle at top right, hsl(var(--arl-navy-850) / 0.58), transparent 28rem),
       linear-gradient(180deg, hsl(var(--arl-navy-950)), hsl(210 22% 8%) 24%, hsl(210 24% 7%) 100%);
   }
 
-  body::before {
+  html[data-theme='dark'] body::before {
     background:
       linear-gradient(hsl(var(--arl-white) / 0.05) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--arl-white) / 0.04) 1px, transparent 1px);
     opacity: 0.36;
   }
 
-  .section-alt,
-  .inner-page-hero,
-  .mobile-menu__panel {
+  html[data-theme='dark'] .section-alt,
+html[data-theme='dark'] .inner-page-hero,
+html[data-theme='dark'] .mobile-menu__panel {
     background:
       radial-gradient(circle at top right, hsl(var(--arl-teal-650) / 0.2), transparent 14rem),
       linear-gradient(180deg, hsl(210 20% 11%), hsl(210 22% 9%));
   }
 
-  .inner-page-hero__content {
+  html[data-theme='dark'] .inner-page-hero__content {
     background:
       linear-gradient(180deg, hsl(210 18% 15%), hsl(210 20% 12%));
     border-color: hsl(210 16% 20%);
     box-shadow: 0 28px 40px -34px hsl(var(--arl-navy-950) / 0.58);
   }
 
-  .inner-page-hero .eyebrow {
+  html[data-theme='dark'] .inner-page-hero .eyebrow {
     color: hsl(185 54% 72%);
   }
 
-  .site-header {
+  html[data-theme='dark'] .site-header {
     background: hsl(210 22% 10% / 0.78);
     border-bottom-color: hsl(210 16% 18%);
     box-shadow: 0 24px 40px -34px hsl(var(--arl-navy-950) / 0.62);
   }
 
-  .site-header__meta {
+  html[data-theme='dark'] .site-header__meta {
     background: hsl(210 24% 11% / 0.82);
     border-bottom-color: hsl(210 16% 18%);
   }
 
-  .site-header__meta-link,
-  .nav-link,
-  .content-slider__view-all,
-  .flight-panel__link,
-  .lang-switcher,
-  .mobile-toggle,
-  .dropdown-menu,
-  .section-list__nav-link,
-  .flight-panel__count,
-  .flight-board__count,
-  .flight-board__provider,
-  .weather-card__chip,
-  .detail-card__link,
-  .install-prompt,
-  .install-prompt__dismiss {
+  html[data-theme='dark'] .site-header__meta-link,
+html[data-theme='dark'] .nav-link,
+html[data-theme='dark'] .content-slider__view-all,
+html[data-theme='dark'] .flight-panel__link,
+html[data-theme='dark'] .lang-switcher,
+html[data-theme='dark'] .mobile-toggle,
+html[data-theme='dark'] .dropdown-menu,
+html[data-theme='dark'] .section-list__nav-link,
+html[data-theme='dark'] .flight-panel__count,
+html[data-theme='dark'] .flight-board__count,
+html[data-theme='dark'] .flight-board__provider,
+html[data-theme='dark'] .weather-card__chip,
+html[data-theme='dark'] .detail-card__link,
+html[data-theme='dark'] .install-prompt,
+html[data-theme='dark'] .install-prompt__dismiss {
     border-color: hsl(210 16% 22%);
   }
 
-  .site-header__meta-link,
-  .nav-link,
-  .content-slider__view-all,
-  .flight-panel__link,
-  .section-list__nav-link,
-  .detail-card__link,
-  .lang-switcher,
-  .mobile-toggle,
-  .install-prompt__dismiss {
+  html[data-theme='dark'] .site-header__meta-link,
+html[data-theme='dark'] .nav-link,
+html[data-theme='dark'] .content-slider__view-all,
+html[data-theme='dark'] .flight-panel__link,
+html[data-theme='dark'] .section-list__nav-link,
+html[data-theme='dark'] .detail-card__link,
+html[data-theme='dark'] .lang-switcher,
+html[data-theme='dark'] .mobile-toggle,
+html[data-theme='dark'] .install-prompt__dismiss {
     background: hsl(210 18% 14%);
     color: hsl(210 16% 78%);
   }
 
-  .nav-link:hover,
-  .nav-link--active,
-  .site-header__meta-link:hover,
-  .content-slider__view-all:hover,
-  .flight-panel__link:hover,
-  .section-list__nav-link:hover,
-  .detail-card__link:hover {
+  html[data-theme='dark'] .nav-link:hover,
+html[data-theme='dark'] .nav-link--active,
+html[data-theme='dark'] .site-header__meta-link:hover,
+html[data-theme='dark'] .content-slider__view-all:hover,
+html[data-theme='dark'] .flight-panel__link:hover,
+html[data-theme='dark'] .section-list__nav-link:hover,
+html[data-theme='dark'] .detail-card__link:hover {
     background: hsl(210 18% 18%);
     color: hsl(var(--arl-white));
   }
 
-  .dropdown-item {
+  html[data-theme='dark'] .dropdown-item {
     color: hsl(210 16% 78%);
   }
 
-  .dropdown-item:hover {
+  html[data-theme='dark'] .dropdown-item:hover {
     background: hsl(210 18% 20%);
     color: hsl(var(--arl-white));
   }
 
-  .lang-switcher,
-  .dropdown-menu,
-  .mobile-menu__panel,
-  .slider-card,
-  .card,
-  .flight-panel,
-  .service-card,
-  .map-card,
-  .emergency-card,
-  .table-card,
-  .detail-card,
-  .content-section,
-  .section-list__nav,
-  .weather-card,
-  .footer-callout,
-  .contact-strip,
-  .install-prompt {
+  html[data-theme='dark'] .lang-switcher,
+html[data-theme='dark'] .dropdown-menu,
+html[data-theme='dark'] .mobile-menu__panel,
+html[data-theme='dark'] .slider-card,
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .flight-panel,
+html[data-theme='dark'] .service-card,
+html[data-theme='dark'] .map-card,
+html[data-theme='dark'] .emergency-card,
+html[data-theme='dark'] .table-card,
+html[data-theme='dark'] .detail-card,
+html[data-theme='dark'] .content-section,
+html[data-theme='dark'] .section-list__nav,
+html[data-theme='dark'] .weather-card,
+html[data-theme='dark'] .footer-callout,
+html[data-theme='dark'] .contact-strip,
+html[data-theme='dark'] .install-prompt {
     background:
       linear-gradient(180deg, hsl(210 18% 15%), hsl(210 20% 12%));
     border-color: hsl(210 16% 20%);
     box-shadow: 0 28px 44px -36px hsl(var(--arl-navy-950) / 0.58);
   }
 
-  .slider-card::before,
-  .card::before,
-  .flight-panel::before,
-  .map-card::before,
-  .emergency-card::before,
-  .table-card::before,
-  .detail-card::before,
-  .content-section::before,
-  .section-list__nav::before,
-  .weather-card::before,
-  .footer-callout::before,
-  .contact-strip::before {
+  html[data-theme='dark'] .slider-card::before,
+html[data-theme='dark'] .card::before,
+html[data-theme='dark'] .flight-panel::before,
+html[data-theme='dark'] .map-card::before,
+html[data-theme='dark'] .emergency-card::before,
+html[data-theme='dark'] .table-card::before,
+html[data-theme='dark'] .detail-card::before,
+html[data-theme='dark'] .content-section::before,
+html[data-theme='dark'] .section-list__nav::before,
+html[data-theme='dark'] .weather-card::before,
+html[data-theme='dark'] .footer-callout::before,
+html[data-theme='dark'] .contact-strip::before {
     opacity: 0.6;
   }
 
-  .logo-sub,
-  .hero-glance__label,
-  .hero-glance__meta,
-  .section-list__nav-label,
-  .detail-card__label,
-  .flight-panel__eyebrow,
-  .flight-board__eyebrow {
+  html[data-theme='dark'] .logo-sub,
+html[data-theme='dark'] .hero-glance__label,
+html[data-theme='dark'] .hero-glance__meta,
+html[data-theme='dark'] .section-list__nav-label,
+html[data-theme='dark'] .detail-card__label,
+html[data-theme='dark'] .flight-panel__eyebrow,
+html[data-theme='dark'] .flight-board__eyebrow {
     color: hsl(210 18% 70%);
   }
 
-  .content-slider__label {
+  html[data-theme='dark'] .content-slider__label {
     background: linear-gradient(135deg, hsl(210 18% 16%), hsl(185 22% 18%));
     border-color: hsl(210 16% 22%);
     color: hsl(185 54% 72%);
   }
 
-  .inner-page-hero .lead,
-  .rich-text,
-  .detail-card__value,
-  .service-card__desc,
-  .flight-board__meta,
-  .weather-card__chip,
-  .quick-action-card__text {
+  html[data-theme='dark'] .inner-page-hero .lead,
+html[data-theme='dark'] .rich-text,
+html[data-theme='dark'] .detail-card__value,
+html[data-theme='dark'] .service-card__desc,
+html[data-theme='dark'] .flight-board__meta,
+html[data-theme='dark'] .weather-card__chip,
+html[data-theme='dark'] .quick-action-card__text {
     color: hsl(210 16% 72%);
   }
 
-  .weather-card__chip {
+  html[data-theme='dark'] .weather-card__chip {
     background: hsl(210 18% 16%);
   }
 
-  .weather-card__fallback .weather-card__eyebrow {
+  html[data-theme='dark'] .weather-card__fallback .weather-card__eyebrow {
     color: hsl(210 18% 70%);
   }
 
-  .weather-card__fallback .weather-card__condition {
+  html[data-theme='dark'] .weather-card__fallback .weather-card__condition {
     color: hsl(210 16% 72%);
   }
 
-  .quick-action-card,
-  .quick-action-card__icon {
+  html[data-theme='dark'] .quick-action-card,
+html[data-theme='dark'] .quick-action-card__icon {
     border-color: hsl(210 16% 20%);
   }
 
-  .quick-action-card {
+  html[data-theme='dark'] .quick-action-card {
     background:
       linear-gradient(180deg, hsl(210 18% 15%), hsl(210 20% 12%));
     box-shadow: 0 28px 44px -36px hsl(var(--arl-navy-950) / 0.58);
   }
 
-  .quick-action-card--primary {
+  html[data-theme='dark'] .quick-action-card--primary {
     background:
       linear-gradient(135deg, hsl(210 18% 17%), hsl(185 24% 16%));
   }
 
-  .quick-action-card:hover {
+  html[data-theme='dark'] .quick-action-card:hover {
     border-color: hsl(185 22% 30%);
     box-shadow: 0 32px 48px -34px hsl(var(--arl-navy-950) / 0.68);
   }
 
-  .quick-action-card__icon,
-  .section-list__nav-index,
-  .content-section__number {
+  html[data-theme='dark'] .quick-action-card__icon,
+html[data-theme='dark'] .section-list__nav-index,
+html[data-theme='dark'] .content-section__number {
     background: linear-gradient(135deg, hsl(210 18% 18%), hsl(185 22% 20%));
     color: hsl(185 54% 72%);
   }
 
-  .quick-action-card__title {
+  html[data-theme='dark'] .quick-action-card__title {
     color: hsl(var(--arl-white));
   }
 
-  .quick-action-card__text {
+  html[data-theme='dark'] .quick-action-card__text {
     color: hsl(210 16% 72%);
   }
 
-  .quick-action-card__chevron {
+  html[data-theme='dark'] .quick-action-card__chevron {
     background: hsl(210 18% 17%);
     border-color: hsl(210 16% 22%);
     color: hsl(185 40% 76%);
   }
 
-  .quick-action-card:hover .quick-action-card__chevron {
+  html[data-theme='dark'] .quick-action-card:hover .quick-action-card__chevron {
     background: hsl(210 18% 19%);
   }
 
-  .flight-row:hover,
-  tbody tr:hover {
+  html[data-theme='dark'] .flight-row:hover,
+html[data-theme='dark'] tbody tr:hover {
     background: hsl(210 18% 15%);
   }
 
-  .table-wrapper,
-  .weather-card__footer,
-  .flight-panel__notice,
-  .install-prompt__dismiss {
+  html[data-theme='dark'] .table-wrapper,
+html[data-theme='dark'] .weather-card__footer,
+html[data-theme='dark'] .flight-panel__notice,
+html[data-theme='dark'] .install-prompt__dismiss {
     border-top-color: hsl(210 16% 20%);
   }
 
-  .flight-panel__notice {
+  html[data-theme='dark'] .flight-panel__notice {
     background: hsl(210 20% 11%);
   }
 
-  th {
+  html[data-theme='dark'] th {
     background: hsl(210 18% 15%);
     color: hsl(210 14% 68%);
   }
 
-  .map-placeholder {
+  html[data-theme='dark'] .map-placeholder {
     background:
       radial-gradient(circle at 30% 30%, hsl(var(--arl-teal-650) / 0.16), transparent 10rem),
       linear-gradient(180deg, hsl(210 18% 15%), hsl(210 18% 12%));
   }
 
-  .install-prompt__icon,
-  .site-header__meta-link--accent {
+  html[data-theme='dark'] .install-prompt__icon,
+html[data-theme='dark'] .site-header__meta-link--accent {
     box-shadow: 0 18px 30px -22px hsl(var(--arl-navy-950) / 0.72);
   }
-}
+
 
 @media (prefers-reduced-motion: no-preference) {
   .site-header__status-dot {

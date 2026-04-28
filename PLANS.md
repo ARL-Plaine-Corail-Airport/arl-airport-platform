@@ -3270,3 +3270,138 @@
   - existing middleware/admin/public behavior remains unchanged aside from the runtime repair
 - Stop-and-fix rule:
   - if reproduction points to a framework or dependency bug with no safe repo-local fix, document the minimal containment and stop rather than broadening the patch
+
+## Milestone 31: Admin Direct Publish Workflow Bypass
+- Status: Completed
+- Date: April 27, 2026
+- Source: April 27, 2026 request to continue the workflow-status repair so a super admin can create and publish content directly without an approver step.
+- Fixes grouped by milestone:
+  - 31A - workflow publish authority:
+    - let repository admin roles bypass the `requiredStatusForPublish` workflow gate when using Payload publish
+    - preserve the existing approver and non-approver publish restrictions for non-admin users
+    - keep republish/autosave behavior from the current dirty worktree intact
+  - 31B - focused coverage and audit trail:
+    - add targeted status-sync tests for admin direct publish from a fresh draft
+    - keep existing status field access tests unchanged except where expectations must explicitly cover admin authority
+    - update conservative repair artifacts for baseline, review, fix, verification, regression, and final status
+- Files likely affected:
+  - `src/collections/workflowStatus.ts`
+  - `tests/unit/status-sync.test.ts`
+  - `PLANS.md`
+  - `.ai-maintenance/*/20260427-133129-admin-direct-publish.md`
+- Dependencies:
+  - `@/access` currently defines admin roles as `super_admin` and `content_admin`
+  - workflow collections call `syncWorkflowStatus` with collection-specific required statuses and publish errors
+  - current dirty worktree already contains related republish/autosave workflow edits that must be preserved
+- Risks:
+  - broadening the bypass beyond repository admin roles would weaken the approval workflow
+  - failing to stamp approval metadata for an admin direct publish would reduce audit traceability
+  - Notices use an `approved` gate while other workflow collections use `in_review`, so tests must cover both shapes
+- Validation commands:
+  - `pnpm test -- tests/unit/status-sync.test.ts`
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - `super_admin` can publish a fresh draft directly through the workflow hook
+  - existing admin-role handling remains consistent with `@/access`
+  - approvers still need the configured publishable workflow status unless republishing an already-published document
+  - non-approvers still cannot publish protected workflow content
+  - status-sync tests, lint, and build pass
+- Stop-and-fix rule:
+  - after each validation step, fix only regressions introduced by this milestone before continuing; preserve unrelated dirty worktree changes
+- Milestone output:
+  - Completed fixes:
+    - used the started `hasAdminRole` helper in `syncWorkflowStatus`
+    - allowed admin roles to bypass the configured `requiredStatusForPublish` gate when Payload `_status` is being published
+    - stamped `lastApprovedBy` for admin direct publish when the collection uses approval metadata and `req.user.id` exists
+    - added create-and-publish coverage for `super_admin` on NewsEvents and `content_admin` on Notices
+    - preserved existing non-admin publish denial, ordinary approver workflow requirements, and current republish/autosave behavior
+  - Files changed by this milestone:
+    - `src/collections/workflowStatus.ts`
+    - `tests/unit/status-sync.test.ts`
+    - `PLANS.md`
+    - `.ai-maintenance/*/20260427-133129-admin-direct-publish.md`
+  - Validation results:
+    - `pnpm test -- tests/unit/status-sync.test.ts` passed with 19 tests
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - `pnpm test -- tests/unit/access/roles.test.ts tests/unit/status-sync.test.ts` passed with 26 tests
+    - `git diff --check` passed with Git CRLF normalization warnings only
+  - Residual risks or manual QA notes:
+    - this uses the repository's existing admin role model, so both `super_admin` and `content_admin` bypass the workflow readiness gate; tighten `hasAdminRole` to `super_admin` only if direct publish should be exclusive to super admins
+    - authenticated Payload admin UI create/publish smoke was not run; hook-level behavior and build were verified locally
+
+## Milestone 32: Frontend Light and Dark Mode Toggle
+- Status: Completed
+- Date: April 27, 2026
+- Source: April 27, 2026 request to add a white/dark mode toggle beside the language toggle while keeping system mode as the default.
+- Fixes grouped by milestone:
+  - 32A - theme default and override:
+    - preserve the existing system `prefers-color-scheme` behavior when the user has not chosen a mode
+    - add a persisted client-side light/dark override without changing API, middleware, cache, or service-worker behavior
+  - 32B - header control:
+    - place the theme toggle beside the existing language switcher
+    - keep the control compact, keyboard-accessible, and compatible with the existing header layout
+  - 32C - styling:
+    - make explicit light and dark overrides reuse the existing CSS variables
+    - avoid unrelated redesigns or palette changes
+- Files likely affected:
+  - `PLANS.md`
+  - `src/app/(frontend)/layout.tsx`
+  - `src/app/globals.css`
+  - `src/components/layout/header.tsx`
+  - `src/components/ui/theme-toggle.tsx`
+  - `src/styles/components/header.css`
+  - `src/styles/components/layout.css`
+  - `src/styles/components/experience.css`
+  - `src/styles/components/polish.css`
+  - `src/styles/components/services.css`
+  - `src/styles/components/content-slider.css`
+  - `src/styles/components/map-emergency.css`
+  - `src/styles/components/duty-free.css`
+- Dependencies:
+  - existing dark-mode variables in `src/app/globals.css`
+  - existing header action row and language switcher placement
+  - browser `localStorage` and `matchMedia`; failures must fall back to system styling
+- Risks:
+  - a persisted theme override can cause a visible flash if applied too late
+  - header actions may crowd smaller mobile widths
+  - global theme selectors must not affect dashboard/admin route groups unintentionally
+- Validation commands:
+  - `pnpm lint`
+  - `pnpm build`
+- Acceptance criteria:
+  - first-time visitors keep system light/dark mode by default
+  - clicking the new toggle persists explicit white/light or dark mode
+  - the toggle appears beside the language toggle in the public header
+  - lint and build pass
+- Stop-and-fix rule:
+  - after each validation step, fix only regressions introduced by this milestone before continuing
+- Milestone output:
+  - Completed fixes:
+    - added a frontend theme bootstrap that resolves system light/dark mode by default and honors persisted `arl-theme` overrides
+    - added an accessible light/dark switch beside the language switcher in the public header
+    - converted public dark-mode CSS overrides from direct `prefers-color-scheme` media queries to resolved `html[data-theme='dark']` selectors so explicit user choices apply consistently
+  - Files changed by this milestone:
+    - `src/app/(frontend)/layout.tsx`
+    - `src/app/globals.css`
+    - `src/components/layout/header.tsx`
+    - `src/components/ui/theme-toggle.tsx`
+    - `src/styles/components/header.css`
+    - `src/styles/components/layout.css`
+    - `src/styles/components/experience.css`
+    - `src/styles/components/polish.css`
+    - `src/styles/components/services.css`
+    - `src/styles/components/content-slider.css`
+    - `src/styles/components/map-emergency.css`
+    - `src/styles/components/duty-free.css`
+    - `PLANS.md`
+  - Validation results:
+    - `pnpm lint` passed
+    - `pnpm build` passed
+    - Playwright smoke check with `colorScheme: 'dark'` confirmed system default dark mode, toggle to light mode, and persisted `localStorage` value
+    - Playwright smoke check with `colorScheme: 'light'` confirmed system default light mode, toggle to dark mode, and persisted `localStorage` value
+    - `git diff --check` passed with Git CRLF normalization warnings only
+  - Residual risks or manual QA notes:
+    - dev server is running locally at `https://localhost:3000` for manual review
+    - the toggle persists an explicit light or dark choice; there is no separate reset-to-system control because the request asked for a two-mode toggle with system only as the default

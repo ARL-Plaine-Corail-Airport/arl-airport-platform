@@ -52,11 +52,14 @@ describe('access roles', () => {
     })
   })
 
-  it('keeps publishedVersionOrAdmin aligned with the custom workflow status field', () => {
+  it('scopes publishedVersionOrAdmin to the Payload version flag (_status)', () => {
     expect(publishedVersionOrAdmin(buildAccessArgs())).toEqual({
-      status: { equals: 'published' },
+      _status: { equals: 'published' },
     })
     expect(publishedVersionOrAdmin(buildAccessArgs(['super_admin']))).toBe(true)
+    expect(publishedVersionOrAdmin(buildAccessArgs(['operations_editor']))).toEqual({
+      _status: { equals: 'published' },
+    })
   })
 
   it('keeps the access re-export aligned with the shared role helpers', () => {
@@ -65,7 +68,7 @@ describe('access roles', () => {
       status: { equals: 'published' },
     })
     expect(reexportedAccess.publishedVersionOrAdmin(buildAccessArgs(['operations_editor']))).toEqual({
-      status: { equals: 'published' },
+      _status: { equals: 'published' },
     })
   })
 })

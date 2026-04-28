@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useI18n } from '@/i18n/provider'
 
 const PlaneIcon = ({ size = 20, color = 'white' }: { size?: number; color?: string }) => (
@@ -200,6 +201,15 @@ export function SiteHeader({ phone }: { phone?: string }) {
     { href: lp('/faq'), label: t('nav.faq') },
   ], [lp, t])
 
+  const transportLinks = useMemo(() => [
+    { href: lp('/transport-parking'), label: t('nav.transport') },
+  ], [lp, t])
+
+  const newsLinks = useMemo(() => [
+    { href: lp('/news-events'), label: t('nav.news_events') },
+    { href: lp('/notices'), label: t('nav.notices') },
+  ], [lp, t])
+
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
     return () => {
@@ -233,6 +243,10 @@ export function SiteHeader({ phone }: { phone?: string }) {
     '/accessibility',
     '/faq',
   ].some((href) => isPathActive(pathname, href))
+
+  const transportActive = isPathActive(pathname, '/transport-parking')
+
+  const newsActive = ['/news-events', '/notices'].some((href) => isPathActive(pathname, href))
 
   return (
     <>
@@ -290,27 +304,12 @@ export function SiteHeader({ phone }: { phone?: string }) {
               label={t('nav.passenger_info')}
               items={passengerLinks}
             />
-            <Link
-              href={lp('/transport-parking')}
-              prefetch={false}
-              className={`nav-link${isPathActive(pathname, '/transport-parking') ? ' nav-link--active' : ''}`}
-            >
-              {t('nav.transport')}
-            </Link>
-            <Link
-              href={lp('/notices')}
-              prefetch={false}
-              className={`nav-link${isPathActive(pathname, '/notices') ? ' nav-link--active' : ''}`}
-            >
-              {t('nav.notices')}
-            </Link>
-            <Link
-              href={lp('/news-events')}
-              prefetch={false}
-              className={`nav-link${isPathActive(pathname, '/news-events') ? ' nav-link--active' : ''}`}
-            >
-              {t('nav.news_events')}
-            </Link>
+            <NavDropdown
+              active={transportActive}
+              label={t('pages.directions_title')}
+              items={transportLinks}
+            />
+            <NavDropdown active={newsActive} label={t('nav.news_events')} items={newsLinks} />
             <Link
               href={lp('/airport-project')}
               prefetch={false}
@@ -336,6 +335,7 @@ export function SiteHeader({ phone }: { phone?: string }) {
 
           <div className="header-actions">
             <LanguageSwitcher currentLocale={locale} currentPathname={pathname} />
+            <ThemeToggle />
 
             <button
               type="button"
@@ -401,11 +401,26 @@ export function SiteHeader({ phone }: { phone?: string }) {
             ))}
           </div>
 
+          <div className="mobile-nav-group" role="group" aria-labelledby="mobile-transport-label">
+            <p className="mobile-nav-group__label" id="mobile-transport-label">{t('pages.directions_title')}</p>
+            {transportLinks.map((item) => (
+              <Link key={item.href} href={item.href} prefetch={false} className="mobile-nav-link">
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mobile-nav-group" role="group" aria-labelledby="mobile-news-label">
+            <p className="mobile-nav-group__label" id="mobile-news-label">{t('nav.news_events')}</p>
+            {newsLinks.map((item) => (
+              <Link key={item.href} href={item.href} prefetch={false} className="mobile-nav-link">
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
           <div className="mobile-nav-group" role="group" aria-labelledby="mobile-airport-label">
             <p className="mobile-nav-group__label" id="mobile-airport-label">{t('nav.airport')}</p>
-            <Link href={lp('/transport-parking')} prefetch={false} className="mobile-nav-link">{t('nav.transport_parking')}</Link>
-            <Link href={lp('/notices')} prefetch={false} className="mobile-nav-link">{t('nav.notices')}</Link>
-            <Link href={lp('/news-events')} prefetch={false} className="mobile-nav-link">{t('nav.news_events')}</Link>
             <Link href={lp('/airport-project')} prefetch={false} className="mobile-nav-link">{t('nav.airport_project')}</Link>
             <Link href={lp('/career')} prefetch={false} className="mobile-nav-link">{t('nav.career')}</Link>
             <Link href={lp('/contact')} prefetch={false} className="mobile-nav-link">{t('nav.contact')}</Link>

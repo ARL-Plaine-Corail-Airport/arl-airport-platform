@@ -4,6 +4,9 @@ import { localeLabels, locales, type Locale } from '@/i18n/config'
 import { localePath, stripLocalePrefix } from '@/i18n/path'
 import { useI18n } from '@/i18n/provider'
 
+// Keep MFE route/data support intact while removing it from the public picker.
+const selectableLocales = locales.filter((locale) => locale !== 'mfe')
+
 type LanguageSwitcherProps = {
   currentLocale?: Locale
   currentPathname?: string
@@ -28,7 +31,7 @@ export function LanguageSwitcher({
 
   return (
     <div className="lang-switcher" role="group" aria-label="Language">
-      {locales.map((loc) => (
+      {selectableLocales.map((loc) => (
         <button
           type="button"
           key={loc}

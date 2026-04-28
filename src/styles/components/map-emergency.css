@@ -42,19 +42,19 @@
   color: var(--primary);
 }
 
-@media (prefers-color-scheme: dark) {
-  .map-placeholder {
+
+  html[data-theme='dark'] .map-placeholder {
     background:
       radial-gradient(circle at 70% 40%, hsl(210 40% 18% / 0.5), transparent 60%),
       var(--surface-alt);
   }
 
-  .map-placeholder::before {
+  html[data-theme='dark'] .map-placeholder::before {
     background:
       repeating-linear-gradient(0deg, transparent, transparent 1.5rem, hsl(210 20% 30% / 0.15) 1.5rem, hsl(210 20% 30% / 0.15) calc(1.5rem + 1px)),
       repeating-linear-gradient(90deg, transparent, transparent 1.5rem, hsl(210 20% 30% / 0.15) 1.5rem, hsl(210 20% 30% / 0.15) calc(1.5rem + 1px));
   }
-}
+
 
 .map-card {
   display: block;

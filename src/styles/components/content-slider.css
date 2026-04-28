@@ -157,28 +157,28 @@
 }
 
 /* ── Dark mode ── */
-@media (prefers-color-scheme: dark) {
-  .slider-card {
+
+  html[data-theme='dark'] .slider-card {
     background: linear-gradient(180deg, hsl(210 20% 13%), hsl(210 18% 11%));
     border-color: hsl(210 15% 20%);
     box-shadow: 0 8px 20px -12px hsl(210 40% 4% / 0.4);
   }
 
-  .slider-card:hover {
+  html[data-theme='dark'] .slider-card:hover {
     border-color: hsl(200 30% 30%);
     box-shadow: 0 16px 32px -18px hsl(210 40% 4% / 0.5);
   }
 
-  .slider-card::before {
+  html[data-theme='dark'] .slider-card::before {
     opacity: 0.5;
   }
 
-  .content-slider__label {
+  html[data-theme='dark'] .content-slider__label {
     background: hsl(210 30% 16%);
     border-color: hsl(210 15% 24%);
     color: hsl(210 60% 65%);
   }
-}
+
 
 /* ── Responsive ── */
 @media (max-width: 479px) {

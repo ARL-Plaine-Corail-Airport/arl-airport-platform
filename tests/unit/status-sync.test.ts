@@ -57,13 +57,14 @@ async function runBeforeChange(
   input: {
     data: Record<string, unknown>
     roles?: string[]
+    operation?: 'create' | 'update'
     originalDoc?: Record<string, unknown>
     findByID?: FindByIDMock
   },
 ) {
   return getHook(collection)({
     data: { ...input.data },
-    operation: 'update',
+    operation: input.operation ?? 'update',
     originalDoc: input.originalDoc,
     req: buildReq(input.roles ?? ['approver'], input.findByID),
   } as any) as Promise<Record<string, unknown>>
@@ -78,6 +79,18 @@ describe('status sync hooks', () => {
 
     expect(data.status).toBe('published')
     expect(data.publishedAt).toEqual(expect.any(String))
+  })
+
+  it('lets super admins create and publish NewsEvents without review', async () => {
+    const data = await runBeforeChange(NewsEvents, {
+      data: { _status: 'published', status: 'draft' },
+      roles: ['super_admin'],
+      operation: 'create',
+    })
+
+    expect(data.status).toBe('published')
+    expect(data.publishedAt).toEqual(expect.any(String))
+    expect(data.lastApprovedBy).toBe(42)
   })
 
   it('requires approver sign-off to publish NewsEvents', async () => {
@@ -132,6 +145,18 @@ describe('status sync hooks', () => {
     const data = await runBeforeChange(Notices, {
       data: { _status: 'published', status: 'approved' },
       roles: ['approver'],
+    })
+
+    expect(data.status).toBe('published')
+    expect(data.publishedAt).toEqual(expect.any(String))
+    expect(data.lastApprovedBy).toBe(42)
+  })
+
+  it('lets content admins create and publish Notices without approval status', async () => {
+    const data = await runBeforeChange(Notices, {
+      data: { _status: 'published', status: 'draft' },
+      roles: ['content_admin'],
+      operation: 'create',
     })
 
     expect(data.status).toBe('published')
@@ -196,6 +221,58 @@ describe('status sync hooks', () => {
 
     expect(data.status).toBe('approved')
     expect(data.lastApprovedBy).toBeUndefined()
+  })
+
+  it('lets approvers re-publish an already-published NewsEvent without re-walking review', async () => {
+    const data = await runBeforeChange(NewsEvents, {
+      data: { _status: 'published', status: 'published' },
+      roles: ['approver'],
+      originalDoc: { id: 12, status: 'published' },
+    })
+
+    expect(data.status).toBe('published')
+    expect(data.lastApprovedBy).toBe(42)
+  })
+
+  it('still blocks non-approvers from re-publishing a NewsEvent', async () => {
+    await expect(
+      runBeforeChange(NewsEvents, {
+        data: { _status: 'published', status: 'published' },
+        roles: ['operations_editor'],
+        originalDoc: { id: 12, status: 'published' },
+      }),
+    ).rejects.toThrow('Only approvers can publish news/events after review.')
+  })
+
+  it('preserves NewsEvent status on autosave of an already-published doc', async () => {
+    const data = await runBeforeChange(NewsEvents, {
+      data: { _status: 'draft', status: 'published' },
+      roles: ['operations_editor'],
+      originalDoc: { id: 12, status: 'published' },
+    })
+
+    expect(data.status).toBe('published')
+  })
+
+  it('still demotes status when a fresh draft tries to claim published', async () => {
+    const data = await runBeforeChange(NewsEvents, {
+      data: { _status: 'draft', status: 'published' },
+      roles: ['approver'],
+      originalDoc: { id: 13, status: 'draft' },
+    })
+
+    expect(data.status).toBe('draft')
+  })
+
+  it('lets approvers re-publish an already-published Notice without going through approved again', async () => {
+    const data = await runBeforeChange(Notices, {
+      data: { _status: 'published', status: 'published' },
+      roles: ['approver'],
+      originalDoc: { id: 21, status: 'published' },
+    })
+
+    expect(data.status).toBe('published')
+    expect(data.lastApprovedBy).toBe(42)
   })
 
   it('requires approver role for approval status transitions when publishing requires approval', async () => {

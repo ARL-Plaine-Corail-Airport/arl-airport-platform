@@ -34,6 +34,16 @@ function hasApproverRole(req: PayloadRequest): boolean {
   )
 }
 
+function hasAdminRole(req: PayloadRequest): boolean {
+  const roles = req.user && typeof req.user === 'object'
+    ? (req.user as { roles?: unknown }).roles
+    : undefined
+
+  return Array.isArray(roles) && roles.some((role) =>
+    role === 'super_admin' || role === 'content_admin',
+  )
+}
+
 async function getPreviousStatus(input: {
   collection: CollectionSlug
   data: WorkflowData
@@ -80,10 +90,15 @@ export function syncWorkflowStatus(
     })
     const effectiveStatus = workflowData.status ?? previousStatus
     const userHasApproverRole = hasApproverRole(req)
+    const userHasAdminRole = hasAdminRole(req)
     let approvedByCurrentUser = false
     const isApprovalTransition = Boolean(options.approvalStatus) &&
       workflowData.status === options.approvalStatus &&
       previousStatus !== options.approvalStatus
+    // Re-publishing a doc that's already live (typo fix on a published article)
+    // skips the in_review/approved gate — the previous version was already
+    // approved. Approver role is still enforced separately below.
+    const isRepublish = previousStatus === options.publishedStatus
 
     if (
       options.requireApproverToPublish &&
@@ -98,22 +113,34 @@ export function syncWorkflowStatus(
         throw new Error(options.publishError)
       }
 
-      if (options.requireApproverToPublish && effectiveStatus !== options.requiredStatusForPublish) {
+      if (
+        options.requireApproverToPublish &&
+        !isRepublish &&
+        !userHasAdminRole &&
+        effectiveStatus !== options.requiredStatusForPublish
+      ) {
         throw new Error(options.publishError)
       }
 
       if (userHasApproverRole) {
-        approvedByCurrentUser = effectiveStatus === options.requiredStatusForPublish ||
+        approvedByCurrentUser = isRepublish ||
+          userHasAdminRole ||
+          effectiveStatus === options.requiredStatusForPublish ||
           (Boolean(options.approvalStatus) && effectiveStatus === options.approvalStatus)
-      } else if (effectiveStatus !== options.requiredStatusForPublish) {
+      } else if (!isRepublish && effectiveStatus !== options.requiredStatusForPublish) {
         throw new Error(options.publishError)
       }
 
       workflowData.status = options.publishedStatus
     } else if (
       workflowData._status === 'draft' &&
-      workflowData.status === options.publishedStatus
+      workflowData.status === options.publishedStatus &&
+      !isRepublish
     ) {
+      // Only demote when a fresh draft is trying to claim "published" without
+      // having gone through the workflow. Autosaves of an already-published
+      // doc keep status='published' so editors don't have to re-walk the
+      // review steps for small edits.
       workflowData.status = 'draft'
     }
 

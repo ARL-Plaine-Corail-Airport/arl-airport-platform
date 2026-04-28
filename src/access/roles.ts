@@ -69,4 +69,4 @@ function publishedFieldOrAdmin(field: 'status' | '_status') {
 
 export const publishedOrAdmin = publishedFieldOrAdmin('status')
 
-export const publishedVersionOrAdmin = publishedFieldOrAdmin('status')
+export const publishedVersionOrAdmin = publishedFieldOrAdmin('_status')

@@ -55,6 +55,29 @@ const pwaSplashBootstrap = `(() => {
   }
 })()`
 
+const themeBootstrap = `(() => {
+  const storageKey = 'arl-theme'
+  const resolveSystemTheme = () => {
+    if (typeof window.matchMedia !== 'function') return 'light'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+
+  try {
+    const storedTheme = window.localStorage.getItem(storageKey)
+    const theme = storedTheme === 'light' || storedTheme === 'dark'
+      ? storedTheme
+      : resolveSystemTheme()
+
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme = theme
+  } catch (error) {
+    const theme = resolveSystemTheme()
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme = theme
+    console.warn('[theme] Theme bootstrap used system fallback', error)
+  }
+})()`
+
 const bodyFont = Public_Sans({
   display: 'swap',
   subsets: ['latin'],
@@ -139,6 +162,10 @@ export default async function FrontendLayout({
         className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}
         suppressHydrationWarning
       >
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: themeBootstrap }}
+        />
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{ __html: pwaSplashBootstrap }}

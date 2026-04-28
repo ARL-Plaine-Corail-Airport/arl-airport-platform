@@ -8,7 +8,6 @@ on:
 
 env:
   NEXT_TELEMETRY_DISABLED: '1'
-  NODE_ENV: production
   NEXT_OUTPUT_MODE: standalone
   ARL_SKIP_DB_DURING_BUILD: '1'
   NEXT_PUBLIC_SITE_URL: http://localhost:3000

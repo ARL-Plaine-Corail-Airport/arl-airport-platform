@@ -6,7 +6,7 @@
 # =============================================================================
 
 # ── Stage 1: base ─────────────────────────────────────────────────────────────
-FROM node:20-alpine AS base
+FROM node:25-alpine AS base
 RUN npm install -g pnpm@9 --quiet
 
 # ── Stage 2: deps (install production + dev deps for build) ───────────────────

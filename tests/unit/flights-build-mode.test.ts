@@ -26,6 +26,8 @@ describe('flight board build-time fallback', () => {
     vi.doMock('@/lib/logger', () => ({
       logger: {
         error: loggerError,
+        warn: vi.fn(),
+        info: vi.fn(),
       },
     }))
 

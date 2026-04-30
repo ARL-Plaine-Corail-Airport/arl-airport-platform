@@ -76,9 +76,9 @@
 /* ── Dark mode ── */
 html[data-theme='dark'] {
     /* Surfaces */
-    --bg:             hsl(210 25% 8%);
-    --surface:        hsl(210 20% 12%);
-    --surface-alt:    hsl(210 18% 16%);
+    --bg:             hsl(200, 7%, 92%);
+    --surface:        hsl(210, 12%, 84%);
+    --surface-alt:    hsl(207, 12%, 83%);
 
     /* Text */
     --text:           hsl(210 20% 92%);
